@@ -38,7 +38,7 @@ class PushRequest extends FormRequest
             'tasks.*.id' => ['required', 'string', 'uuid', 'lowercase'],
             'tasks.*.text' => ['present', 'string'],
             'tasks.*.date' => ['present', 'nullable', 'date_format:Y-m-d'],
-            'tasks.*.someday_column' => ['present', 'nullable', 'required_if:tasks.*.date,null', 'integer', 'between:0,2'],
+            'tasks.*.someday_column' => ['present', 'nullable', 'required_if:tasks.*.date,null', 'integer', 'between:0,10000'],
             'tasks.*.position' => ['required', 'string', 'max:255'],
             'tasks.*.done' => ['required', 'boolean:strict'],
             'tasks.*.done_at' => ['present', 'nullable', $timestamp],
@@ -50,6 +50,16 @@ class PushRequest extends FormRequest
             'tasks.*.subtasks.*.id' => ['required', 'string', 'max:255'],
             'tasks.*.subtasks.*.text' => ['present', 'string'],
             'tasks.*.subtasks.*.done' => ['required', 'boolean:strict'],
+            // Lists are optional so clients from before the Someday lists change keep syncing tasks only.
+            'lists' => ['sometimes', 'list', 'max:'.self::MAX_RECORDS],
+            'lists.*' => ['required', 'array'],
+            'lists.*.id' => ['required', 'string', 'uuid', 'lowercase'],
+            'lists.*.name' => ['required', 'string', 'min:1', 'max:60'],
+            'lists.*.column' => ['required', 'integer', 'min:3'],
+            'lists.*.position' => ['required', 'string', 'max:255'],
+            'lists.*.created_at' => ['required', $timestamp],
+            'lists.*.updated_at' => ['required', $timestamp],
+            'lists.*.deleted_at' => ['present', 'nullable', $timestamp],
             // The recurrence keys are optional (all three or none) so clients from before v0.0.2 keep syncing plain
             // tasks; PushTasks refuses their writes to a series or an exception. Cross-field invariants are in after().
             'tasks.*.recurrence' => [
@@ -167,5 +177,17 @@ class PushRequest extends FormRequest
     {
         /** @var list<array<string, mixed>> */
         return $this->validated('tasks');
+    }
+
+    /**
+     * The validated wire records of the Someday lists, or null when the client sent none.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    public function lists(): ?array
+    {
+        $lists = $this->validated('lists');
+
+        return $lists === [] ? null : $lists;
     }
 }
