@@ -82,19 +82,25 @@ function createTransport() {
     }
 
     const transport: SyncTransport = {
-        push: (tasks, signal) => {
+        push: (tasks, lists, signal) => {
             state.pushes++;
             state.pushSizes.push(tasks.length);
 
             return answer(
-                { applied: tasks.map((t) => t.id), rejected: [], cursor: 0 },
+                {
+                    applied: tasks.map((t) => t.id),
+                    rejected: [],
+                    lists_applied: lists.map((l) => l.id),
+                    lists_rejected: [],
+                    cursor: 0,
+                },
                 state.pushOutcome ?? state.outcome,
                 signal,
             );
         },
         pull: (cursor, _limit, signal) =>
             answer(
-                { tasks: [], cursor, has_more: false },
+                { tasks: [], lists: [], cursor, has_more: false },
                 state.outcome,
                 signal,
             ),

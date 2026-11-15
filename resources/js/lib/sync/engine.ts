@@ -7,7 +7,12 @@ import {
 import type { PlainWeekDatabase } from '@/lib/db/database';
 import { compareTimestamps } from '@/lib/db/dates';
 import { purgeDemoTasks } from '@/lib/db/demo';
-import type { OutboxEntry, Task } from '@/lib/db/types';
+import type {
+    ListOutboxEntry,
+    OutboxEntry,
+    SomedayList,
+    Task,
+} from '@/lib/db/types';
 import { withSyncLock } from './lock';
 import {
     hasStatus,
@@ -125,6 +130,28 @@ function toTask(remote: Task): Task {
     };
 }
 
+/** Keeps only the contract fields of a list coming from the server. */
+function toSomedayList(remote: SomedayList): SomedayList {
+    return {
+        id: remote.id,
+        name: remote.name ?? '',
+        // 3 is the smallest column a named list can have (0 is Someday,
+        // 1 and 2 are the built-in columns).
+        column: remote.column ?? 3,
+        position: remote.position,
+        created_at: remote.created_at,
+        updated_at: remote.updated_at,
+        deleted_at: remote.deleted_at ?? null,
+    };
+}
+
+/**
+ * A list entry paired with the row read when it was sent, so the engine can
+ * tell whether the row changed while it was in flight (lists have no
+ * revision; `updated_at` plays that role).
+ */
+type SentList = { entry: ListOutboxEntry; row: SomedayList };
+
 /**
  * Binds the local database to `userId` in one transaction over every table:
  * data of a different user is wiped, data without an owner (guest work) is
@@ -202,8 +229,8 @@ export class SyncEngine {
 
         this.db = options.db;
         this.transport = {
-            push: (tasks) =>
-                this.request((signal) => transport.push(tasks, signal)),
+            push: (tasks, lists) =>
+                this.request((signal) => transport.push(tasks, lists, signal)),
             pull: (cursor, limit) =>
                 this.request((signal) => transport.pull(cursor, limit, signal)),
         };
@@ -648,6 +675,7 @@ export class SyncEngine {
     private async push(generation: number): Promise<void> {
         const { db } = this;
         const attempted = new Set<string>();
+        const attemptedLists = new Set<string>();
 
         for (;;) {
             this.assertCurrent(generation);
@@ -657,51 +685,102 @@ export class SyncEngine {
                 .filter((entry) => !attempted.has(entry.task_id))
                 .slice(0, this.scaled(this.pushBatchSize));
 
-            if (entries.length === 0) {
+            // A list_outbox row is pending by presence (it has no revision to
+            // compare); the batch limit applies to tasks only.
+            const listEntries = (await db.list_outbox.toArray()).filter(
+                (entry) => !attemptedLists.has(entry.list_id),
+            );
+
+            if (entries.length === 0 && listEntries.length === 0) {
                 return;
             }
 
             entries.forEach((entry) => attempted.add(entry.task_id));
-            await this.pushEntries(generation, entries);
+            listEntries.forEach((entry) => attemptedLists.add(entry.list_id));
+            await this.pushEntries(generation, entries, listEntries);
         }
     }
 
     /**
-     * Pushes one batch. When the server refuses it as invalid, the batch is
-     * split until the offending records are isolated and quarantined, so one
-     * bad record never blocks the rest.
+     * Pushes one batch of tasks and lists in a single request. When the
+     * server refuses it as invalid, the batch is split by kind and then
+     * halved until the offending records are isolated and quarantined, so
+     * one bad record never blocks the rest.
      */
     private async pushEntries(
         generation: number,
         entries: OutboxEntry[],
+        listEntries: ListOutboxEntry[],
     ): Promise<void> {
-        const records = await this.db.tasks.bulkGet(
-            entries.map((entry) => entry.task_id),
-        );
+        const [records, listRecords] = await Promise.all([
+            this.db.tasks.bulkGet(entries.map((entry) => entry.task_id)),
+            this.db.someday_lists.bulkGet(
+                listEntries.map((entry) => entry.list_id),
+            ),
+        ]);
         const tasks = records.filter(
             (task): task is Task => task !== undefined,
         );
+        const sentLists: SentList[] = [];
+
+        listEntries.forEach((entry, i) => {
+            const row = listRecords[i];
+
+            if (row !== undefined) {
+                sentLists.push({ entry, row });
+            }
+        });
 
         try {
-            if (tasks.length > 0) {
+            if (tasks.length > 0 || sentLists.length > 0) {
                 this.assertCurrent(generation);
-                await this.transport.push(tasks);
+                await this.transport.push(
+                    tasks,
+                    sentLists.map((item) => item.row),
+                );
             }
         } catch (error) {
             if (!isPermanentFailure(error)) {
                 throw error;
             }
 
-            if (entries.length === 1) {
-                await this.quarantine(generation, entries[0]);
+            if (entries.length + listEntries.length === 1) {
+                if (entries.length === 1) {
+                    await this.quarantine(generation, entries[0]);
+                } else {
+                    await this.quarantineList(generation, listEntries[0]);
+                }
 
                 return;
             }
 
-            const middle = Math.ceil(entries.length / 2);
+            // A mixed batch is split by kind first (the bad record could be
+            // on either side), then each kind halves down to its offender.
+            if (entries.length > 0) {
+                const middle = Math.ceil(entries.length / 2);
 
-            await this.pushEntries(generation, entries.slice(0, middle));
-            await this.pushEntries(generation, entries.slice(middle));
+                await this.pushEntries(
+                    generation,
+                    entries.slice(0, middle),
+                    [],
+                );
+                await this.pushEntries(generation, entries.slice(middle), []);
+            }
+
+            if (listEntries.length > 0) {
+                const middle = Math.ceil(listEntries.length / 2);
+
+                await this.pushEntries(
+                    generation,
+                    [],
+                    listEntries.slice(0, middle),
+                );
+                await this.pushEntries(
+                    generation,
+                    [],
+                    listEntries.slice(middle),
+                );
+            }
 
             return;
         }
@@ -710,6 +789,7 @@ export class SyncEngine {
         // entry is done, unless the record changed while it was in flight. The
         // push response `cursor` is not a pull position and is ignored.
         await this.clearSent(generation, entries);
+        await this.clearSentLists(generation, sentLists);
     }
 
     private async quarantine(
@@ -736,6 +816,28 @@ export class SyncEngine {
         });
     }
 
+    /**
+     * Drops the outbox entry of a list the server refused as invalid. Lists
+     * have no revision to mark, so the entry is deleted instead: the record
+     * stays local and its next change pushes it again (the same effect as
+     * task quarantine).
+     */
+    private async quarantineList(
+        generation: number,
+        entry: ListOutboxEntry,
+    ): Promise<void> {
+        const { db } = this;
+
+        console.warn(
+            `Sync: the server refused list ${entry.list_id} as invalid; it will be pushed again by its next change.`,
+        );
+
+        await db.transaction('rw', db.list_outbox, async () => {
+            this.assertCurrent(generation);
+            await db.list_outbox.delete(entry.list_id);
+        });
+    }
+
     private async clearSent(
         generation: number,
         sent: OutboxEntry[],
@@ -756,6 +858,39 @@ export class SyncEngine {
         });
     }
 
+    /**
+     * Clears the list outbox entries that were just pushed, by the same rule
+     * as tasks: only when the row is the one that was sent (lists compare
+     * `updated_at`, they have no revision).
+     */
+    private async clearSentLists(
+        generation: number,
+        sent: SentList[],
+    ): Promise<void> {
+        const { db } = this;
+
+        await db.transaction(
+            'rw',
+            db.list_outbox,
+            db.someday_lists,
+            async () => {
+                this.assertCurrent(generation);
+
+                const current = await db.someday_lists.bulkGet(
+                    sent.map((item) => item.entry.list_id),
+                );
+                const unchanged = sent
+                    .filter(
+                        (item, i) =>
+                            current[i]?.updated_at === item.row.updated_at,
+                    )
+                    .map((item) => item.entry.list_id);
+
+                await db.list_outbox.bulkDelete(unchanged);
+            },
+        );
+    }
+
     private async pull(generation: number): Promise<void> {
         const { db } = this;
         let cursor = await this.storedCursor();
@@ -771,6 +906,9 @@ export class SyncEngine {
 
             await db.transaction('rw', allTables(db), async () => {
                 this.assertCurrent(generation);
+                // The server repeats the whole list set on every page;
+                // applying it is idempotent (last-write-wins).
+                await this.applyRemoteLists(page.lists.map(toSomedayList));
                 await this.applyRemote(page.tasks.map(toTask));
                 await db.meta.bulkPut([
                     { key: 'cursor', value: next },
@@ -843,5 +981,49 @@ export class SyncEngine {
 
         await db.tasks.bulkPut(toPut);
         await db.outbox.bulkDelete(toUnqueue);
+    }
+
+    /**
+     * Last-write-wins for lists, the same rules as tasks. The pull repeats
+     * the whole list set (including tombstones) on every page, so a deleted
+     * list converges to its tombstone on the other devices.
+     */
+    private async applyRemoteLists(remoteLists: SomedayList[]): Promise<void> {
+        const { db } = this;
+        const ids = remoteLists.map((list) => list.id);
+        const [locals, pending] = await Promise.all([
+            db.someday_lists.bulkGet(ids),
+            db.list_outbox.bulkGet(ids),
+        ]);
+        const toPut: SomedayList[] = [];
+        const toUnqueue: string[] = [];
+
+        remoteLists.forEach((remote, i) => {
+            const local = locals[i];
+
+            if (!local) {
+                toPut.push(remote);
+
+                return;
+            }
+
+            const order = compareTimestamps(
+                remote.updated_at,
+                local.updated_at,
+            );
+
+            if (order > 0) {
+                toPut.push(remote);
+
+                if (pending[i]) {
+                    toUnqueue.push(remote.id);
+                }
+            } else if (order === 0 && !pending[i]) {
+                toPut.push(remote);
+            }
+        });
+
+        await db.someday_lists.bulkPut(toPut);
+        await db.list_outbox.bulkDelete(toUnqueue);
     }
 }

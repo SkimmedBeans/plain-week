@@ -9,6 +9,7 @@ import {
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { demoIds } from '@/lib/db/demo';
 import { seedDemoTasks } from '@/lib/db/demo-tasks';
+import { createList, deleteList, queryLists, renameList } from '@/lib/db/lists';
 import { queryWeekTasks } from '@/lib/db/queries';
 import {
     createTask,
@@ -19,7 +20,7 @@ import {
 import type { Task } from '@/lib/db/types';
 import { occurrenceId } from '@/lib/recurrence/expand';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
-import { makeTask } from '@/test/fixtures';
+import { makeList, makeTask } from '@/test/fixtures';
 import { SyncEngine } from './engine';
 import type { SyncEnvironment } from './engine';
 import { fetchTransport } from './transport';
@@ -421,6 +422,122 @@ describe('pull with pending changes', () => {
         expect((await db.tasks.get(task.id))?.text).toBe('remote');
         expect(await db.outbox.count()).toBe(0);
         expect(server.rows.get(task.id)?.text).toBe('remote');
+    });
+});
+
+describe('lists', () => {
+    it('pushes a new list to the server', async () => {
+        const list = await createList('Ideas');
+
+        await startAndSync();
+
+        expect(server.lists.get(list.id)?.name).toBe('Ideas');
+        expect(await db.list_outbox.count()).toBe(0);
+    });
+
+    it('pushes a renamed list', async () => {
+        const list = await createList('Ideas');
+
+        await startAndSync();
+        const renamed = await renameList(list.id, 'Bigger ideas');
+        await startAndSync();
+
+        expect(renamed?.name).toBe('Bigger ideas');
+        expect(server.lists.get(list.id)?.name).toBe('Bigger ideas');
+        expect(await db.list_outbox.count()).toBe(0);
+    });
+
+    it('applies a remote rename that is newer than the local row', async () => {
+        const list = makeList({
+            name: 'local',
+            updated_at: '2026-10-12T09:00:00.000Z',
+        });
+
+        // No outbox entry: the local copy has converged, so the remote
+        // rename (newer `updated_at`) wins the LWW.
+        await db.someday_lists.put(list);
+        server.seedList({
+            ...list,
+            name: 'remote',
+            updated_at: '2026-10-12T14:00:00.000Z',
+        });
+        await startAndSync();
+
+        expect((await db.someday_lists.get(list.id))?.name).toBe('remote');
+    });
+
+    it('applies a remote list on pull', async () => {
+        const remote = makeList({ name: 'Remote list' });
+
+        server.seedList(remote);
+        await startAndSync();
+
+        expect((await queryLists()).map((list) => list.id)).toContain(
+            remote.id,
+        );
+    });
+
+    it('applies a remote tombstone on pull', async () => {
+        const local = await createList('Local');
+
+        await startAndSync();
+        // The remote delete lands after our copy was last updated.
+        const deletedAt = new Date(
+            Date.parse(local.updated_at) + 60_000,
+        ).toISOString();
+
+        server.seedList({
+            ...local,
+            deleted_at: deletedAt,
+            updated_at: deletedAt,
+        });
+        await startAndSync();
+
+        expect(await queryLists()).toEqual([]);
+        expect(
+            (await db.someday_lists.get(local.id))?.deleted_at,
+        ).not.toBeNull();
+    });
+
+    it('pushes a tombstone when a list is deleted locally', async () => {
+        const list = await createList('Local');
+
+        await startAndSync();
+        await deleteList(list.id);
+        await startAndSync();
+
+        expect(server.lists.get(list.id)?.deleted_at).not.toBeNull();
+        expect(await db.list_outbox.count()).toBe(0);
+    });
+
+    it('does not overwrite a pending local list change that is newer', async () => {
+        const list = makeList({
+            name: 'local',
+            updated_at: '2026-10-12T12:00:00.000Z',
+        });
+
+        await db.someday_lists.put(list);
+        await db.list_outbox.put({ list_id: list.id });
+        server.seedList({
+            ...list,
+            name: 'remote',
+            updated_at: '2026-10-12T10:00:00.000Z',
+        });
+        await startAndSync();
+
+        expect((await db.someday_lists.get(list.id))?.name).toBe('local');
+        expect(server.lists.get(list.id)?.name).toBe('local');
+    });
+
+    it('quarantines an invalid list the same way as an invalid task', async () => {
+        server.isInvalidList = (list) => list.name === 'bad';
+        const list = await createList('bad');
+
+        await startAndSync();
+
+        expect(server.lists.has(list.id)).toBe(false);
+        expect((await db.someday_lists.get(list.id))?.name).toBe('bad');
+        expect(await db.list_outbox.count()).toBe(0);
     });
 });
 

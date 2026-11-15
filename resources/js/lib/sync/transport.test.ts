@@ -55,7 +55,7 @@ describe('fetchTransport', () => {
         vi.stubGlobal('fetch', fetch);
 
         await fetchTransport.pull(0, 10);
-        await fetchTransport.push([]);
+        await fetchTransport.push([], []);
 
         for (const [, init] of fetch.mock.calls as unknown as [
             string,
@@ -93,7 +93,9 @@ describe('fetchTransport', () => {
             });
         });
 
-        const error = await fetchTransport.push([]).catch((e: unknown) => e);
+        const error = await fetchTransport
+            .push([], [])
+            .catch((e: unknown) => e);
 
         expect(error).toBeInstanceOf(SyncHttpError);
         expect(error).toMatchObject({ status: 429, retryAfterMs: 12_000 });

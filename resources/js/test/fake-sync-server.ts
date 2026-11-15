@@ -1,5 +1,5 @@
 import { compareTimestamps } from '@/lib/db/dates';
-import type { Task } from '@/lib/db/types';
+import type { SomedayList, Task } from '@/lib/db/types';
 
 type StoredTask = Task & { version: number };
 
@@ -9,9 +9,12 @@ type StoredTask = Task & { version: number };
  */
 export function createFakeSyncServer() {
     const rows = new Map<string, StoredTask>();
+    const lists = new Map<string, SomedayList>();
     let version = 0;
     const server = {
         rows,
+        /** Every list, including tombstones (the pull repeats all of them). */
+        lists,
         requests: [] as Array<{ url: string; init?: RequestInit }>,
         /** Status to answer every request with instead of handling it. */
         failWith: null as number | null,
@@ -19,11 +22,17 @@ export function createFakeSyncServer() {
         failPushWith: null as number | null,
         /** Push batches containing a matching task are refused with 422. */
         isInvalid: (() => false) as (task: Task) => boolean,
+        /** Push batches containing a matching list are refused with 422. */
+        isInvalidList: (() => false) as (list: SomedayList) => boolean,
         /** Awaited before answering a push (to simulate a slow network). */
         beforePushResponse: null as (() => Promise<void>) | null,
         /** Stores a record as if another device had pushed it. */
         seed(task: Task) {
             rows.set(task.id, { ...task, version: ++version });
+        },
+        /** Stores a list as if another device had pushed it. */
+        seedList(list: SomedayList) {
+            lists.set(list.id, { ...list });
         },
         fetch: async (input: string, init?: RequestInit) => {
             const url = input;
@@ -39,12 +48,19 @@ export function createFakeSyncServer() {
             }
 
             if (url.startsWith('/sync/push')) {
-                const { tasks } = JSON.parse(init?.body as string) as {
+                const body = JSON.parse(init?.body as string) as {
                     tasks: Task[];
+                    lists?: SomedayList[];
                 };
+                const tasks = body.tasks;
+                const sentLists = body.lists ?? [];
                 const applied: string[] = [];
+                const listsApplied: string[] = [];
 
-                if (tasks.some((task) => server.isInvalid(task))) {
+                if (
+                    tasks.some((task) => server.isInvalid(task)) ||
+                    sentLists.some((list) => server.isInvalidList(list))
+                ) {
                     return Response.json(
                         { message: 'Invalid.', errors: {} },
                         { status: 422 },
@@ -64,11 +80,26 @@ export function createFakeSyncServer() {
                     }
                 });
 
+                sentLists.forEach((list) => {
+                    const stored = lists.get(list.id);
+
+                    if (
+                        !stored ||
+                        compareTimestamps(list.updated_at, stored.updated_at) >=
+                            0
+                    ) {
+                        server.seedList(list);
+                        listsApplied.push(list.id);
+                    }
+                });
+
                 await server.beforePushResponse?.();
 
                 return Response.json({
                     applied,
                     rejected: [],
+                    lists_applied: listsApplied,
+                    lists_rejected: [],
                     cursor: version,
                 });
             }
@@ -84,6 +115,9 @@ export function createFakeSyncServer() {
 
                 return Response.json({
                     tasks: page,
+                    // The contract repeats the whole list set (including
+                    // tombstones) on every page; applying it is idempotent.
+                    lists: [...lists.values()],
                     cursor: page.at(-1)?.version ?? cursor,
                     has_more: newer.length > page.length,
                 });
