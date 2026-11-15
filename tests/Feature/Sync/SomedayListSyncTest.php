@@ -41,7 +41,7 @@ function wireList(array $overrides = []): array
  */
 function pushLists(array $lists, array $tasks = []): TestResponse
 {
-    return test()->postJson(route('sync.push'), ['tasks' => $tasks, 'lists' => $lists], [SyncFormat::HEADER => (string) SyncFormat::DailyRules]);
+    return test()->postJson(route('sync.push'), ['tasks' => $tasks, 'lists' => $lists], [SyncFormat::HEADER => (string) SyncFormat::DailyRules->value]);
 }
 
 test('push creates a list and pull returns it unchanged', function () {
@@ -83,7 +83,7 @@ test('a push cannot touch another user\'s list', function () {
     $other = [...$list, 'name' => 'Stolen', 'updated_at' => '2026-11-15T10:00:00.000Z'];
 
     $this->actingAs($intruder);
-    $this->postJson(route('sync.push'), ['tasks' => [], 'lists' => [$other]], [SyncFormat::HEADER => (string) SyncFormat::DailyRules])
+    $this->postJson(route('sync.push'), ['tasks' => [], 'lists' => [$other]], [SyncFormat::HEADER => (string) SyncFormat::DailyRules->value])
         ->assertOk()
         ->assertJsonPath('lists_applied', [])
         ->assertJsonPath('lists_rejected', [$other['id']]);
@@ -120,7 +120,7 @@ test('pushes without lists keep syncing tasks', function () {
         ->assertJsonPath('lists_rejected', []);
 
     // An explicit empty lists array behaves like no lists at all.
-    $this->postJson(route('sync.push'), ['tasks' => [], 'lists' => []], [SyncFormat::HEADER => (string) SyncFormat::DailyRules])
+    $this->postJson(route('sync.push'), ['tasks' => [], 'lists' => []], [SyncFormat::HEADER => (string) SyncFormat::DailyRules->value])
         ->assertOk()
         ->assertJsonPath('lists_applied', []);
 });
