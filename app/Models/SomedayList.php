@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\UtcMillisDateTime;
 use Carbon\CarbonImmutable;
+use Database\Factories\SomedayListFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['id', 'name', 'column', 'position', 'created_at', 'updated_at', 'deleted_at'])]
 class SomedayList extends Model
 {
+    /** @use HasFactory<SomedayListFactory> */
     use HasFactory;
 
     public $incrementing = false;
