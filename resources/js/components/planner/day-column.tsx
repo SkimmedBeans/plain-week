@@ -16,7 +16,7 @@ type Props = {
 };
 
 /**
- * One day: its header ("12 Oct … Mon") over its ruled task list. Saturday and
+ * One day: its header ("Mon … 12 Oct") over its ruled task list. Saturday and
  * Sunday get a quieter header so the weekend reads apart from the work week.
  */
 export function DayColumn({
@@ -53,7 +53,7 @@ export function DayColumn({
                               'border-muted-foreground/25 text-muted-foreground/70',
                 )}
             >
-                <span className="font-bold tracking-tight">{dayLabel}</span>
+                <span className="font-bold tracking-tight">{weekday}</span>
                 <span
                     className={cn(
                         'text-muted-foreground/70',
@@ -62,7 +62,7 @@ export function DayColumn({
                             : isWeekend && 'text-muted-foreground/50',
                     )}
                 >
-                    {weekday}
+                    {dayLabel}
                 </span>
             </h2>
             <TaskList
