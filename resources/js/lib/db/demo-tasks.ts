@@ -23,7 +23,7 @@ function demoTasks(today: string): DemoTask[] {
         { text: 'Type a date first, like 31 Dec Party', date: day(1) },
         { text: 'Right-click for actions', date: day(2) },
         { text: 'Weekly review', date: day(4), repeatWeekly: true },
-        { text: 'Ideas without a date live here', date: null },
+        { text: 'Ideas without a date live here', date: null, list: 0 },
     ];
 }
 

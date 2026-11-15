@@ -210,7 +210,7 @@ describe('TaskList', () => {
             expect(await listTasksIn({ date: '2026-10-20' })).toEqual([
                 expect.objectContaining({ text: 'Call' }),
             ]);
-            expect(await listTasksIn({ date: null })).toEqual([]);
+            expect(await listTasksIn({ date: null, list: 0 })).toEqual([]);
         });
 
         it('leaves a trailing date in the text', async () => {
@@ -305,12 +305,12 @@ describe('TaskList', () => {
 const SOMEDAY_LABEL = 'New Someday task';
 
 function Someday() {
-    const tasks = useLiveQuery(() => listTasksIn({ date: null }), []);
+    const tasks = useLiveQuery(() => listTasksIn({ date: null, list: 0 }), []);
 
     return (
         <ScopePromptProvider>
             <TaskList
-                placement={{ date: null }}
+                placement={{ date: null, list: 0 }}
                 tasks={tasks}
                 rows={2}
                 newTaskLabel={SOMEDAY_LABEL}
@@ -331,7 +331,7 @@ describe('TaskList growing past its rows', () => {
         expect(screen.getAllByLabelText(SOMEDAY_LABEL)).toHaveLength(2);
 
         for (const text of ['S0', 'S1', 'S2']) {
-            await createTask({ text, date: null });
+            await createTask({ text, date: null, list: 0 });
         }
 
         await screen.findByRole('button', { name: 'S2' });

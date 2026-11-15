@@ -3,7 +3,6 @@ import { isValidEvery } from '@/lib/recurrence/expand';
 import type {
     IsoWeekday,
     Recurrence,
-    SomedayColumn,
     Subtask,
     Task,
     TaskColor,
@@ -278,8 +277,9 @@ function parseRecurrence(v: RowValidator, value: unknown): Recurrence | null {
     return v.fail('recurrence.type', 'must be "daily", "weekly" or "monthly"');
 }
 
-function isSomedayColumn(value: unknown): value is SomedayColumn {
-    return SOMEDAY_COLUMNS.includes(value as SomedayColumn);
+// The server's wire rule: only the legacy columns 0, 1, 2 (stage 3 widens it).
+function isSomedayColumn(value: unknown): value is number {
+    return SOMEDAY_COLUMNS.includes(value as 0 | 1 | 2);
 }
 
 function isTime(value: unknown): value is string {

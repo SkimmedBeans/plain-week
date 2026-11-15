@@ -35,7 +35,7 @@ const NEXT_MON = '2026-10-19';
 /** 'text[✓]@list' of the two weeks from MON and Someday, in display order. */
 async function snapshot(): Promise<string[]> {
     const weeks = [await queryWeekTasks(MON), await queryWeekTasks(NEXT_MON)];
-    const someday = await querySomedayTasks(MON);
+    const someday = await querySomedayTasks(MON, 0);
 
     return [
         ...weeks.flatMap((week) =>
@@ -185,7 +185,7 @@ describe('round trip', () => {
         });
         await createTask({ text: 'Read', date: MON });
         await toggleDone(milk.id);
-        await createTask({ text: 'Idea', date: null });
+        await createTask({ text: 'Idea', date: null, list: 0 });
         const gone = await createTask({ text: 'Gone', date: TUE });
         await deleteTask(gone.id);
 
@@ -282,7 +282,11 @@ describe('round trip', () => {
 describe('planImport', () => {
     it('appends after the existing tasks of each list, keeping the file order', async () => {
         await createTask({ text: 'Existing', date: MON });
-        const idea = await createTask({ text: 'Existing idea', date: null });
+        const idea = await createTask({
+            text: 'Existing idea',
+            date: null,
+            list: 0,
+        });
         // The last Someday task sits in column 2 (an older version's row).
         await db.tasks.update(idea.id, { someday_column: 2 });
 

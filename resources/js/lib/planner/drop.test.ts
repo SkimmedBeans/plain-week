@@ -82,9 +82,10 @@ describe('resolveListDrop', () => {
     it('moves to and from Someday', () => {
         const s = task('s', { date: null, someday_column: 1 });
 
-        expect(resolveListDrop(a, { date: null }, [s], 0)).toEqual({
+        expect(resolveListDrop(a, { date: null, list: 0 }, [s], 0)).toEqual({
             move: {
                 date: null,
+                list: 0,
                 afterId: null,
                 beforeId: 's',
             },
@@ -96,7 +97,7 @@ describe('resolveListDrop', () => {
             beforeId: 'b',
         });
         // Someday is one list, whatever column its rows are in.
-        expect(resolveListDrop(s, { date: null }, [s], 1)).toBeNull();
+        expect(resolveListDrop(s, { date: null, list: 0 }, [s], 1)).toBeNull();
     });
 
     it('uses only untimed tasks as neighbours in a day', () => {
@@ -136,8 +137,11 @@ describe('resolveListDrop', () => {
         const s1 = task('s1', { date: null, someday_column: 0, time: '09:00' });
         const s2 = task('s2', { date: null });
 
-        expect(resolveListDrop(s2, { date: null }, [s1, s2], 0)?.move).toEqual({
+        expect(
+            resolveListDrop(s2, { date: null, list: 0 }, [s1, s2], 0)?.move,
+        ).toEqual({
             date: null,
+            list: 0,
             afterId: null,
             beforeId: 's1',
         });
@@ -236,9 +240,9 @@ describe('edgeDropDate', () => {
 describe('placementKey and placementLabel', () => {
     it('names days and Someday', () => {
         expect(placementKey({ date: MONDAY })).toBe(MONDAY);
-        expect(placementKey({ date: null })).toBe('someday');
+        expect(placementKey({ date: null, list: 0 })).toBe('someday');
         expect(placementLabel({ date: MONDAY })).toBe('Mon 12 Oct');
-        expect(placementLabel({ date: null })).toBe('Someday');
+        expect(placementLabel({ date: null, list: 0 })).toBe('Someday');
     });
 });
 

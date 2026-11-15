@@ -1,5 +1,5 @@
 import { generateKeyBetween } from 'fractional-indexing';
-import type { SomedayColumn, Task } from './types';
+import type { SomedayList, Task } from './types';
 
 /** Sort order inside a day: position, then id as a tie-break. */
 export function compareTaskOrder(
@@ -56,17 +56,24 @@ export function positionBetween(
 export type SomedaySortKey = Pick<Task, 'someday_column' | 'position'>;
 
 /** A row's Someday column; a missing one (never valid data) counts as 0. */
-export function somedayColumnOf(
-    task: Pick<Task, 'someday_column'>,
-): SomedayColumn {
+export function somedayColumnOf(task: Pick<Task, 'someday_column'>): number {
     return task.someday_column ?? 0;
 }
 
+/** Sort order of the named lists: `position`, then `id` for a stable tie. */
+export function compareListOrder(a: SomedayList, b: SomedayList): number {
+    if (a.position !== b.position) {
+        return a.position < b.position ? -1 : 1;
+    }
+
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
 /**
- * Sort order of the Someday list. Someday is one list; its sort key is
- * (`someday_column`, `position`, `id`), so tasks written in older versions
- * (three separate columns) keep the order they were shown in: column 1, then
- * 2, then 3.
+ * Sort order inside one displayed Someday list. The key is
+ * (`someday_column`, `position`, `id`), so legacy tasks written with the old
+ * three-column layout (and orphans whose list is gone) keep the order they
+ * were shown in.
  */
 export function compareSomedayOrder(
     a: SomedaySortKey & Pick<Task, 'id'>,
@@ -86,12 +93,13 @@ export function compareSomedayOrder(
  * A Someday sort key strictly between two neighbours of the list (either may
  * be undefined for the start or end): the column of `after` with a position
  * after it (and before `before` when both share that column), else the column
- * of `before` with a position before it, else column 0. No other row has to
- * change.
+ * of `before` with a position before it, else `fallbackColumn` (the list the
+ * task is being placed in). No other row has to change.
  */
 export function somedayKeyBetween(
     after: SomedaySortKey | undefined,
     before: SomedaySortKey | undefined,
+    fallbackColumn = 0,
 ): SomedaySortKey {
     if (after) {
         const column = somedayColumnOf(after);
@@ -113,5 +121,8 @@ export function somedayKeyBetween(
         };
     }
 
-    return { someday_column: 0, position: positionBetween(null, null) };
+    return {
+        someday_column: fallbackColumn,
+        position: positionBetween(null, null),
+    };
 }

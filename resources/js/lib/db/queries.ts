@@ -14,36 +14,67 @@ import {
     compareSomedayOrder,
     compareTaskOrder,
 } from './position';
-import { SOMEDAY_COLUMNS } from './types';
 import type { Task } from './types';
 
 /**
- * Where a task lives: a day, or the Someday list. Someday is a single list;
- * the repository picks a row's `someday_column` (part of its sort key).
+ * Where a task lives: a day, or one of the Someday lists. `list` is the
+ * `someday_column` value: 0 for the base Someday list, a number above for a
+ * named list (see `SomedayList`).
  */
-export type TaskPlacement = { date: string } | { date: null };
+export type TaskPlacement = { date: string } | { date: null; list: number };
 
 /** Tasks per day of the week, keyed by 'YYYY-MM-DD' (every day is present). */
 export type WeekTasks = Record<string, PlannerTask[]>;
 
-/** The Someday list, sorted (see `compareSomedayOrder`). */
+/** One Someday list, sorted (see `compareSomedayOrder`). */
 export type SomedayTasks = PlannerTask[];
 
-export function placementOf(task: Pick<Task, 'date'>): TaskPlacement {
-    return task.date === null ? { date: null } : { date: task.date };
+/**
+ * The placement a row belongs to (for display or a move): its day, or the
+ * Someday list of its column.
+ */
+export function placementOf(
+    task: Pick<Task, 'date' | 'someday_column'>,
+): TaskPlacement {
+    return task.date === null
+        ? { date: null, list: task.someday_column ?? 0 }
+        : { date: task.date };
 }
 
-/** Live Someday rows (series rows and losing duplicates left out). */
+/** The columns of the live named lists (tombstones left out). */
+function liveListColumns(): Promise<Set<number>> {
+    return db.someday_lists
+        .filter((list) => list.deleted_at === null)
+        .toArray()
+        .then((lists) => new Set(lists.map((list) => list.column)));
+}
+
+/**
+ * Live rows of one Someday list (series rows and losing duplicates left
+ * out): `list` is 0 for the base Someday list, which also shows tasks whose
+ * column has no live list row (orphans, e.g. synced from a device that still
+ * has lists), or a number above for a named list.
+ */
 async function querySomedayItems(
+    list: number,
     filter: (task: Task) => boolean = () => true,
 ): Promise<PlannerTask[]> {
-    const items = await shownItems(
-        await db.tasks
-            .where('someday_column')
-            .anyOf([...SOMEDAY_COLUMNS])
-            .filter((task) => task.date === null && filter(task))
-            .toArray(),
-    );
+    const columns = await liveListColumns();
+    const rows = await db.tasks
+        .where('someday_column')
+        .aboveOrEqual(0)
+        .filter(
+            (task) =>
+                task.date === null &&
+                filter(task) &&
+                (list === 0
+                    ? (task.someday_column ?? 0) === 0 ||
+                      !columns.has(task.someday_column ?? 0)
+                    : task.someday_column === list),
+        )
+        .toArray();
+
+    const items = await shownItems(rows);
 
     return items.sort(compareSomedayOrder);
 }
@@ -160,14 +191,14 @@ export async function queryRangeItems(
 }
 
 /**
- * Live items of one day by position, or of the Someday list in its order
+ * Live items of one day by position, or of one Someday list in its order
  * (archived tasks included).
  */
 export async function queryListTasks(
     placement: TaskPlacement,
 ): Promise<PlannerTask[]> {
     if (placement.date === null) {
-        return querySomedayItems();
+        return querySomedayItems(placement.list);
     }
 
     return (await queryRangeItems(placement.date, placement.date)).sort(
@@ -214,11 +245,17 @@ export function isArchivedSomeday(
 }
 
 /**
- * The Someday list as seen from the week starting at `firstDay`, sorted.
+ * One Someday list as seen from the week starting at `firstDay`, sorted.
  * Tasks done before that week are left out (see `isArchivedSomeday`).
  */
-export function querySomedayTasks(firstDay: string): Promise<SomedayTasks> {
-    return querySomedayItems((task) => !isArchivedSomeday(task, firstDay));
+export function querySomedayTasks(
+    firstDay: string,
+    list: number,
+): Promise<SomedayTasks> {
+    return querySomedayItems(
+        list,
+        (task) => !isArchivedSomeday(task, firstDay),
+    );
 }
 
 /** A live series, or null. */

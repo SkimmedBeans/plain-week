@@ -17,7 +17,9 @@ const DAY = '2026-10-12';
 const OTHER_DAY = '2026-10-13';
 
 async function texts(date: string | null) {
-    const tasks = await listTasksIn(date === null ? { date: null } : { date });
+    const tasks = await listTasksIn(
+        date === null ? { date: null, list: 0 } : { date },
+    );
 
     return tasks.map((task) => task.text);
 }
@@ -56,9 +58,10 @@ describe('task repository', () => {
         const task = await createTask({
             text: 'Read',
             date: null,
+            list: 0,
         });
 
-        expect(task).toMatchObject({ date: null });
+        expect(task).toMatchObject({ date: null, someday_column: 0 });
     });
 
     it('bumps updated_at and the outbox revision on every mutation', async () => {
@@ -253,14 +256,17 @@ describe('positions', () => {
         const s = await createTask({
             text: 'S',
             date: null,
+            list: 0,
         });
 
         const moved = await moveTask(a.id, {
             date: null,
+            list: 0,
+
             beforeId: s.id,
         });
 
-        expect(moved).toMatchObject({ date: null });
+        expect(moved).toMatchObject({ date: null, someday_column: 0 });
         expect(await texts(DAY)).toEqual([]);
         expect(await texts(null)).toEqual(['A', 'S']);
 
@@ -276,7 +282,11 @@ describe('positions', () => {
             const tasks = [];
 
             for (const [i, column] of columns.entries()) {
-                const task = await createTask({ text: `S${i}`, date: null });
+                const task = await createTask({
+                    text: `S${i}`,
+                    date: null,
+                    list: 0,
+                });
                 await db.tasks.update(task.id, { someday_column: column });
                 tasks.push({ ...task, someday_column: column });
             }
@@ -289,14 +299,14 @@ describe('positions', () => {
         }
 
         it('creates the first task in column 0', async () => {
-            const task = await createTask({ text: 'A', date: null });
+            const task = await createTask({ text: 'A', date: null, list: 0 });
 
             expect(task.someday_column).toBe(0);
         });
 
         it('appends a new task after the last one, in its column', async () => {
             const [, , last] = await legacySomeday([0, 1, 2]);
-            const task = await createTask({ text: 'new', date: null });
+            const task = await createTask({ text: 'new', date: null, list: 0 });
 
             expect(task.someday_column).toBe(last.someday_column);
             expect(await texts(null)).toEqual(['S0', 'S1', 'S2', 'new']);
@@ -308,6 +318,8 @@ describe('positions', () => {
 
             await moveTask(a.id, {
                 date: null,
+                list: 0,
+
                 afterId: s0.id,
                 beforeId: s1.id,
             });
@@ -316,13 +328,15 @@ describe('positions', () => {
 
             await moveTask(a.id, {
                 date: null,
+                list: 0,
+
                 afterId: s1.id,
                 beforeId: s2.id,
             });
             expect(await texts(null)).toEqual(['S0', 'S1', 'A', 'S2']);
             expect(await column(a.id)).toBe(1);
 
-            await moveTask(a.id, { date: null, beforeId: s0.id });
+            await moveTask(a.id, { date: null, list: 0, beforeId: s0.id });
             expect(await texts(null)).toEqual(['A', 'S0', 'S1', 'S2']);
             expect(await column(a.id)).toBe(0);
         });
@@ -331,7 +345,11 @@ describe('positions', () => {
             const tasks = await legacySomeday([0, 2]);
             const before = await db.tasks.bulkGet(tasks.map((t) => t.id));
 
-            await moveTask(tasks[1].id, { date: null, beforeId: tasks[0].id });
+            await moveTask(tasks[1].id, {
+                date: null,
+                list: 0,
+                beforeId: tasks[0].id,
+            });
 
             expect(await texts(null)).toEqual(['S1', 'S0']);
             expect(await db.tasks.get(tasks[0].id)).toEqual(before[0]);
@@ -343,7 +361,9 @@ describe('positions', () => {
 
             expect(copy.someday_column).toBe(0);
             expect(await texts(null)).toEqual(['S0', 'S0', 'S1']);
-            expect((await listTasksIn({ date: null })).at(-1)?.id).toBe(s1.id);
+            expect(
+                (await listTasksIn({ date: null, list: 0 })).at(-1)?.id,
+            ).toBe(s1.id);
         });
     });
 

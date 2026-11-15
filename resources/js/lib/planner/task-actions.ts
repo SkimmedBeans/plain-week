@@ -68,8 +68,8 @@ export function nextWeekMove(task: Task): MoveTaskInput {
     return { date: nextWeekOf(task.date, toDateKey(new Date())) };
 }
 
-/** To the end of the Someday list. */
-export const SOMEDAY_MOVE: MoveTaskInput = { date: null };
+/** To the end of the base Someday list (column 0). */
+export const SOMEDAY_MOVE: MoveTaskInput = { date: null, list: 0 };
 
 /**
  * Moves a task (an occurrence: only this one) and says where it went in a

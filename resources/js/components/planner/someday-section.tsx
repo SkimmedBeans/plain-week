@@ -11,7 +11,7 @@ type Props = {
     className?: string;
 };
 
-const SOMEDAY_PLACEMENT = { date: null } as const;
+const SOMEDAY_PLACEMENT = { date: null, list: 0 } as const;
 
 /**
  * Undated tasks: one ruled list with a header like a day's, so it reads as a
@@ -24,7 +24,7 @@ export function SomedaySection({
     onOpenTask,
     className,
 }: Props) {
-    const tasks = useSomedayTasks(weekStart, today);
+    const tasks = useSomedayTasks(weekStart, today, 0);
 
     return (
         <section

@@ -222,7 +222,7 @@ describe('TaskContextMenu', () => {
     });
 
     it('does not offer Someday for a Someday task', async () => {
-        const { button } = await setup({ date: null });
+        const { button } = await setup({ date: null, list: 0 });
 
         await openMenu(button);
 
