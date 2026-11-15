@@ -1,5 +1,5 @@
 import { parseDateKey, toDateKey } from '@/lib/db/dates';
-import { isSomedayKey } from '@/lib/planner/drop';
+import { SOMEDAY_KEY, isSomedayKey } from '@/lib/planner/drop';
 import { addDays } from '@/lib/planner/week';
 
 /**
@@ -44,8 +44,8 @@ export function newTaskRowCursor(listKey: string): Cursor {
 export type CursorMotion = 'up' | 'down' | 'previousList' | 'nextList';
 
 /**
- * Lists in visual order: the days by date, then the Someday list (after
- * Sunday).
+ * Lists in visual order: the days by date, then the Someday lists: Someday
+ * first, then the named ones by column.
  */
 export function compareListKeys(a: string, b: string): number {
     const aSomeday = isSomedayKey(a);
@@ -54,7 +54,12 @@ export function compareListKeys(a: string, b: string): number {
     if (aSomeday !== bSomeday) {
         return aSomeday ? 1 : -1;
     }
+    if (aSomeday) {
+        const column = (key: string) =>
+            key === SOMEDAY_KEY ? 0 : Number(key.slice(SOMEDAY_KEY.length + 1));
 
+        return column(a) - column(b);
+    }
     return a < b ? -1 : a > b ? 1 : 0;
 }
 

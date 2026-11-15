@@ -25,6 +25,14 @@ describe('compareListKeys', () => {
             ['2026-10-18', 'someday', '2026-10-12'].sort(compareListKeys),
         ).toEqual(['2026-10-12', '2026-10-18', 'someday']);
     });
+
+    it('orders the Someday lists by column after the base list', () => {
+        expect(
+            ['someday:2', 'someday', '2026-10-18', 'someday:1'].sort(
+                compareListKeys,
+            ),
+        ).toEqual(['2026-10-18', 'someday', 'someday:1', 'someday:2']);
+    });
 });
 
 describe('resolveCursor', () => {
@@ -184,5 +192,55 @@ describe('shiftCursorWeeks', () => {
         const cursor = { listKey: 'someday', taskId: 's', index: 0 };
 
         expect(shiftCursorWeeks(cursor, 1)).toBe(cursor);
+    });
+
+    it('leaves a named Someday cursor as it is', () => {
+        const cursor = { listKey: 'someday:1', taskId: 'n1', index: 0 };
+
+        expect(shiftCursorWeeks(cursor, 1)).toBe(cursor);
+    });
+});
+
+describe('named Someday lists', () => {
+    const NAMED: CursorList[] = [
+        { key: '2026-10-12', taskIds: ['a'] },
+        { key: 'someday', taskIds: ['s'] },
+        { key: 'someday:1', taskIds: ['n1'] },
+        { key: 'someday:2', taskIds: ['n2'] },
+    ];
+
+    it('walks from Someday on to the named lists, in column order', () => {
+        expect(
+            moveCursor(
+                NAMED,
+                resolveCursor(NAMED, {
+                    listKey: 'someday',
+                    taskId: 's',
+                    index: 0,
+                })!,
+                'nextList',
+            ),
+        ).toEqual({ listKey: 'someday:1', taskId: 'n1', index: 0 });
+        expect(
+            moveCursor(
+                NAMED,
+                resolveCursor(NAMED, {
+                    listKey: 'someday:1',
+                    taskId: 'n1',
+                    index: 0,
+                })!,
+                'previousList',
+            ),
+        ).toEqual({ listKey: 'someday', taskId: 's', index: 0 });
+    });
+
+    it('stops at the last named list', () => {
+        const last = resolveCursor(NAMED, {
+            listKey: 'someday:2',
+            taskId: 'n2',
+            index: 0,
+        })!;
+
+        expect(moveCursor(NAMED, last, 'nextList').listKey).toBe('someday:2');
     });
 });

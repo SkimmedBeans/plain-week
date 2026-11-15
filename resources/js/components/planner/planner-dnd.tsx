@@ -160,6 +160,7 @@ function dropTargetOf(collision: Collision | undefined): DropTarget | null {
                 type: 'task',
                 placement: data.placement,
                 tasks: data.tasks,
+                name: data.name,
                 taskId: data.task.id,
                 below: isBelow(collision),
             };
@@ -182,7 +183,7 @@ function overLabel(data: unknown): string | null {
         return over.direction === -1 ? 'the previous week' : 'the next week';
     }
 
-    return placementLabel(over.placement);
+    return placementLabel(over.placement, over.name);
 }
 
 type PlannerDndState = {
@@ -398,7 +399,7 @@ export function PlannerDnd({
                     // The task left the screen: say where it went.
                     if (drop.indicator === null) {
                         toastWithUndo(
-                            `Moved to ${placementLabel(drop.move)}.`,
+                            `Moved to ${placementLabel(drop.move, drop.name)}.`,
                             () => void write(task.id, undo),
                         );
                     }
@@ -446,7 +447,7 @@ export function PlannerDnd({
             const text = textOf(active.data.current);
 
             return drop
-                ? `Moved ${text} to ${placementLabel(drop.move)}.`
+                ? `Moved ${text} to ${placementLabel(drop.move, drop.name)}.`
                 : `${text} was not moved.`;
         },
         onDragCancel: ({ active }) =>

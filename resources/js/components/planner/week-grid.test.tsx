@@ -1,9 +1,16 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { WeekGrid } from '@/components/planner/week-grid';
 import { wipeLocalDatabase } from '@/lib/db/database';
+import { createList } from '@/lib/db/lists';
 
 describe('WeekGrid', () => {
     beforeEach(() => wipeLocalDatabase());
@@ -44,5 +51,34 @@ describe('WeekGrid', () => {
             'lg:grid-cols-5',
         );
         expect(sections[7].className).toContain('lg:col-span-3');
+    });
+
+    it('renders a column for every named list, after the base list, in column order', async () => {
+        await createList('Ideas');
+        await createList('Health');
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(10),
+        );
+
+        const tail = screen
+            .getAllByRole('region')
+            .slice(7)
+            .map(
+                (section) =>
+                    within(section).getByRole('heading', { level: 2 })
+                        .textContent,
+            );
+        expect(tail).toEqual(['Someday', 'Ideas', 'Health']);
     });
 });

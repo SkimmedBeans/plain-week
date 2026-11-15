@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils';
 type Props = {
     /** The day or the Someday list this list shows. */
     placement: TaskPlacement;
+    /** The named list's name, when `placement` is in one. */
+    name?: string;
     /** Sorted tasks; `undefined` while the first local read is in progress. */
     tasks: PlannerTask[] | undefined;
     /** Ruled rows to fill on desktop. Mobile shows a single empty row. */
@@ -57,6 +59,7 @@ function DropIndicator() {
  */
 export function TaskList({
     placement,
+    name,
     tasks,
     rows,
     newTaskLabel,
@@ -74,6 +77,7 @@ export function TaskList({
             type: 'list',
             placement,
             tasks: listTasks,
+            name,
         } satisfies ListDropData,
     });
     const { indicator } = usePlannerDnd();
@@ -170,6 +174,7 @@ export function TaskList({
                             isCursor={cursor?.taskId === task.id}
                             placement={placement}
                             tasks={listTasks}
+                            name={name}
                             onOpen={onOpenTask}
                             onToggleDone={handleToggleDone}
                         />

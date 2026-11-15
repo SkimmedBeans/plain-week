@@ -39,6 +39,8 @@ type Props = {
     /** The list the row is in, and its tasks in display order (for drops). */
     placement: TaskPlacement;
     tasks: PlannerTask[];
+    /** The named list's name, when the row is in one. */
+    name?: string;
     /** The keyboard cursor is on this task. */
     isCursor?: boolean;
     /** Opens the task (click, Enter or Space on its text). */
@@ -159,6 +161,7 @@ export function TaskRow({
     task,
     placement,
     tasks,
+    name,
     isCursor = false,
     onOpen,
     onToggleDone,
@@ -185,6 +188,7 @@ export function TaskRow({
                 task,
                 placement,
                 tasks,
+                name,
             } satisfies TaskDragData,
             attributes: { roleDescription: 'movable task' },
         });

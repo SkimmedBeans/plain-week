@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Named Someday lists.** Someday can hold named lists: a "New list" button in the Someday header adds one,
+  and each named list's header has a menu to rename it or delete it (its tasks move to Someday). Named lists
+  stand as their own ruled columns after Someday, each with its name, and a task can be typed into, dropped
+  into or moved into any of them; the keyboard cursor walks past Someday through the named lists in column
+  order.
+
 ## [0.3.17] - 2026-11-12
 
 ### Fixed
