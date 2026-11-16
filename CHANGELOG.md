@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   stand as their own ruled columns after Someday, each with its name, and a task can be typed into, dropped
   into or moved into any of them; the keyboard cursor walks past Someday through the named lists in column
   order.
+- **Named lists in export and import.** The export file now carries the named lists, and import accepts them:
+  lists keep their names, get fresh ids and columns on this device, and a task whose list is missing from the
+  file lands in Someday. Import files without lists still import.
 
 ## [0.3.17] - 2026-11-12
 

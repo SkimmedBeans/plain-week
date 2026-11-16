@@ -19,25 +19,25 @@ not be merged.
 
 Same shape on the client and on the wire. Keys are `snake_case` both on the wire and in Dexie.
 
-| Field             | Type                                                                                                                                                   | Notes                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `id`              | string (UUID v7)                                                                                                                                       | Generated on the client                                                                |
-| `text`            | string                                                                                                                                                 |                                                                                        |
-| `date`            | `'YYYY-MM-DD'` \| `null`                                                                                                                               | `null` means Someday                                                                   |
-| `someday_column`  | `0` \| `1` \| `2` \| `null`                                                                                                                            | Required when `date` is `null`; only part of the Someday sort key                      |
-| `position`        | string                                                                                                                                                 | Fractional index key (npm `fractional-indexing`); order within a day or Someday column |
-| `done`            | boolean                                                                                                                                                |                                                                                        |
-| `done_at`         | ISO-8601 string \| `null`                                                                                                                              |                                                                                        |
-| `color`           | `'none'` \| `'pink'` \| `'yellow'` \| `'black'` \| `'grey'` \| `'cornflower'` \| `'mango'` \| `'green'` \| `'lilac'`                                   | Default `'none'`                                                                       |
-| `time`            | `'HH:mm'` \| `null`                                                                                                                                    |                                                                                        |
-| `notes`           | string                                                                                                                                                 | Plain text; the UI makes its web links clickable                                       |
-| `subtasks`        | array of `{ id: string, text: string, done: boolean }`                                                                                                 | Stored as JSON                                                                         |
-| `recurrence`      | `{ type: 'daily', every: number, until? }` \| `{ type: 'weekly', weekdays: number[], until? }` \| `{ type: 'monthly', day: number, until? }` \| `null` | Only on a series row; stored as JSON. See [Recurring tasks](#recurring-tasks)          |
-| `series_id`       | string \| `null`                                                                                                                                       | Only on an exception row: id of the series it overrides                                |
-| `occurrence_date` | `'YYYY-MM-DD'` \| `null`                                                                                                                               | Only on an exception row: the original generated date it replaces                      |
-| `created_at`      | ISO-8601 string (UTC, ms)                                                                                                                              | Set by the client                                                                      |
-| `updated_at`      | ISO-8601 string (UTC, ms)                                                                                                                              | Set by the client on every change; drives last-write-wins                              |
-| `deleted_at`      | ISO-8601 string \| `null`                                                                                                                              | Soft delete (tombstone). Never hard-delete through sync                                |
+| Field             | Type                                                                                                                                                   | Notes                                                                                                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | string (UUID v7)                                                                                                                                       | Generated on the client                                                                                                                                                                |
+| `text`            | string                                                                                                                                                 |                                                                                                                                                                                        |
+| `date`            | `'YYYY-MM-DD'` \| `null`                                                                                                                               | `null` means Someday                                                                                                                                                                   |
+| `someday_column`  | `integer ≥ 0` \| `null`                                                                                                                                | Required when `date` is `null`; `0` = the base Someday list, `≥ 3` = a named list's column (see [Data model: SomedayList](#data-model-somedaylist)); only part of the Someday sort key |
+| `position`        | string                                                                                                                                                 | Fractional index key (npm `fractional-indexing`); order within a day or Someday column                                                                                                 |
+| `done`            | boolean                                                                                                                                                |                                                                                                                                                                                        |
+| `done_at`         | ISO-8601 string \| `null`                                                                                                                              |                                                                                                                                                                                        |
+| `color`           | `'none'` \| `'pink'` \| `'yellow'` \| `'black'` \| `'grey'` \| `'cornflower'` \| `'mango'` \| `'green'` \| `'lilac'`                                   | Default `'none'`                                                                                                                                                                       |
+| `time`            | `'HH:mm'` \| `null`                                                                                                                                    |                                                                                                                                                                                        |
+| `notes`           | string                                                                                                                                                 | Plain text; the UI makes its web links clickable                                                                                                                                       |
+| `subtasks`        | array of `{ id: string, text: string, done: boolean }`                                                                                                 | Stored as JSON                                                                                                                                                                         |
+| `recurrence`      | `{ type: 'daily', every: number, until? }` \| `{ type: 'weekly', weekdays: number[], until? }` \| `{ type: 'monthly', day: number, until? }` \| `null` | Only on a series row; stored as JSON. See [Recurring tasks](#recurring-tasks)                                                                                                          |
+| `series_id`       | string \| `null`                                                                                                                                       | Only on an exception row: id of the series it overrides                                                                                                                                |
+| `occurrence_date` | `'YYYY-MM-DD'` \| `null`                                                                                                                               | Only on an exception row: the original generated date it replaces                                                                                                                      |
+| `created_at`      | ISO-8601 string (UTC, ms)                                                                                                                              | Set by the client                                                                                                                                                                      |
+| `updated_at`      | ISO-8601 string (UTC, ms)                                                                                                                              | Set by the client on every change; drives last-write-wins                                                                                                                              |
+| `deleted_at`      | ISO-8601 string \| `null`                                                                                                                              | Soft delete (tombstone). Never hard-delete through sync                                                                                                                                |
 
 Server-only columns: `user_id` (foreign key) and `version` (unsigned bigint, monotonically increasing, assigned on every
 accepted write).
@@ -87,6 +87,28 @@ The server treats the three fields as plain synced columns (same LWW, same push/
   exposes nothing. Uniqueness of `(series_id, occurrence_date)` is not enforced by the server either: the client keeps
   it, and a duplicate from two offline devices must not get the push stuck.
 
+## Data model: SomedayList
+
+A named list under Someday, the same shape on the client and on the wire. The base Someday list is **not** a row: it
+is list number `0`, always shown, named "Someday", and it cannot be renamed or deleted.
+
+| Field                                      | Type                        | Notes                                                                                                           |
+| ------------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `id`                                       | string (UUID v7, lowercase) | Generated on the client                                                                                         |
+| `name`                                     | string (1–60 chars)         |                                                                                                                 |
+| `column`                                   | `integer ≥ 3`               | The `someday_column` of the tasks in the list; `0`–`2` are reserved (base list + legacy)                        |
+| `position`                                 | string                      | Fractional index key; lists display in `position` order (no reordering in this build)                           |
+| `created_at` / `updated_at` / `deleted_at` | ISO-8601 string \| `null`   | Same format and source as tasks; `updated_at` drives last-write-wins, `deleted_at` is the soft-delete tombstone |
+
+Server-only column: `user_id` (foreign key, cascades on user delete).
+
+A task's list is its existing `someday_column`: a Someday task (`date` is `null`) with `someday_column` `N` belongs to
+the list whose `column` is `N`. A new list takes `max(column of all lists, deleted included), 2) + 1`. **Orphan rule:**
+a Someday task whose column is not `0` and matches no live list shows in the base Someday list; it is never hidden.
+
+Deleting a list soft-deletes it and moves its tasks to the end of the base Someday list (`someday_column` `0`) in one
+Dexie transaction, with an undo toast like the other moves.
+
 ## Sync endpoints
 
 Web routes with session auth and CSRF, JSON in and out. All require authentication; guests get `401`. In SaaS mode an
@@ -108,33 +130,40 @@ first sync.
 
 ### `POST /sync/push`
 
-Request: `{ "tasks": [<Task>, ...] }` with full records, at most 500.
+Request: `{ "tasks": [<Task>, ...], "lists": [<SomedayList>, ...] }` with full records, at most 500 each. `lists` is
+optional; a client without this change simply never sends it, and the endpoint behaves exactly as before.
 
 For each record the server upserts, scoped to the current user, using last-write-wins: the record is applied only if
 there is no stored row or the incoming `updated_at` is greater than or equal to the stored `updated_at`. A record whose
-`id` belongs to another user is rejected (ignored and reported). Every applied write gets a new `version`, greater than
-every existing version.
+`id` belongs to another user is rejected (ignored and reported). Every applied task write gets a new `version`, greater
+than every existing version. Lists follow the same last-write-wins rule but have no `version` column; they are pushed in
+their own transaction (`App\Actions\Sync\PushSomedayLists`), so a lists failure cannot undo the task push (and vice
+versa).
 
-Response `200`: `{ "applied": [ids], "rejected": [ids], "cursor": <max version for this user> }`.
-Validation errors return `422` in Laravel's standard shape.
+Response `200`: `{ "applied": [ids], "rejected": [ids], "cursor": <max version for this user>, "lists_applied": [ids],
+"lists_rejected": [ids] }`; the `lists_*` arrays are always present (empty when no lists were sent). Validation errors
+return `422` in Laravel's standard shape.
 
 ### `GET /sync/pull?cursor=<int, default 0>&limit=<int 1–1000, default 500>`
 
-Response `200`: `{ "tasks": [<Task>, ...], "cursor": <version of the last returned row, or the input cursor>, "has_more": bool }`,
-with tasks ordered by `version` ascending. Tombstones (`deleted_at` not null) are included. A `limit` outside 1–1000 is
-a `422` (it is not clamped).
+Response `200`: `{ "tasks": [<Task>, ...], "lists": [<SomedayList>, ...], "cursor": <version of the last returned row, or the input cursor>, "has_more": bool }`,
+with tasks ordered by `version` ascending. Tombstones (`deleted_at` not null) are included. `lists` holds **all** of the
+user's lists, tombstones included, on every pull — there is no cursor for them (they are few). A `limit` outside 1–1000
+is a `422` (it is not clamped).
 
 ## Client sync engine
 
-- Every local mutation writes the record and an outbox entry (keyed by the task id) in the same Dexie transaction.
+- Every local mutation writes the record and an outbox entry (keyed by the task id) in the same Dexie transaction; every
+  local list mutation (create, rename, delete) writes the list row and a `list_outbox` entry the same way.
 - The engine runs only when `auth.user` (Inertia shared prop) is present and `navigator.onLine` is true.
 - Triggers: app start, after local mutations (debounced about 1 s), the `online` event, window focus, the page becoming
   visible, and every 30 s while it is visible. A failed run is retried on its own with backoff.
-- Order of a run: push the outbox in batches → clear sent entries whose record did not change in the meantime → pull from
-  the stored cursor until `has_more` is false.
+- Order of a run: push the outbox (tasks in batches of 500, plus all pending lists, in one request) → clear sent
+  entries whose record did not change in the meantime → pull from the stored cursor until `has_more` is false.
 - A pulled record is applied only if `remote.updated_at >= local.updated_at` and its id is not pending in the outbox.
   (Client refinement: a pending change that is strictly older than the remote record is dropped and the remote record
-  applied, because the server would refuse it anyway. See [Sync lifecycle](#sync-lifecycle-libsync).)
+  applied, because the server would refuse it anyway. See [Sync lifecycle](#sync-lifecycle-libsync).) Pulled lists
+  follow the same rule; a remote list tombstone newer than the local row deletes the local list.
 - The cursor is persisted in the Dexie `meta` table (key `cursor`), with the sync format it was pulled with
   (`cursor_format`). A cursor from another format (or none: v0.0.3 did not store it) is dropped once and the client
   pulls from `0`, because the server sent rows that format could not read as tombstones. Re-applying the rest is harmless (LWW). The `user_id` is stored there too; if a different
@@ -155,17 +184,20 @@ a `422` (it is not clamped).
 Everything lives in `resources/js/lib/db` (local data), `resources/js/lib/sync` (sync engine) and `resources/js/hooks`.
 The UI imports the repository functions and the hooks; it never talks to `fetch` or to Dexie tables directly.
 
-### IndexedDB schema (Dexie database `plain-week`, version 2)
+### IndexedDB schema (Dexie database `plain-week`, version 3)
 
-| Table    | Primary key | Indexes                                                                                                                   | Content                                                                                                                                                            |
-| -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `tasks`  | `id`        | `date`, `[date+position]`, `someday_column`, `updated_at`, `deleted_at`, `recurrence.type`, `[series_id+occurrence_date]` | `Task` records, tombstones included                                                                                                                                |
-| `outbox` | `task_id`   |                                                                                                                           | `{ task_id, revision, failed_revision? }`: pending changes                                                                                                         |
-| `meta`   | `key`       |                                                                                                                           | `cursor` (last pulled version), `cursor_format`, `user_id` (owner of the local data), `demo_seeded`, `demo_ids` ([Guest onboarding](#guest-onboarding-demo-tasks)) |
+| Table           | Primary key | Indexes                                                                                                                   | Content                                                                                                                                                            |
+| --------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tasks`         | `id`        | `date`, `[date+position]`, `someday_column`, `updated_at`, `deleted_at`, `recurrence.type`, `[series_id+occurrence_date]` | `Task` records, tombstones included                                                                                                                                |
+| `outbox`        | `task_id`   |                                                                                                                           | `{ task_id, revision, failed_revision? }`: pending changes                                                                                                         |
+| `someday_lists` | `id`        | `column`, `deleted_at`                                                                                                    | `SomedayList` records, tombstones included (the base Someday list is not a row)                                                                                    |
+| `list_outbox`   | `list_id`   |                                                                                                                           | `{ list_id, revision, failed_revision? }`: pending list changes                                                                                                    |
+| `meta`          | `key`       |                                                                                                                           | `cursor` (last pulled version), `cursor_format`, `user_id` (owner of the local data), `demo_seeded`, `demo_ids` ([Guest onboarding](#guest-onboarding-demo-tasks)) |
 
 IndexedDB leaves a row out of an index when the indexed value is null, so `recurrence.type` lists series rows only and
 `[series_id+occurrence_date]` exception rows only. Version 2 added both indexes and an upgrade that sets `recurrence`,
-`series_id` and `occurrence_date` to `null` on existing rows.
+`series_id` and `occurrence_date` to `null` on existing rows. Version 3 added `someday_lists` and `list_outbox`
+([Data model: SomedayList](#data-model-somedaylist)); existing rows are untouched.
 
 Helpers that run inside a caller's transaction (`clearAllTables`, `purgeDemoTasks`) return Dexie promises, not native
 ones from an `async` function: awaiting a native promise from a nested async helper can resume outside the transaction
@@ -184,20 +216,26 @@ writes it plus its outbox entry in one Dexie read-write transaction, so concurre
 each other's fields and never resurrect a deleted task. `updated_at` is strictly increasing, so a local change always
 beats the version it replaces. After commit the mutation schedules a sync.
 
-| Function                                                                            | Notes                                                                                                                             |
-| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `createTask({ text, date, afterId?, beforeId?, color?, time?, notes?, subtasks? })` | `date: null` is Someday. Placed like `moveTask`: between the given neighbours, or appended at the end.                            |
-| `updateTask(id, patch, { scope?, undo? })`                                          | Only `text`, `done`, `color`, `time`, `notes`, `subtasks`; `undefined` values are ignored. Changing `done` sets/clears `done_at`. |
-| `toggleDone(id, { undo? })`                                                         | On an occurrence: always only that one.                                                                                           |
-| `deleteTask(id, { scope?, undo? })`                                                 | Tombstone (`deleted_at`); the record stays and syncs.                                                                             |
-| `restoreTask(id)`                                                                   | Undo of a single-row `deleteTask`: clears `deleted_at` with a newer `updated_at`, so the restore also wins on other devices.      |
-| `updateSubtasks(id, update, { scope?, undo? })`                                     | Replaces `subtasks` with `update(current)` in one transaction, so quick successive subtask edits never overwrite each other.      |
-| `moveTask(id, { date, beforeId?, afterId? }, { undo? })`                            | Lands right before `beforeId` and/or right after `afterId`; a neighbour not in the target list is ignored; with none, at the end. |
-| `duplicateTask(id, { undo? })`                                                      | Copy (content and done state) with new ids for the task and subtasks, right after the original. Always a plain task.              |
-| `setRecurrence(id, recurrence \| null, { scope?, undo? })`                          | Makes a task repeat, changes or removes the rule (see [Recurring tasks](#recurring-tasks-client)).                                |
-| `createUndoLog()` / `undoChanges(log)`                                              | Pass `{ undo: log }` to mutations, then `undoChanges(log)` puts back every row they overwrote and deletes the rows they created.  |
-| `listTasksIn({ date } \| { date: null })`                                           | Sorted, non-deleted items of one list, occurrences included (Someday: archived too); for neighbours.                              |
-| `carryOverTasks(today)`                                                             | Moves unfinished plain tasks from earlier days to `today`, after its tasks (see [Carry over](#carry-over-unfinished-tasks)).      |
+| Function                                                                            | Notes                                                                                                                                                                                                         |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createTask({ text, date, afterId?, beforeId?, color?, time?, notes?, subtasks? })` | `date: null` is Someday — with `list` (0 = base list, a number above = that named list, default 0). Placed like `moveTask`: between the given neighbours, or appended at the end.                             |
+| `updateTask(id, patch, { scope?, undo? })`                                          | Only `text`, `done`, `color`, `time`, `notes`, `subtasks`; `undefined` values are ignored. Changing `done` sets/clears `done_at`.                                                                             |
+| `toggleDone(id, { undo? })`                                                         | On an occurrence: always only that one.                                                                                                                                                                       |
+| `deleteTask(id, { scope?, undo? })`                                                 | Tombstone (`deleted_at`); the record stays and syncs.                                                                                                                                                         |
+| `restoreTask(id)`                                                                   | Undo of a single-row `deleteTask`: clears `deleted_at` with a newer `updated_at`, so the restore also wins on other devices.                                                                                  |
+| `updateSubtasks(id, update, { scope?, undo? })`                                     | Replaces `subtasks` with `update(current)` in one transaction, so quick successive subtask edits never overwrite each other.                                                                                  |
+| `moveTask(id, { date, beforeId?, afterId? }, { undo? })`                            | Lands right before `beforeId` and/or right after `afterId`; a neighbour not in the target list is ignored; with none, at the end. A Someday move carries `list` (0 = base, a number above = that named list). |
+| `duplicateTask(id, { undo? })`                                                      | Copy (content and done state) with new ids for the task and subtasks, right after the original. Always a plain task.                                                                                          |
+| `setRecurrence(id, recurrence \| null, { scope?, undo? })`                          | Makes a task repeat, changes or removes the rule (see [Recurring tasks](#recurring-tasks-client)).                                                                                                            |
+| `createUndoLog()` / `undoChanges(log)`                                              | Pass `{ undo: log }` to mutations, then `undoChanges(log)` puts back every row they overwrote and deletes the rows they created.                                                                              |
+| `listTasksIn({ date } \| { date: null, list })`                                     | Sorted, non-deleted items of one list, occurrences included (Someday: archived too); for neighbours.                                                                                                          |
+| `carryOverTasks(today)`                                                             | Moves unfinished plain tasks from earlier days to `today`, after its tasks (see [Carry over](#carry-over-unfinished-tasks)).                                                                                  |
+
+**Someday lists** (`lib/db/lists.ts`): `queryLists()` — the live named lists in `position` order (base list excluded);
+`createList(name)` — new list at column `max(column of all lists, tombstones included, 2) + 1`, name trimmed, 1–60 chars
+(`LIST_NAME_MAX`); `renameList(id, name)`; `deleteList(id)` — soft-deletes the list and moves its tasks to the end of the
+base list (column 0) in one transaction, keeping their relative order, each moved task getting its own outbox entry.
+Every list mutation writes the row plus a `list_outbox` entry in one transaction, like task mutations do.
 
 Every function that takes an `id` also accepts an occurrence id; mutations on a missing or deleted task throw. Order inside a list is `position` (fractional-indexing key), then `id` as a
 tie-break (`compareTaskOrder` in `lib/db/position.ts`).
@@ -207,32 +245,37 @@ Days are **displayed** in a different order: tasks with a `time` come first, ear
 `moveTask`) keeps working in position order, so a timed task keeps its position and falls back into it if its time is
 cleared.
 
-**Someday is one list.** Its order is (`someday_column`, `position`, `id`) (`compareSomedayOrder`), so rows written
-when Someday had three separate columns keep the order they were shown in (column 1, then 2, then 3), with no
-migration. `someday_column` stays in the schema and the sync contract and is only part of that sort key: a write into
-Someday picks a (`someday_column`, `position`) pair that sorts between its neighbours (`somedayKeyBetween`: the
-previous neighbour's column with a key after it, or the next neighbour's column with a key before it, or column 0 in
-an empty list), so no other row is rewritten. Appending uses the last task's column. On screen it is
-one ruled list as well (see [style.md](./style.md#planner-layout)); the three columns it once had were only a layout.
+**Someday is a base list plus named lists.** The base list holds the tasks whose `someday_column` is 0 — or a column
+that no live list owns: when a list is deleted, its tasks fall back to the base list (the orphan rule), so rows
+written when Someday had three separate columns keep the order they were shown in (column 1, then 2, then 3), with
+no migration. Each named list owns one `someday_column` (≥ 3; see [Data model:
+SomedayList](#data-model-somedaylist)). A list's order is (`someday_column`, `position`, `id`)
+(`compareSomedayOrder`), and `someday_column` stays in the schema and the sync contract as the first part of that
+sort key. A write into a list picks a (`someday_column`, `position`) pair that sorts between its neighbours
+(`somedayKeyBetween`: the previous neighbour's column with a key after it, or the next neighbour's column with a key
+before it, or the list's own column in an empty list), so no other row is rewritten. Appending uses the last task's
+column. On screen each list is one ruled list (see [style.md](./style.md#planner-layout)); the three columns the base
+list once had were only a layout.
 
-Someday tasks done in an earlier week are **archived**: `querySomedayTasks(firstDay)` (behind `useSomedayTasks`) leaves
-out a done task whose `done_at` falls before the start of the viewed week (local time, `isArchivedSomeday`). A task done
-during week W still shows, done, in W and in any earlier week, and disappears from W+1 on. While a future week is shown
-the cut-off is the current week instead (`somedayArchiveWeek` in `lib/planner/week.ts`), so a task ticked there stays on
-screen until its own week is over; `useSomedayTasks(weekStart, today)` re-runs when the week rolls over. A done task
-with no readable `done_at` (older data) counts as archived. It is a read filter only: no row changes, nothing syncs, and undoing the task
-(`done_at` back to `null`) brings it back. The repository (`listTasksIn`, `moveTask`) still sees archived tasks; they
-keep their positions, and inserting between two shown neighbours stays between them.
+Someday tasks done in an earlier week are **archived**: `querySomedayTasks(firstDay, list)` (behind `useSomedayTasks`)
+leaves out a done task whose `done_at` falls before the start of the viewed week (local time, `isArchivedSomeday`). A task
+done during week W still shows, done, in W and in any earlier week, and disappears from W+1 on. While a future week is
+shown the cut-off is the current week instead (`somedayArchiveWeek` in `lib/planner/week.ts`), so a task ticked there
+stays on screen until its own week is over; `useSomedayTasks(weekStart, today, list)` re-runs when the week rolls over.
+A done task with no readable `done_at` (older data) counts as archived. It is a read filter only: no row changes, nothing
+syncs, and undoing the task (`done_at` back to `null`) brings it back. The repository (`listTasksIn`, `moveTask`) still
+sees archived tasks; they keep their positions, and inserting between two shown neighbours stays between them.
 
 ### Hooks
 
-| Hook                                | Returns                                                                                                                       |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `useWeekTasks(weekStart: Date)`     | `Record<'YYYY-MM-DD', PlannerTask[]>` for the 7 days from `weekStart` (every day present), occurrences included, timed first  |
-| `useSomedayTasks(weekStart, today)` | `PlannerTask[]`, the Someday list in order, without tasks archived before `weekStart`                                         |
-| `useTask(id)`                       | The item (`id` may be an occurrence id), `null` if missing/deleted, `undefined` while loading (also right after `id` changes) |
-| `useSeries(item)`                   | The live series of an occurrence or exception (a series: itself), `null` for a plain task                                     |
-| `useSyncStatus()`                   | `'idle' \| 'syncing' \| 'offline' \| 'error'` (`idle` for guests)                                                             |
+| Hook                                      | Returns                                                                                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useWeekTasks(weekStart: Date)`           | `Record<'YYYY-MM-DD', PlannerTask[]>` for the 7 days from `weekStart` (every day present), occurrences included, timed first                                              |
+| `useSomedayTasks(weekStart, today, list)` | `PlannerTask[]` for one Someday list — `list` 0 is the base list (which also shows orphaned tasks), a number above is that named list — in order, archived tasks left out |
+| `useSomedayLists()`                       | `SomedayList[]`, the named lists in `position` order (the base list is not a row and is not included)                                                                     |
+| `useTask(id)`                             | The item (`id` may be an occurrence id), `null` if missing/deleted, `undefined` while loading (also right after `id` changes)                                             |
+| `useSeries(item)`                         | The live series of an occurrence or exception (a series: itself), `null` for a plain task                                                                                 |
+| `useSyncStatus()`                         | `'idle' \| 'syncing' \| 'offline' \| 'error'` (`idle` for guests)                                                                                                         |
 
 The UI may not read the outbox table itself: `queryPendingChangeCount` counts the local changes the server has not
 accepted yet.

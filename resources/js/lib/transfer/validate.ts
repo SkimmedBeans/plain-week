@@ -1,8 +1,9 @@
-import { MAX_EVERY_DAYS, SOMEDAY_COLUMNS, TASK_COLORS } from '@/lib/db/types';
+import { MAX_EVERY_DAYS, TASK_COLORS } from '@/lib/db/types';
 import { isValidEvery } from '@/lib/recurrence/expand';
 import type {
     IsoWeekday,
     Recurrence,
+    SomedayList,
     Subtask,
     Task,
     TaskColor,
@@ -29,6 +30,11 @@ const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const RECURRENCE_KEYS = ['type', 'every', 'weekdays', 'day', 'until'];
 const MAX_POSITION_LENGTH = 255;
 const MAX_SUBTASK_ID_LENGTH = 255;
+// The server's push rule for a task's Someday column (0 is the base list,
+// above 2 is a named list's column).
+const MAX_SOMEDAY_COLUMN = 10000;
+// The max list-name length (the server enforces the same bound).
+const LIST_NAME_MAX = 60;
 
 type Row = Record<string, unknown>;
 
@@ -277,9 +283,14 @@ function parseRecurrence(v: RowValidator, value: unknown): Recurrence | null {
     return v.fail('recurrence.type', 'must be "daily", "weekly" or "monthly"');
 }
 
-// The server's wire rule: only the legacy columns 0, 1, 2 (stage 3 widens it).
+// The server's wire rule: 0 (the base Someday list) up to 10000.
 function isSomedayColumn(value: unknown): value is number {
-    return SOMEDAY_COLUMNS.includes(value as 0 | 1 | 2);
+    return (
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= MAX_SOMEDAY_COLUMN
+    );
 }
 
 function isTime(value: unknown): value is string {
@@ -306,7 +317,7 @@ export function validateTask(value: unknown, index: number): Task {
     const somedayColumn = v.nullable(
         'someday_column',
         isSomedayColumn,
-        'must be 0, 1, 2 or null',
+        'must be a Someday column from 0 to 10000 or null',
     );
 
     if (date === null && somedayColumn === null) {
@@ -395,5 +406,66 @@ export function validateTask(value: unknown, index: number): Task {
         recurrence,
         series_id: seriesId,
         occurrence_date: occurrenceDate,
+    };
+}
+
+// A named list's column: above 2 (0 is the base Someday list, 1–2 are
+// legacy), same bound as a task's column on the server.
+function isListColumn(value: unknown): value is number {
+    return (
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 3 &&
+        value <= MAX_SOMEDAY_COLUMN
+    );
+}
+
+/**
+ * Validates one `someday_lists` row of an export file and returns it in the
+ * stored shape (unknown keys dropped). Mirrors the server's `lists` push
+ * rules (`App\Http\Requests\Sync\PushRequest`). `index` is zero-based;
+ * messages count from 1.
+ */
+export function validateList(value: unknown, index: number): SomedayList {
+    const label = `List ${index + 1}`;
+
+    if (!isObject(value)) {
+        throw new ImportError(`${label} is not an object.`);
+    }
+
+    const v: RowValidator = new RowValidator(value, label);
+
+    const name = v.nonEmptyString('name');
+
+    if (name.length > LIST_NAME_MAX) {
+        v.fail('name', `must be at most ${LIST_NAME_MAX} characters`);
+    }
+
+    const column = v.present('column');
+
+    if (!isListColumn(column)) {
+        v.fail('column', `must be a column from 3 to ${MAX_SOMEDAY_COLUMN}`);
+    }
+
+    const position = v.nonEmptyString('position');
+
+    if (position.length > MAX_POSITION_LENGTH) {
+        v.fail('position', `must be at most ${MAX_POSITION_LENGTH} characters`);
+    }
+
+    const id = v.nonEmptyString('id');
+
+    return {
+        id,
+        name,
+        column: column as number,
+        position,
+        created_at: v.timestamp('created_at'),
+        updated_at: v.timestamp('updated_at'),
+        deleted_at: v.nullable(
+            'deleted_at',
+            isTimestamp,
+            'must be a timestamp or null',
+        ),
     };
 }

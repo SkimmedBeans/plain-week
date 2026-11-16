@@ -2,6 +2,7 @@ import { generateNKeysBetween } from 'fractional-indexing';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { queryTask, queryWeekTasks, querySomedayTasks } from '@/lib/db/queries';
+import { createList } from '@/lib/db/lists';
 import {
     createTask,
     deleteTask,
@@ -12,7 +13,7 @@ import {
 } from '@/lib/db/tasks';
 import type { Task } from '@/lib/db/types';
 import { occurrenceId } from '@/lib/recurrence/expand';
-import { makeTask } from '@/test/fixtures';
+import { makeList, makeTask } from '@/test/fixtures';
 import { buildExport } from './export';
 import { EXPORT_FORMAT, EXPORT_VERSION, exportFileName } from './format';
 import type { ExportFile } from './format';
@@ -61,14 +62,24 @@ async function roundTrip(): Promise<ExportFile> {
     return file;
 }
 
-function fileWith(tasks: unknown[]): string {
-    return JSON.stringify({
+/**
+ * The wire shape of an export. `someday_lists` is only written when given,
+ * so the tests still cover older files that omit the key.
+ */
+function fileWith(tasks: unknown[], lists?: unknown[]): string {
+    const file: Record<string, unknown> = {
         format: EXPORT_FORMAT,
         version: EXPORT_VERSION,
         exported_at: '2026-10-15T08:00:00.000Z',
         app_version: '0.0.3',
         tasks,
-    });
+    };
+
+    if (lists !== undefined) {
+        file.someday_lists = lists;
+    }
+
+    return JSON.stringify(file);
 }
 
 async function importText(text: string) {
@@ -96,6 +107,7 @@ describe('export', () => {
             exported_at: '2026-10-15T08:00:00.000Z',
             app_version: '1.2.3',
             tasks: [task],
+            someday_lists: [],
         });
     });
 
@@ -106,6 +118,16 @@ describe('export', () => {
         expect((await buildExport()).tasks.map((task) => task.id)).toEqual([
             mine.id,
         ]);
+    });
+
+    it('includes the live named lists in display order, not deleted ones', async () => {
+        const first = await createList('First');
+        const second = await createList('Second');
+        await db.someday_lists.update(second.id, {
+            deleted_at: '2026-10-15T08:00:00.000Z',
+        });
+
+        expect((await buildExport()).someday_lists).toEqual([first]);
     });
 
     it('names the file after the local date', () => {
@@ -277,6 +299,30 @@ describe('round trip', () => {
             `Mine@${MON}:none`,
         ]);
     });
+
+    it('round-trips named lists with their tasks', async () => {
+        await createList('Books');
+        await createTask({ text: 'Read Dune', date: null, list: 3 });
+        await createTask({ text: 'Base idea', date: null, list: 0 });
+
+        const before = await snapshot();
+        await roundTrip();
+
+        expect(await snapshot()).toEqual(before);
+
+        // The list survives with a new id and its task stays in it; the base
+        // idea stays in the base Someday list.
+        const [list] = await db.someday_lists.toArray();
+        expect(list.name).toBe('Books');
+        expect(
+            (await querySomedayTasks(MON, list.column)).map(
+                (item) => item.text,
+            ),
+        ).toEqual(['Read Dune']);
+        expect(
+            (await querySomedayTasks(MON, 0)).map((item) => item.text),
+        ).toEqual(['Base idea']);
+    });
 });
 
 describe('planImport', () => {
@@ -387,12 +433,108 @@ describe('planImport', () => {
         expect(summarizeImport(await parseImport(fileWith([])))).toEqual({
             taskCount: 0,
             recurringCount: 0,
+            listCount: 0,
         });
         expect(plan.tasks.map((task) => task.series_id)).toEqual([
             null,
             null,
             plan.tasks[0].id,
         ]);
+    });
+
+    it('lands a task in the column of its imported named list', async () => {
+        const books = makeList({ name: 'Books', column: 3 });
+        const home = makeList({ name: 'Home', column: 4 });
+        const plan = await importText(
+            fileWith(
+                [
+                    makeTask({
+                        id: 'a',
+                        text: 'Read Dune',
+                        date: null,
+                        position: 'a1',
+                        someday_column: 3,
+                    }),
+                    makeTask({
+                        id: 'b',
+                        text: 'Fix the shelf',
+                        date: null,
+                        position: 'a2',
+                        someday_column: 4,
+                    }),
+                    makeTask({
+                        id: 'c',
+                        text: 'A base idea',
+                        date: null,
+                        position: 'a3',
+                        someday_column: 0,
+                    }),
+                ],
+                [books, home],
+            ),
+        );
+
+        expect(plan).toMatchObject({ listCount: 2 });
+        const [booksRow, homeRow] = plan.lists;
+        expect(booksRow.name).toBe('Books');
+        expect(homeRow.name).toBe('Home');
+
+        const byText = new Map(
+            (await db.tasks.toArray()).map((task) => [task.text, task]),
+        );
+        expect(byText.get('Read Dune')?.someday_column).toBe(booksRow.column);
+        expect(byText.get('Fix the shelf')?.someday_column).toBe(
+            homeRow.column,
+        );
+        expect(byText.get('A base idea')?.someday_column).toBe(0);
+    });
+
+    it('remaps imported lists past the columns existing lists already use', async () => {
+        await createList('Old');
+        const books = makeList({ name: 'Books', column: 3 });
+
+        const plan = await importText(
+            fileWith(
+                [
+                    makeTask({
+                        id: 'a',
+                        text: 'Read Dune',
+                        date: null,
+                        position: 'a1',
+                        someday_column: 3,
+                    }),
+                ],
+                [books],
+            ),
+        );
+
+        // 'Old' already takes the first free column, so 'Books' and its task
+        // land one further right.
+        expect(plan.lists.map((list) => list.column)).toEqual([4]);
+        const task = (await db.tasks.toArray()).find(
+            (row) => row.text === 'Read Dune',
+        );
+        expect(task?.someday_column).toBe(4);
+    });
+
+    it('falls back to the base Someday list for a task without a matching list', async () => {
+        const plan = await importText(
+            fileWith([
+                makeTask({
+                    id: 'a',
+                    text: 'An orphan',
+                    date: null,
+                    position: 'a1',
+                    someday_column: 7,
+                }),
+            ]),
+        );
+
+        expect(plan.lists).toEqual([]);
+        const task = (await db.tasks.toArray()).find(
+            (row) => row.text === 'An orphan',
+        );
+        expect(task?.someday_column).toBe(0);
     });
 });
 
