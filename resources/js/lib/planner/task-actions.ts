@@ -118,10 +118,13 @@ export function deleteWithUndo(
     const undo = createUndoLog();
 
     return settle(
-        deleteTask(id, { scope, undo }).then(async (deleted) => {
+        deleteTask(id, { scope, undo }).then((deleted) => {
             // The header's "Undo delete" can run long after the toast is
-            // gone, so it first checks nothing changed these rows since.
-            const canRestore = await unchangedSince(undo);
+            // gone, so it first checks nothing changed these rows since. The
+            // snapshot is read alongside the toast, not before it: the toast
+            // (and `u`) must be there as soon as the delete is written.
+            const check = unchangedSince(undo);
+            const canRestore = () => check.then((unchanged) => unchanged());
             let toastId: string | number | undefined;
             const undoDelete = recordDelete(
                 deleted.text,
