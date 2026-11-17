@@ -18,6 +18,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   lists keep their names, get fresh ids and columns on this device, and a task whose list is missing from the
   file lands in Someday. Import files without lists still import.
 
+### Changed
+
+- **Weekday first in day headers.** Each day's header shows the weekday in bold at the start and the date, muted, at
+  the end.
+
+## [0.3.18] - 2026-11-17
+
+### Changed
+
+- **The week fills the window.** On desktop the week takes all the room below the header, with no empty space under
+  it, and picks its grid from the window's shape: Monday to Friday over the weekend and Someday on wide windows, four
+  columns on near square ones, three on tall ones. Each day's ruled lines run to the bottom of its cell (click them to
+  add a task, drop a task on them to put it last), and a day with more tasks than fit scrolls on its own.
+
 ## [0.3.17] - 2026-11-12
 
 ### Fixed
@@ -456,7 +470,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/victor-falcon/plain-week/compare/v0.3.17...HEAD
+[Unreleased]: https://github.com/victor-falcon/plain-week/compare/v0.3.18...HEAD
+[0.3.18]: https://github.com/victor-falcon/plain-week/compare/v0.3.17...v0.3.18
 [0.3.17]: https://github.com/victor-falcon/plain-week/compare/v0.3.16...v0.3.17
 [0.3.16]: https://github.com/victor-falcon/plain-week/compare/v0.3.15...v0.3.16
 [0.3.15]: https://github.com/victor-falcon/plain-week/compare/v0.3.14...v0.3.15

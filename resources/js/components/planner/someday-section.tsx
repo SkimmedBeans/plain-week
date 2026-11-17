@@ -36,7 +36,6 @@ import {
     renameList,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
-import { SOMEDAY_ROWS } from '@/lib/planner/week';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -123,7 +122,7 @@ export function SomedaySection({
     return (
         <section
             aria-labelledby={titleId}
-            className={cn('flex min-w-0 flex-col', className)}
+            className={cn('flex min-h-0 min-w-0 flex-col', className)}
         >
             <h2 className="flex items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg leading-7 font-bold tracking-tight lg:text-xl">
                 <span id={titleId} className="truncate">
@@ -177,7 +176,6 @@ export function SomedaySection({
                 placement={placement}
                 name={list.name}
                 tasks={tasks}
-                rows={SOMEDAY_ROWS}
                 newTaskLabel={`New ${list.name} task`}
                 onOpenTask={onOpenTask}
             />
