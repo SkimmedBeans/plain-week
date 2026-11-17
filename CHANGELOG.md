@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Undo delete in the header.** An undo button next to the account button restores the last deleted task, newest
   first, even after its toast has gone (up to 20, until the page reloads). It refuses, and says so, when the task was
   changed or restored since.
+- **Completed subtasks section.** In a task, ticked subtasks move to a "Completed" section below the open ones;
+  unticking one puts it back in its place.
 - **Named lists in export and import.** The export file now carries the named lists, and import accepts them:
   lists keep their names, get fresh ids and columns on this device, and a task whose list is missing from the
   file lands in Someday. Import files without lists still import.
