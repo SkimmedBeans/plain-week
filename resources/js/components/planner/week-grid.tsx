@@ -34,12 +34,9 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     const tasks = useWeekTasks(weekStart);
     const lists = useSomedayLists();
 
-    // The visual order of the Someday lists is by column (the keyboard
-    // cursor walks the same order); `position` is kept for future reordering.
-    const namedLists =
-        lists === undefined
-            ? undefined
-            : [...lists].sort((a, b) => a.column - b.column);
+    // Named lists come in their display order (`position`, see `queryLists`);
+    // the keyboard cursor walks the same order.
+    const namedLists = lists;
 
     return (
         <div
@@ -66,7 +63,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 onOpenTask={onOpenTask}
                 className="lg:week-wide:col-span-3 lg:week-tall:col-span-2"
             />
-            {namedLists?.map((list) => (
+            {namedLists?.map((list, index) => (
                 <SomedaySection
                     key={list.id}
                     list={{
@@ -77,6 +74,8 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     weekStart={weekStart}
                     today={today}
                     onOpenTask={onOpenTask}
+                    canMoveEarlier={index > 0}
+                    canMoveLater={index < namedLists.length - 1}
                 />
             ))}
         </div>

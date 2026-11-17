@@ -23,11 +23,21 @@ type SectionList = { column: number; name: string; id?: string };
 
 const BASE: SectionList = { column: 0, name: 'Someday' };
 
-function Section({ list }: { list: SectionList }) {
+function Section({
+    list,
+    canMoveEarlier,
+    canMoveLater,
+}: {
+    list: SectionList;
+    canMoveEarlier?: boolean;
+    canMoveLater?: boolean;
+}) {
     return (
         <ScopePromptProvider>
             <SomedaySection
                 list={list}
+                canMoveEarlier={canMoveEarlier}
+                canMoveLater={canMoveLater}
                 weekStart={WEEK_START}
                 today={TODAY}
                 onOpenTask={() => {}}
@@ -118,6 +128,29 @@ describe('SomedaySection', () => {
 
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
         expect(await queryLists()).toEqual([]);
+    });
+
+    it('moves a list right from its menu, and not left from the first place', async () => {
+        const first = await createList('Shed');
+        await createList('Homelab');
+        const user = userEvent.setup();
+        render(<Section list={sectionProps(first)} canMoveLater />);
+
+        await user.click(menuButton(first.name));
+        const menu = await screen.findByRole('menu');
+        const left = within(menu).getByRole('menuitem', { name: /Move left/ });
+        expect(left.getAttribute('aria-disabled')).toBe('true');
+
+        await user.click(
+            within(menu).getByRole('menuitem', { name: /Move right/ }),
+        );
+
+        await waitFor(async () =>
+            expect((await queryLists()).map((list) => list.name)).toEqual([
+                'Homelab',
+                'Shed',
+            ]),
+        );
     });
 
     it('renames a list from its menu and keeps its tasks', async () => {

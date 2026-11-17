@@ -243,4 +243,16 @@ describe('named Someday lists', () => {
 
         expect(moveCursor(NAMED, last, 'nextList').listKey).toBe('someday:2');
     });
+    it('orders named lists by a display rank when one is given', () => {
+        const rank = (column: number) =>
+            column === 0 ? 0 : column === 5 ? 1 : 2;
+        const keys = ['someday:3', 'someday', 'someday:5', '2026-10-12'];
+
+        expect(keys.sort((a, b) => compareListKeys(a, b, rank))).toEqual([
+            '2026-10-12',
+            'someday',
+            'someday:5',
+            'someday:3',
+        ]);
+    });
 });

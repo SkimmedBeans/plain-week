@@ -45,9 +45,15 @@ export type CursorMotion = 'up' | 'down' | 'previousList' | 'nextList';
 
 /**
  * Lists in visual order: the days by date, then the Someday lists: Someday
- * first, then the named ones by column.
+ * first, then the named ones by `rank` (their display order; by column when
+ * no rank is given).
  */
-export function compareListKeys(a: string, b: string): number {
+export function compareListKeys(
+    a: string,
+    b: string,
+    /** Display rank of a Someday column; by default the column itself. */
+    rank: (column: number) => number = (column) => column,
+): number {
     const aSomeday = isSomedayKey(a);
     const bSomeday = isSomedayKey(b);
 
@@ -58,7 +64,7 @@ export function compareListKeys(a: string, b: string): number {
         const column = (key: string) =>
             key === SOMEDAY_KEY ? 0 : Number(key.slice(SOMEDAY_KEY.length + 1));
 
-        return column(a) - column(b);
+        return rank(column(a)) - rank(column(b));
     }
     return a < b ? -1 : a > b ? 1 : 0;
 }

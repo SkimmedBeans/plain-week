@@ -33,6 +33,7 @@ import { useSomedayTasks } from '@/hooks/use-tasks';
 import {
     createList,
     deleteList,
+    moveList,
     renameList,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
@@ -52,6 +53,9 @@ type Props = {
     onOpenTask: (taskId: string) => void;
     /** The column span on the wide grid. */
     className?: string;
+    /** A named list can move one place earlier / later among the lists. */
+    canMoveEarlier?: boolean;
+    canMoveLater?: boolean;
 };
 
 /**
@@ -67,6 +71,8 @@ export function SomedaySection({
     today,
     onOpenTask,
     className,
+    canMoveEarlier = false,
+    canMoveLater = false,
 }: Props) {
     const titleId = useId();
     const tasks = useSomedayTasks(weekStart, today, list.column);
@@ -159,6 +165,38 @@ export function SomedaySection({
                                     }}
                                 >
                                     Rename
+                                </DropdownMenuItem>
+                                {/* Lists run left to right on desktop and top
+                                    to bottom on phones. */}
+                                <DropdownMenuItem
+                                    disabled={!canMoveEarlier}
+                                    onClick={() =>
+                                        void moveList(list.id!, -1).catch(() =>
+                                            toast.error(
+                                                'Could not move the list.',
+                                            ),
+                                        )
+                                    }
+                                >
+                                    <span className="max-lg:hidden">
+                                        Move left
+                                    </span>
+                                    <span className="lg:hidden">Move up</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    disabled={!canMoveLater}
+                                    onClick={() =>
+                                        void moveList(list.id!, 1).catch(() =>
+                                            toast.error(
+                                                'Could not move the list.',
+                                            ),
+                                        )
+                                    }
+                                >
+                                    <span className="max-lg:hidden">
+                                        Move right
+                                    </span>
+                                    <span className="lg:hidden">Move down</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

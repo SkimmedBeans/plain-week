@@ -82,11 +82,20 @@ export function createList(name: string): Promise<SomedayList> {
         const now = nextTimestamp();
         const lists = await db.someday_lists.toArray();
         const column = Math.max(2, ...lists.map((list) => list.column)) + 1;
+        // After the last list, so a new list is shown at the end.
+        const last = lists.reduce<string | null>(
+            (max, list) =>
+                list.deleted_at === null &&
+                (max === null || list.position > max)
+                    ? list.position
+                    : max,
+            null,
+        );
         const list: SomedayList = {
             id: uuidv7(),
             name: trimmed,
             column,
-            position: positionBetween(null, null),
+            position: positionBetween(last, null),
             created_at: now,
             updated_at: now,
             deleted_at: null,
@@ -120,6 +129,50 @@ export async function renameList(
         };
 
         return { rows: [updated], result: updated };
+    });
+}
+
+/**
+ * Moves a list one place earlier (`-1`) or later (`1`) among the live lists.
+ * The lists are given fresh, evenly spread positions in their new order
+ * (lists made before ordering existed all share one position), and only the
+ * ones whose position changed are written and pushed. `null` when the list
+ * does not exist, was deleted, or is already at that end.
+ */
+export async function moveList(
+    id: string,
+    direction: -1 | 1,
+): Promise<SomedayList | null> {
+    return writeLists(async () => {
+        const live = (await db.someday_lists.toArray())
+            .filter((list) => list.deleted_at === null)
+            .sort(compareListOrder);
+        const from = live.findIndex((list) => list.id === id);
+        const to = from + direction;
+
+        if (from === -1 || to < 0 || to >= live.length) {
+            return { rows: [], result: null };
+        }
+
+        const order = [...live];
+        [order[from], order[to]] = [order[to], order[from]];
+
+        const now = nextTimestamp();
+        const rows: SomedayList[] = [];
+        let position: string | null = null;
+
+        for (const list of order) {
+            position = positionBetween(position, null);
+
+            if (list.position !== position) {
+                rows.push({ ...list, position, updated_at: now });
+            }
+        }
+
+        return {
+            rows,
+            result: rows.find((list) => list.id === id) ?? live[from],
+        };
     });
 }
 
