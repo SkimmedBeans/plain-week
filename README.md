@@ -6,6 +6,27 @@
   </picture>
 </p>
 
+> [!NOTE]
+> **This is a personal fork of [victor-falcon/plain-week](https://github.com/victor-falcon/plain-week)**, self-hosted
+> on a home server and kept up to date with upstream releases. Everything below the "What's different" list is the
+> upstream README.
+>
+> **What's different in this fork**
+>
+> - **Weekday first in day headers:** "Mon" in bold at the start, the date muted at the end.
+> - **Named Someday lists:** a **+** on the Someday header adds lists such as Homelab, Shed or DIY. Each is its own
+>   column after Someday, synced across devices, with a menu to rename or delete it (its tasks move back to Someday).
+>   Tasks can be typed, dragged or moved into any list. Lists are included in export and import.
+> - **Clear done tasks in one click:** a ticked task shows an **×** left of its tick that deletes it, with the usual
+>   Undo toast. Handy for done Someday tasks, which otherwise stay until their week is over.
+> - **Undo delete in the header:** restores your recent deletes, newest first, even after the toast has gone (up to
+>   20, until the page reloads). It refuses if the task changed since.
+> - **Completed subtasks:** ticked subtasks move to a "Completed" section; unticking puts them back in their place.
+>
+> **Image:** `ghcr.io/skimmedbeans/plain-week:edge`, built from `main` by GitHub Actions. Changes reach `main` only
+> through pull requests with the full test suite (`ci`) green. Details of each change are in
+> [CHANGELOG.md](CHANGELOG.md) under Unreleased.
+
 <p align="center">
   <strong>Your week, plain and simple.</strong><br>
   <strong>One week on one screen. Local-first and private: no account needed, your tasks stay in your browser and it
