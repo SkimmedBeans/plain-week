@@ -15,7 +15,7 @@
 >
 > - **Weekday first in day headers:** "Mon" in bold at the start, the date muted at the end.
 > - **Named Someday lists:** a **+** on the Someday header adds lists such as Homelab, Shed or DIY. Each is its own
->   column after Someday, synced across devices, with a menu to rename or delete it (its tasks move back to Someday).
+>   column after Someday, synced across devices, with a menu to rename, reorder (move left/right) or delete it (its tasks move back to Someday).
 >   Tasks can be typed, dragged or moved into any list. Lists are included in export and import.
 > - **Clear done tasks in one click:** a ticked task shows an **×** left of its tick that deletes it, with the usual
 >   Undo toast. Handy for done Someday tasks, which otherwise stay until their week is over.

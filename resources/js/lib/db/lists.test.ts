@@ -5,6 +5,7 @@ import {
     createList,
     deleteList,
     LIST_NAME_MAX,
+    moveList,
     queryLists,
     renameList,
 } from './lists';
@@ -85,6 +86,71 @@ describe('list repository', () => {
         unsubscribe();
 
         expect(calls).toBe(1);
+    });
+
+    it('adds a new list after the last one', async () => {
+        await createList('A');
+        await createList('B');
+        await createList('C');
+
+        expect((await queryLists()).map((list) => list.name)).toEqual([
+            'A',
+            'B',
+            'C',
+        ]);
+    });
+
+    it('moves a list earlier and later, and queues only the lists it moved', async () => {
+        const a = await createList('A');
+        const b = await createList('B');
+        const c = await createList('C');
+        await db.list_outbox.clear();
+
+        await moveList(c.id, -1);
+        expect((await queryLists()).map((list) => list.name)).toEqual([
+            'A',
+            'C',
+            'B',
+        ]);
+        const queued = (await db.list_outbox.toArray()).map((e) => e.list_id);
+        expect(queued).not.toContain(a.id);
+        expect(queued.sort()).toEqual([b.id, c.id].sort());
+
+        await moveList(a.id, 1);
+        expect((await queryLists()).map((list) => list.name)).toEqual([
+            'C',
+            'A',
+            'B',
+        ]);
+    });
+
+    it('returns null at either end, for a missing or deleted list', async () => {
+        const a = await createList('A');
+        const b = await createList('B');
+
+        expect(await moveList(a.id, -1)).toBeNull();
+        expect(await moveList(b.id, 1)).toBeNull();
+        expect(
+            await moveList('00000000-0000-7000-8000-000000000000', 1),
+        ).toBeNull();
+        await deleteList(b.id);
+        expect(await moveList(b.id, -1)).toBeNull();
+        expect((await queryLists()).map((list) => list.name)).toEqual(['A']);
+    });
+
+    it('reorders lists that all share one position (made before ordering)', async () => {
+        const a = await createList('A');
+        const b = await createList('B');
+        const c = await createList('C');
+        await db.someday_lists.bulkPut(
+            [a, b, c].map((list) => ({ ...list, position: a.position })),
+        );
+
+        await moveList(c.id, -1);
+
+        const lists = await queryLists();
+        expect(lists.map((list) => list.name)).toEqual(['A', 'C', 'B']);
+        expect(new Set(lists.map((list) => list.position)).size).toBe(3);
     });
 
     it('lists live lists in position order, without tombstones', async () => {

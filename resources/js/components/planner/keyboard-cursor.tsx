@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useScopePrompt } from '@/components/planner/scope-prompt';
 import { openContextMenuAt } from '@/components/planner/task-context-menu';
 import { usePlannerShortcuts } from '@/hooks/use-planner-shortcuts';
+import { useSomedayLists } from '@/hooks/use-tasks';
 import type { ShortcutHandlers } from '@/hooks/use-planner-shortcuts';
 import { parseDateKey, toDateKey, weekDateKeys } from '@/lib/db/dates';
 import { placementOf } from '@/lib/db/queries';
@@ -262,14 +263,22 @@ export function KeyboardCursorProvider({
     const rows = useRef(new Map<string, number>());
     const askScope = useScopePrompt();
 
-    const lists = useMemo<CursorList[]>(
-        () =>
-            [...entries.keys()].sort(compareListKeys).map((key) => ({
+    // Named Someday lists are walked in their display order (`position`).
+    const somedayLists = useSomedayLists();
+    const lists = useMemo<CursorList[]>(() => {
+        const ranks = new Map(
+            (somedayLists ?? []).map((list, index) => [list.column, index + 1]),
+        );
+        const rank = (column: number) =>
+            column === 0 ? 0 : (ranks.get(column) ?? column);
+
+        return [...entries.keys()]
+            .sort((a, b) => compareListKeys(a, b, rank))
+            .map((key) => ({
                 key,
                 taskIds: entries.get(key)!.tasks.map((task) => task.id),
-            })),
-        [entries],
-    );
+            }));
+    }, [entries, somedayLists]);
     const resolved = useMemo(
         () => resolveCursor(lists, cursor),
         [lists, cursor],
