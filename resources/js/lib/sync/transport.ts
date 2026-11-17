@@ -1,14 +1,18 @@
-import type { Task } from '@/lib/db/types';
+import type { SomedayList, Task } from '@/lib/db/types';
 import { pull, push } from '@/routes/sync';
 
 export type PushResponse = {
     applied: string[];
     rejected: string[];
+    lists_applied: string[];
+    lists_rejected: string[];
     cursor: number;
 };
 
 export type PullResponse = {
     tasks: Task[];
+    /** Every one of the user's lists, including tombstones, on every page. */
+    lists: SomedayList[];
     cursor: number;
     has_more: boolean;
 };
@@ -18,7 +22,11 @@ export type PullResponse = {
  * cancels the request (the engine's timeout or `stop()`).
  */
 export type SyncTransport = {
-    push(tasks: Task[], signal?: AbortSignal): Promise<PushResponse>;
+    push(
+        tasks: Task[],
+        lists: SomedayList[],
+        signal?: AbortSignal,
+    ): Promise<PushResponse>;
     pull(
         cursor: number,
         limit: number,
@@ -213,11 +221,11 @@ export async function isSessionGone(
  * Laravel's XSRF-TOKEN cookie.
  */
 export const fetchTransport: SyncTransport = {
-    push: (tasks, signal) =>
+    push: (tasks, lists, signal) =>
         request<PushResponse>(push.url(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...syncHeaders() },
-            body: JSON.stringify({ tasks }),
+            body: JSON.stringify({ tasks, lists }),
             signal,
         }),
     pull: (cursor, limit, signal) =>

@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  IMAGE: ghcr.io/victor-falcon/plain-week
+  IMAGE: ghcr.io/skimmedbeans/plain-week
 
 jobs:
   build:

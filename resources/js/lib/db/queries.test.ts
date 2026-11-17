@@ -21,7 +21,7 @@ describe('queries', () => {
         await createTask({ text: 'Mon 2', date: '2026-10-12' });
         await createTask({ text: 'Sun', date: '2026-10-18' });
         await createTask({ text: 'next week', date: '2026-10-19' });
-        await createTask({ text: 'someday', date: null });
+        await createTask({ text: 'someday', date: null, list: 0 });
         await deleteTask(removed.id);
 
         const week = await queryWeekTasks('2026-10-12');
@@ -52,20 +52,20 @@ describe('queries', () => {
     });
 
     it('lists Someday as one list, by column and then position', async () => {
-        const a = await createTask({ text: 'a', date: null });
-        const b = await createTask({ text: 'b', date: null });
-        const c = await createTask({ text: 'c', date: null });
+        const a = await createTask({ text: 'a', date: null, list: 0 });
+        const b = await createTask({ text: 'b', date: null, list: 0 });
+        const c = await createTask({ text: 'c', date: null, list: 0 });
         await createTask({ text: 'dated', date: '2026-10-12' });
         // Rows written by older versions sit in any of the three columns.
         await db.tasks.update(a.id, { someday_column: 2 });
         await db.tasks.update(b.id, { someday_column: 1 });
         await db.tasks.update(c.id, { someday_column: 1 });
 
-        const tasks = await querySomedayTasks('2026-10-12');
+        const tasks = await querySomedayTasks('2026-10-12', 0);
 
         expect(tasks.map((t) => t.text)).toEqual(['b', 'c', 'a']);
         expect(
-            (await queryListTasks({ date: null })).map((t) => t.text),
+            (await queryListTasks({ date: null, list: 0 })).map((t) => t.text),
         ).toEqual(['b', 'c', 'a']);
     });
 
@@ -80,6 +80,7 @@ describe('queries', () => {
             const task = await createTask({
                 text,
                 date: null,
+                list: 0,
             });
 
             await toggleDone(task.id);
@@ -89,11 +90,11 @@ describe('queries', () => {
         }
 
         async function shownIn(firstDay: string): Promise<string[]> {
-            return (await querySomedayTasks(firstDay)).map((t) => t.text);
+            return (await querySomedayTasks(firstDay, 0)).map((t) => t.text);
         }
 
         it('shows an unfinished task in every week', async () => {
-            await createTask({ text: 'open', date: null });
+            await createTask({ text: 'open', date: null, list: 0 });
 
             for (const week of [W1, W2, W3, '2027-03-01']) {
                 expect(await shownIn(week)).toEqual(['open']);
@@ -126,6 +127,7 @@ describe('queries', () => {
             const task = await createTask({
                 text: 'again',
                 date: null,
+                list: 0,
             });
 
             await toggleDone(task.id);
@@ -173,7 +175,7 @@ describe('queries', () => {
         expect(await queryPendingChangeCount()).toBe(0);
 
         const task = await createTask({ text: 'a', date: '2026-10-12' });
-        await createTask({ text: 'b', date: null });
+        await createTask({ text: 'b', date: null, list: 0 });
         await deleteTask(task.id);
 
         expect(await queryPendingChangeCount()).toBe(2);

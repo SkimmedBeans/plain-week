@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toDateKey } from '@/lib/db/dates';
+import { queryLists } from '@/lib/db/lists';
 import {
     querySeries,
     querySomedayTasks,
@@ -7,6 +8,7 @@ import {
     queryWeekTasks,
 } from '@/lib/db/queries';
 import type { SomedayTasks, WeekTasks } from '@/lib/db/queries';
+import type { SomedayList } from '@/lib/db/types';
 import { somedayArchiveWeek } from '@/lib/planner/week';
 import type { PlannerTask, SeriesItem } from '@/lib/recurrence/expand';
 
@@ -23,18 +25,32 @@ export function useWeekTasks(weekStart: Date): WeekTasks | undefined {
 }
 
 /**
- * The live Someday list as seen from the week starting at `weekStart`, with
+ * One live Someday list as seen from the week starting at `weekStart`, with
  * `today` as 'YYYY-MM-DD': tasks done before that week (or before the current
- * week, when a future one is shown) are archived and left out. `undefined`
- * only while the first read is in progress.
+ * week, when a future one is shown) are archived and left out. `list` is 0
+ * for the base Someday list (which also shows orphaned tasks), a number above
+ * for a named list. `undefined` only while the first read is in progress.
  */
 export function useSomedayTasks(
     weekStart: Date,
     today: string,
+    list: number,
 ): SomedayTasks | undefined {
     const firstDay = somedayArchiveWeek(weekStart, today);
 
-    return useLiveQuery(() => querySomedayTasks(firstDay), [firstDay]);
+    return useLiveQuery(
+        () => querySomedayTasks(firstDay, list),
+        [firstDay, list],
+    );
+}
+
+/**
+ * The live named Someday lists, in their `position` order (Someday itself is
+ * not a row and is not included). `undefined` only while the first read is in
+ * progress.
+ */
+export function useSomedayLists(): SomedayList[] | undefined {
+    return useLiveQuery(() => queryLists(), []);
 }
 
 /**

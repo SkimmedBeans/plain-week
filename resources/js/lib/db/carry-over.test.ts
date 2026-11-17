@@ -48,7 +48,7 @@ describe('carryOverTasks', () => {
         await createTask({ text: 'Tomorrow', date: TOMORROW });
         const done = await createTask({ text: 'Done', date: YESTERDAY });
         const deleted = await createTask({ text: 'Deleted', date: YESTERDAY });
-        await createTask({ text: 'Idea', date: null });
+        await createTask({ text: 'Idea', date: null, list: 0 });
 
         await toggleDone(done.id);
         await deleteTask(deleted.id);
@@ -58,7 +58,7 @@ describe('carryOverTasks', () => {
         expect(await texts(TOMORROW)).toEqual(['Tomorrow']);
         expect(await texts(YESTERDAY)).toEqual(['Done']);
         expect((await db.tasks.get(deleted.id))?.date).toBe(YESTERDAY);
-        expect(await listTasksIn({ date: null })).toHaveLength(1);
+        expect(await listTasksIn({ date: null, list: 0 })).toHaveLength(1);
     });
 
     it('never carries recurring tasks: series, occurrences or exceptions', async () => {

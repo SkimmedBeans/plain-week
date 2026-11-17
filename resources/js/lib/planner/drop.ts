@@ -17,8 +17,15 @@ import { addDays, addWeeks, weekdayIndex } from '@/lib/planner/week';
 /** -1 for the previous week, 1 for the next one. */
 export type WeekDirection = -1 | 1;
 
-/** A day or the Someday list and its tasks in display order. */
-export type TaskListRef = { placement: TaskPlacement; tasks: Task[] };
+/**
+ * A day or the Someday list and its tasks in display order. `name` is the
+ * named list's name (the base Someday list and days have none).
+ */
+export type TaskListRef = {
+    placement: TaskPlacement;
+    tasks: Task[];
+    name?: string;
+};
 
 /** dnd-kit `data` of a draggable task row (`useSortable`). */
 export type TaskDragData = TaskListRef & { type: 'task'; task: PlannerTask };
@@ -37,15 +44,23 @@ export type DropTarget =
           type: 'task';
           placement: TaskPlacement;
           tasks: Task[];
+          name?: string;
           taskId: string;
           /** The probe is in the lower half of the row: drop below it. */
           below: boolean;
       }
-    | { type: 'list'; placement: TaskPlacement; tasks: Task[] }
+    | {
+          type: 'list';
+          placement: TaskPlacement;
+          tasks: Task[];
+          name?: string;
+      }
     | { type: 'edge'; direction: WeekDirection };
 
 export type DropResult = {
     move: MoveTaskInput;
+    /** The named list the drop lands in, if any. */
+    name?: string;
     /**
      * Where the insertion line goes: the list, and the task it is drawn above
      * (`null`: after the last task). `null` for an edge-zone drop, whose list
@@ -57,21 +72,36 @@ export type DropResult = {
 /** The `placementKey` of the Someday list. */
 export const SOMEDAY_KEY = 'someday';
 
-/** A stable key for a day ("2026-10-12") or the Someday list ("someday"). */
+/**
+ * A stable key for a day ("2026-10-12"), the base Someday list ("someday") or
+ * a named one ("someday:<column>").
+ */
 export function placementKey(placement: TaskPlacement): string {
-    return placement.date ?? SOMEDAY_KEY;
+    if (placement.date !== null) {
+        return placement.date;
+    }
+    return placement.list === 0
+        ? SOMEDAY_KEY
+        : `${SOMEDAY_KEY}:${placement.list}`;
 }
 
-/** Whether a `placementKey` is the Someday list's. */
+/** Whether a `placementKey` is a Someday list's ('someday', every week). */
 export function isSomedayKey(key: string): boolean {
-    return key === SOMEDAY_KEY;
+    return key === SOMEDAY_KEY || key.startsWith(`${SOMEDAY_KEY}:`);
 }
 
-/** "Mon 12 Oct" or "Someday", for screen reader announcements. */
-export function placementLabel(placement: TaskPlacement): string {
-    return placement.date !== null
-        ? `${formatWeekday(placement.date)} ${formatDay(placement.date)}`
-        : 'Someday';
+/**
+ * "Mon 12 Oct", "Someday" or the named list's name, for screen reader
+ * announcements.
+ */
+export function placementLabel(
+    placement: TaskPlacement,
+    name?: string,
+): string {
+    if (placement.date !== null) {
+        return `${formatWeekday(placement.date)} ${formatDay(placement.date)}`;
+    }
+    return name ?? 'Someday';
 }
 
 /**
@@ -91,6 +121,7 @@ export function resolveListDrop(
     placement: TaskPlacement,
     tasks: Task[],
     slot: number,
+    name?: string,
 ): DropResult | null {
     const isDay = placement.date !== null;
     const listKey = placementKey(placement);
@@ -128,6 +159,7 @@ export function resolveListDrop(
 
     return {
         move: { ...placement, afterId, beforeId },
+        name,
         indicator: { listKey, beforeTaskId },
     };
 }
@@ -189,6 +221,7 @@ export function resolveDrop(
                 target.placement,
                 target.tasks,
                 target.tasks.length,
+                target.name,
             );
         case 'task': {
             const index = target.tasks.findIndex(
@@ -201,6 +234,7 @@ export function resolveDrop(
                     target.placement,
                     target.tasks,
                     target.tasks.length,
+                    target.name,
                 );
             }
 
@@ -209,6 +243,7 @@ export function resolveDrop(
                 target.placement,
                 target.tasks,
                 target.below ? index + 1 : index,
+                target.name,
             );
         }
     }

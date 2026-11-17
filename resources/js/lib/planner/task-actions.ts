@@ -7,6 +7,7 @@ import {
     duplicateTask,
     moveTask,
     undoChanges,
+    unchangedSince,
     updateTask,
 } from '@/lib/db/tasks';
 import type { MoveTaskInput, Scope } from '@/lib/db/tasks';
@@ -17,7 +18,7 @@ import { placementLabel } from './drop';
 import { asksScope } from './repeat';
 import { nextWeekOf, tomorrowOf } from './quick-moves';
 import { saveLocally } from './save-locally';
-import { toastWithUndo } from './undo';
+import { dismissUndoToast, recordDelete, toastWithUndo } from './undo';
 
 /**
  * The task actions shared by the task dialog and the task context menu. They
@@ -68,8 +69,8 @@ export function nextWeekMove(task: Task): MoveTaskInput {
     return { date: nextWeekOf(task.date, toDateKey(new Date())) };
 }
 
-/** To the end of the Someday list. */
-export const SOMEDAY_MOVE: MoveTaskInput = { date: null };
+/** To the end of the base Someday list (column 0). */
+export const SOMEDAY_MOVE: MoveTaskInput = { date: null, list: 0 };
 
 /**
  * Moves a task (an occurrence: only this one) and says where it went in a
@@ -117,12 +118,26 @@ export function deleteWithUndo(
     const undo = createUndoLog();
 
     return settle(
-        deleteTask(id, { scope, undo }).then((deleted) => {
-            toastWithUndo('Task deleted.', () =>
-                saveLocally(undoChanges(undo), {
-                    error: 'Could not restore the task.',
-                }),
+        deleteTask(id, { scope, undo }).then(async (deleted) => {
+            // The header's "Undo delete" can run long after the toast is
+            // gone, so it first checks nothing changed these rows since.
+            const canRestore = await unchangedSince(undo);
+            let toastId: string | number | undefined;
+            const undoDelete = recordDelete(
+                deleted.text,
+                () => {
+                    if (toastId !== undefined) {
+                        dismissUndoToast(toastId);
+                    }
+
+                    saveLocally(undoChanges(undo), {
+                        error: 'Could not restore the task.',
+                    });
+                },
+                canRestore,
             );
+
+            toastId = toastWithUndo('Task deleted.', undoDelete);
 
             return deleted;
         }),

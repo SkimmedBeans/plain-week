@@ -41,7 +41,6 @@ function List({
             <TaskList
                 placement={placement}
                 tasks={tasks}
-                rows={3}
                 newTaskLabel="New task"
                 onOpenTask={onOpenTask}
             />
@@ -222,7 +221,7 @@ describe('TaskContextMenu', () => {
     });
 
     it('does not offer Someday for a Someday task', async () => {
-        const { button } = await setup({ date: null });
+        const { button } = await setup({ date: null, list: 0 });
 
         await openMenu(button);
 

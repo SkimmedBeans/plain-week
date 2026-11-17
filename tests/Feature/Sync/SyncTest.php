@@ -24,11 +24,11 @@ test('push creates a task and pull returns it unchanged', function () {
 
     push([$task])
         ->assertOk()
-        ->assertExactJson(['applied' => [$task['id']], 'rejected' => [], 'cursor' => 1]);
+        ->assertExactJson(['applied' => [$task['id']], 'rejected' => [], 'cursor' => 1, 'lists_applied' => [], 'lists_rejected' => []]);
 
     $this->getJson(route('sync.pull'))
         ->assertOk()
-        ->assertExactJson(['tasks' => [$task], 'cursor' => 1, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [$task], 'lists' => [], 'cursor' => 1, 'has_more' => false]);
 
     expect(Task::find($task['id']))->user_id->toBe($this->user->id);
 });
@@ -59,7 +59,7 @@ test('last write wins: an older updated_at is ignored', function () {
 
     push([[...$task, 'text' => 'Stale', 'updated_at' => '2026-10-15T10:00:00.499Z']])
         ->assertOk()
-        ->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1]);
+        ->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1, 'lists_applied' => [], 'lists_rejected' => []]);
 
     expect(Task::find($task['id']))
         ->text->toBe('Buy milk')
@@ -86,7 +86,7 @@ test('tombstones round-trip through pull', function () {
 
     $this->getJson(route('sync.pull', ['cursor' => 1]))
         ->assertOk()
-        ->assertExactJson(['tasks' => [$deleted], 'cursor' => 2, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [$deleted], 'lists' => [], 'cursor' => 2, 'has_more' => false]);
 
     expect(Task::count())->toBe(1);
 });
@@ -111,7 +111,7 @@ test('pull paginates by cursor with has_more', function () {
     expect(array_column($last->json('tasks'), 'id'))->toBe([$tasks[4]['id']]);
 
     $this->getJson(route('sync.pull', ['cursor' => 5]))
-        ->assertExactJson(['tasks' => [], 'cursor' => 5, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [], 'lists' => [], 'cursor' => 5, 'has_more' => false]);
 });
 
 test('pull returns tasks ordered by version, so an update moves a task to the end', function () {
@@ -130,7 +130,7 @@ test('a user cannot read another user\'s tasks', function () {
     $theirs = Task::factory()->for($other)->create(['version' => 1]);
 
     $this->getJson(route('sync.pull'))
-        ->assertExactJson(['tasks' => [], 'cursor' => 0, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [], 'lists' => [], 'cursor' => 0, 'has_more' => false]);
 
     expect($theirs->exists)->toBeTrue();
 });
@@ -180,7 +180,7 @@ test('push cursor is the highest version owned by the user', function () {
     push([wireTask()]);
 
     $this->actingAs($this->user);
-    push([])->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1]);
+    push([])->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1, 'lists_applied' => [], 'lists_rejected' => []]);
 });
 
 test('guests get 401 json', function () {
@@ -204,7 +204,7 @@ test('push rejects invalid records with 422', function (array $overrides, string
     'unknown color' => [['color' => 'red'], 'color'],
     'bad date' => [['date' => '15/10/2026'], 'date'],
     'someday without column' => [['date' => null, 'someday_column' => null], 'someday_column'],
-    'someday column out of range' => [['date' => null, 'someday_column' => 3], 'someday_column'],
+    'someday column out of range' => [['date' => null, 'someday_column' => 10001], 'someday_column'],
     'bad time' => [['time' => '9:30pm'], 'time'],
     'timestamp without milliseconds' => [['updated_at' => '2026-10-15T08:35:00Z'], 'updated_at'],
     'timestamp with offset' => [['created_at' => '2026-10-15T08:35:00.000+02:00'], 'created_at'],

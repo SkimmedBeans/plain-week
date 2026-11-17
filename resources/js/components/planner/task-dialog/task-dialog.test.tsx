@@ -256,8 +256,9 @@ describe('TaskDialog', () => {
             expect((await stored(task.id))?.subtasks[0].done).toBe(true),
         );
 
+        // Ticked, Flights moved below to Completed: Hotel is the first field.
         await user.type(
-            within(dialog).getAllByLabelText('Subtask')[1],
+            within(dialog).getAllByLabelText('Subtask')[0],
             ' room',
         );
         await user.click(
@@ -268,6 +269,51 @@ describe('TaskDialog', () => {
             expect((await stored(task.id))?.subtasks).toMatchObject([
                 { text: 'Hotel room', done: false },
             ]),
+        );
+    });
+
+    it('moves a ticked subtask to Completed and an unticked one back to its place', async () => {
+        const { task, user, dialog } = await open({
+            subtasks: [
+                { id: 's1', text: 'Flights', done: false },
+                { id: 's2', text: 'Hotel', done: false },
+                { id: 's3', text: 'Car', done: false },
+            ],
+        });
+        const openTexts = () =>
+            within(dialog)
+                .getAllByLabelText('Subtask')
+                .filter((field) => !field.closest('section'))
+                .map((field) => (field as HTMLInputElement).value);
+        const completed = () =>
+            within(dialog).queryByRole('region', { name: /Completed/ });
+
+        expect(completed()).toBeNull();
+
+        await user.click(
+            within(dialog).getByRole('checkbox', { name: 'Complete "Hotel"' }),
+        );
+
+        const section = await within(dialog).findByRole('region', {
+            name: 'Completed (1)',
+        });
+        expect(
+            within(section)
+                .getAllByLabelText('Subtask')
+                .map((field) => (field as HTMLInputElement).value),
+        ).toEqual(['Hotel']);
+        expect(openTexts()).toEqual(['Flights', 'Car']);
+
+        await user.click(
+            within(section).getByRole('checkbox', { name: 'Complete "Hotel"' }),
+        );
+
+        await waitFor(() => expect(completed()).toBeNull());
+        expect(openTexts()).toEqual(['Flights', 'Hotel', 'Car']);
+        await waitFor(async () =>
+            expect(
+                (await stored(task.id))?.subtasks.map((s) => s.done),
+            ).toEqual([false, false, false]),
         );
     });
 

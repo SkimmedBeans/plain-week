@@ -43,7 +43,7 @@ test('series and exception rows round-trip through push and pull', function () {
 
     $this->getJson(route('sync.pull'))
         ->assertOk()
-        ->assertExactJson(['tasks' => [$weekly, $monthly, $moved, $toSomeday], 'cursor' => 4, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [$weekly, $monthly, $moved, $toSomeday], 'lists' => [], 'cursor' => 4, 'has_more' => false]);
 
     expect(Task::find($weekly['id'])->recurrence)->toBe(['type' => 'weekly', 'weekdays' => [1, 3, 5]]);
 });
@@ -121,7 +121,7 @@ test('a series can be ended with until and a plain task can become a series', fu
     $ended = [...$series, 'recurrence' => [...$series['recurrence'], 'until' => '2026-10-15'], 'updated_at' => '2026-10-17T00:00:00.000Z'];
     push([$ended])->assertOk()->assertJsonPath('applied', [$task['id']]);
 
-    $this->getJson(route('sync.pull', ['cursor' => 2]))->assertExactJson(['tasks' => [$ended], 'cursor' => 3, 'has_more' => false]);
+    $this->getJson(route('sync.pull', ['cursor' => 2]))->assertExactJson(['tasks' => [$ended], 'lists' => [], 'cursor' => 3, 'has_more' => false]);
 });
 
 test('last write wins also covers the recurrence fields', function () {
@@ -130,7 +130,7 @@ test('last write wins also covers the recurrence fields', function () {
 
     push([[...$series, 'recurrence' => ['type' => 'monthly', 'day' => 1], 'updated_at' => '2026-10-15T10:00:00.499Z']])
         ->assertOk()
-        ->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1]);
+        ->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1, 'lists_applied' => [], 'lists_rejected' => []]);
 
     expect(Task::find($series['id'])->recurrence)->toBe($series['recurrence']);
 });
@@ -150,7 +150,7 @@ test('a series and its exceptions can be tombstoned', function () {
     push($tombstones)->assertOk()->assertJsonPath('applied', [$series['id'], $exception['id']]);
 
     $this->getJson(route('sync.pull', ['cursor' => 2]))
-        ->assertExactJson(['tasks' => $tombstones, 'cursor' => 4, 'has_more' => false]);
+        ->assertExactJson(['tasks' => $tombstones, 'lists' => [], 'cursor' => 4, 'has_more' => false]);
 });
 
 test('tombstones skip the row-kind invariants', function () {
@@ -172,7 +172,7 @@ test('series_id never exposes another user\'s rows', function () {
     push([$mine])->assertOk()->assertJsonPath('applied', [$mine['id']]);
 
     $this->getJson(route('sync.pull'))
-        ->assertExactJson(['tasks' => [$mine], 'cursor' => 1, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [$mine], 'lists' => [], 'cursor' => 1, 'has_more' => false]);
 
     expect($theirs->fresh())->text->toBe('Private')->version->toBe(1);
 });

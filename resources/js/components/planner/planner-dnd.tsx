@@ -91,6 +91,25 @@ function byPriority(collisions: Collision[]): Collision[] {
         );
 }
 
+/**
+ * Drops task rows hit outside their list's box (the pointer, or the dragged
+ * overlay on a keyboard drag, is not over the list): on desktop a list scrolls
+ * inside its cell, and the rows scrolled out of it still have their place on
+ * the page, over the gap or the cell below.
+ */
+function withinOwnList(collisions: Collision[]): Collision[] {
+    const hitIds = new Set(collisions.map(({ id }) => id));
+
+    return collisions.filter((collision) => {
+        const data = dropDataOf(collision);
+
+        return (
+            data?.type !== 'task' ||
+            hitIds.has(listDroppableId(placementKey(data.placement)))
+        );
+    });
+}
+
 /** Whether the drop goes below the task row hit, carried on the collision. */
 function isBelow(collision: Collision): boolean {
     return (collision.data as { below?: boolean }).below === true;
@@ -106,7 +125,7 @@ function isBelow(collision: Collision): boolean {
 const collisionDetection: CollisionDetection = (args) => {
     const pointer = args.pointerCoordinates;
     let collisions = byPriority(
-        pointer ? pointerWithin(args) : rectIntersection(args),
+        withinOwnList(pointer ? pointerWithin(args) : rectIntersection(args)),
     );
 
     if (collisions.length === 0 && !pointer) {
@@ -160,6 +179,7 @@ function dropTargetOf(collision: Collision | undefined): DropTarget | null {
                 type: 'task',
                 placement: data.placement,
                 tasks: data.tasks,
+                name: data.name,
                 taskId: data.task.id,
                 below: isBelow(collision),
             };
@@ -182,7 +202,7 @@ function overLabel(data: unknown): string | null {
         return over.direction === -1 ? 'the previous week' : 'the next week';
     }
 
-    return placementLabel(over.placement);
+    return placementLabel(over.placement, over.name);
 }
 
 type PlannerDndState = {
@@ -398,7 +418,7 @@ export function PlannerDnd({
                     // The task left the screen: say where it went.
                     if (drop.indicator === null) {
                         toastWithUndo(
-                            `Moved to ${placementLabel(drop.move)}.`,
+                            `Moved to ${placementLabel(drop.move, drop.name)}.`,
                             () => void write(task.id, undo),
                         );
                     }
@@ -446,7 +466,7 @@ export function PlannerDnd({
             const text = textOf(active.data.current);
 
             return drop
-                ? `Moved ${text} to ${placementLabel(drop.move)}.`
+                ? `Moved ${text} to ${placementLabel(drop.move, drop.name)}.`
                 : `${text} was not moved.`;
         },
         onDragCancel: ({ active }) =>

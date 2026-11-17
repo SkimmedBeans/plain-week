@@ -7,6 +7,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Named Someday lists.** Someday can hold named lists: a "New list" button in the Someday header adds one,
+  and each named list's header has a menu to rename it or delete it (its tasks move to Someday). Named lists
+  stand as their own ruled columns after Someday, each with its name, and a task can be typed into, dropped
+  into or moved into any of them; the keyboard cursor walks past Someday through the named lists in column
+  order.
+- **Clear done tasks in one click.** A ticked task shows an × just left of its tick that deletes it (a repeating
+  task still asks "this one or all"), with the usual "Undo" toast. Handy for done Someday tasks, which otherwise stay
+  until their week is over.
+- **Undo delete in the header.** An undo button next to the account button restores the last deleted task, newest
+  first, even after its toast has gone (up to 20, until the page reloads). It refuses, and says so, when the task was
+  changed or restored since.
+- **Completed subtasks section.** In a task, ticked subtasks move to a "Completed" section below the open ones;
+  unticking one puts it back in its place.
+- **Named lists in export and import.** The export file now carries the named lists, and import accepts them:
+  lists keep their names, get fresh ids and columns on this device, and a task whose list is missing from the
+  file lands in Someday. Import files without lists still import.
+
+### Changed
+
+- **Weekday first in day headers.** Each day's header shows the weekday in bold at the start and the date, muted, at
+  the end.
+
+## [0.3.18] - 2026-11-17
+
+### Changed
+
+- **The week fills the window.** On desktop the week takes all the room below the header, with no empty space under
+  it, and picks its grid from the window's shape: Monday to Friday over the weekend and Someday on wide windows, four
+  columns on near square ones, three on tall ones. Each day's ruled lines run to the bottom of its cell (click them to
+  add a task, drop a task on them to put it last), and a day with more tasks than fit scrolls on its own.
+
 ## [0.3.17] - 2026-11-12
 
 ### Fixed
@@ -445,7 +478,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/victor-falcon/plain-week/compare/v0.3.17...HEAD
+[Unreleased]: https://github.com/victor-falcon/plain-week/compare/v0.3.18...HEAD
+[0.3.18]: https://github.com/victor-falcon/plain-week/compare/v0.3.17...v0.3.18
 [0.3.17]: https://github.com/victor-falcon/plain-week/compare/v0.3.16...v0.3.17
 [0.3.16]: https://github.com/victor-falcon/plain-week/compare/v0.3.15...v0.3.16
 [0.3.15]: https://github.com/victor-falcon/plain-week/compare/v0.3.14...v0.3.15

@@ -142,7 +142,9 @@ async function write<T>(
     { subjectId, mode = 'release' }: DemoEffect = {},
 ): Promise<T> {
     let written = 0;
-    const tables = [db.tasks, db.outbox, db.meta];
+    // `someday_lists` is in scope because a Someday placement reads the
+    // live lists (the orphan rule) while computing the slot.
+    const tables = [db.tasks, db.outbox, db.meta, db.someday_lists];
     const result = await db.transaction('rw', tables, async () => {
         const built = await build();
         const rows = [
@@ -209,7 +211,8 @@ type Slot = Pick<Task, 'date' | 'someday_column' | 'position'>;
  * The placement fields of a task that goes right after `after` and before
  * `before`, two neighbours in the list of `placement` (either may be
  * undefined for the start or end). In Someday the sort key includes the
- * column; see `somedayKeyBetween`.
+ * column; with no usable neighbour the key falls back to the column of the
+ * list itself (see `somedayKeyBetween`).
  */
 function slotBetween(
     placement: TaskPlacement,
@@ -217,7 +220,10 @@ function slotBetween(
     before: Task | undefined,
 ): Slot {
     if (placement.date === null) {
-        return { date: null, ...somedayKeyBetween(after, before) };
+        return {
+            date: null,
+            ...somedayKeyBetween(after, before, placement.list),
+        };
     }
 
     return {
@@ -434,7 +440,7 @@ export function createTask(
     options: MutationOptions = {},
 ): Promise<Task> {
     return write(async () => {
-        const slot = await slotIn(placementOf(input), input);
+        const slot = await slotIn(input, input);
         const now = nextTimestamp();
         const task: Task = {
             id: uuidv7(),
@@ -644,11 +650,7 @@ export function moveTask(
                 throw new Error('Move an occurrence, not its series.');
             }
 
-            const slot = await slotIn(
-                placementOf(input),
-                input,
-                new Set([id, item.id]),
-            );
+            const slot = await slotIn(input, input, new Set([id, item.id]));
             const base =
                 item.kind === 'occurrence'
                     ? materialize(
@@ -867,6 +869,26 @@ export function setRecurrence(
         options,
         { subjectId: id },
     );
+}
+
+/**
+ * A check, taken right after the mutations logged in `log`: whether every row
+ * they touched is still exactly as they left them (same `updated_at`, or
+ * still absent). Lets a late undo refuse to overwrite newer changes.
+ */
+export async function unchangedSince(
+    log: UndoLog,
+): Promise<() => Promise<boolean>> {
+    const ids = [...log.before.keys()];
+    const stamps = (await db.tasks.bulkGet(ids)).map(
+        (row) => row?.updated_at ?? null,
+    );
+
+    return async () => {
+        const now = await db.tasks.bulkGet(ids);
+
+        return now.every((row, i) => (row?.updated_at ?? null) === stamps[i]);
+    };
 }
 
 export function createUndoLog(): UndoLog {

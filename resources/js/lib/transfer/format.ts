@@ -1,5 +1,5 @@
 import { toDateKey } from '@/lib/db/dates';
-import type { Task } from '@/lib/db/types';
+import type { SomedayList, Task } from '@/lib/db/types';
 
 /**
  * The export file (a JSON backup). See "Export format" in
@@ -19,6 +19,11 @@ export type ExportFile = {
     app_version: string;
     /** Rows with exactly the wire shape of a task. */
     tasks: Task[];
+    /**
+     * Named Someday lists in display order. Older export files omit the key;
+     * `parseImport` treats a missing key as an empty list.
+     */
+    someday_lists: SomedayList[];
 };
 
 /** `plain-week-export-YYYY-MM-DD.json`, with the local date. */

@@ -6,24 +6,25 @@ import { db } from '@/lib/db/database';
 import type { PlainWeekDatabase } from '@/lib/db/database';
 import { nextTimestamp } from '@/lib/db/dates';
 import {
+    compareListOrder,
     compareSomedayOrder,
     compareTaskOrder,
     somedayColumnOf,
 } from '@/lib/db/position';
 import type { SomedaySortKey } from '@/lib/db/position';
 import { SOMEDAY_COLUMNS } from '@/lib/db/types';
-import type { Task } from '@/lib/db/types';
+import type { SomedayList, Task } from '@/lib/db/types';
 import { EXPORT_FORMAT, EXPORT_VERSION } from './format';
 import type { ExportFile } from './format';
 import { backupRows } from './rows';
-import { ImportError, validateTask } from './validate';
+import { ImportError, validateList, validateTask } from './validate';
 
 export { ImportError } from './validate';
 
 /**
- * Importing a backup ADDS its tasks next to the existing ones, with new ids;
- * nothing that is already in the local database changes. See "Export format"
- * in docs/architecture.md.
+ * Importing a backup ADDS its tasks and named lists next to the existing
+ * ones, with new ids; nothing that is already in the local database changes.
+ * See "Export format" in docs/architecture.md.
  */
 
 export type ImportSummary = {
@@ -31,11 +32,15 @@ export type ImportSummary = {
     taskCount: number;
     /** How many of `taskCount` repeat. */
     recurringCount: number;
+    /** Named lists the user will see added. */
+    listCount: number;
 };
 
 export type ImportPlan = ImportSummary & {
     /** The rows to write: series first, then plain tasks, then exceptions. */
     tasks: Task[];
+    /** Named lists to create (new ids, fresh timestamps); order is kept. */
+    lists: SomedayList[];
 };
 
 /** Far above any real planner (10 000 tasks are about 5 MB). */
@@ -107,6 +112,40 @@ export async function parseImport(input: Blob | string): Promise<ExportFile> {
         ids.add(task.id);
     });
 
+    // Older exports omit `someday_lists`; a missing key is an empty list.
+    let lists: SomedayList[] = [];
+
+    if (file.someday_lists !== undefined) {
+        if (!Array.isArray(file.someday_lists)) {
+            throw new ImportError('"someday_lists" must be a list of lists.');
+        }
+
+        lists = file.someday_lists.map((list, index) =>
+            validateList(list, index),
+        );
+    }
+
+    const listIds = new Set<string>();
+    const listColumns = new Set<number>();
+
+    lists.forEach((list, index) => {
+        if (listIds.has(list.id)) {
+            throw new ImportError(
+                `List ${index + 1}: "id" is used by another list in the file.`,
+            );
+        }
+
+        listIds.add(list.id);
+
+        if (listColumns.has(list.column)) {
+            throw new ImportError(
+                `List ${index + 1}: "column" is used by another list in the file.`,
+            );
+        }
+
+        listColumns.add(list.column);
+    });
+
     return {
         format: EXPORT_FORMAT,
         version: EXPORT_VERSION,
@@ -115,14 +154,11 @@ export async function parseImport(input: Blob | string): Promise<ExportFile> {
         app_version:
             typeof file.app_version === 'string' ? file.app_version : '',
         tasks,
+        someday_lists: lists,
     };
 }
 
 const SOMEDAY_LIST = 'someday';
-
-function listKey(task: Pick<Task, 'date'>): string {
-    return task.date ?? SOMEDAY_LIST;
-}
 
 type ListEnd = (SomedaySortKey & Pick<Task, 'id'>) | null;
 
@@ -182,9 +218,14 @@ export function summarizeImport(file: ExportFile): ImportSummary {
             (task.series_id === null || !series.has(task.series_id)),
     );
 
+    // Only live lists are imported; a hand-edited file's tombstones are
+    // dropped (a deleted list's tasks already moved to Someday, so its
+    // tombstone is pure noise).
     return {
         taskCount: visible.length,
         recurringCount: series.size,
+        listCount: file.someday_lists.filter((list) => list.deleted_at === null)
+            .length,
     };
 }
 
@@ -193,8 +234,12 @@ export function summarizeImport(file: ExportFile): ImportSummary {
  * remapped to the new series (an exception whose series is not in the file
  * becomes a plain task), positions appended after the existing tasks of each
  * day / the Someday list keeping the file's order, and fresh `created_at` /
- * `updated_at`. `done` and `done_at` are kept. Reads the database, never
- * writes it; call it right before `applyImport` so positions are current.
+ * `updated_at`. Named lists become new rows too: new ids, a column after
+ * every existing named list (deleted ones included) and positions after the
+ * existing lists; a hand-edited file's deleted (tombstoned) lists are dropped
+ * since a deleted list's tasks already moved to the base Someday. `done` and
+ * `done_at` are kept. Reads the database, never writes it; call it right
+ * before `applyImport` so positions are current.
  */
 export async function planImport(
     file: ExportFile,
@@ -220,37 +265,110 @@ export async function planImport(
     const newIds = new Map(rows.map((task) => [task.id, uuidv7()]));
     const byList = new Map<string, Task[]>();
 
+    // Named lists: new UUID v7 ids, a column after every existing named list
+    // (deleted ones included, so a column is never reused) and positions
+    // after the existing lists, the file's order kept.
+    const existingLists = (await database.someday_lists.toArray()).sort(
+        compareListOrder,
+    );
+    const maxColumn = existingLists.reduce(
+        (max, list) => Math.max(max, list.column),
+        2,
+    );
+    const listEnd =
+        existingLists.length > 0
+            ? existingLists[existingLists.length - 1].position
+            : null;
+    // Only live lists are imported; a hand-edited file's tombstones are
+    // dropped (a deleted list's tasks already moved to Someday, so its
+    // tombstone is pure noise).
+    const liveLists = file.someday_lists.filter(
+        (list) => list.deleted_at === null,
+    );
+    const listPositions =
+        liveLists.length > 0
+            ? generateNKeysBetween(listEnd, null, liveLists.length)
+            : [];
+    const listRows = liveLists.map((list, index) => ({
+        ...list,
+        id: uuidv7(),
+        column: maxColumn + index + 1,
+        position: listPositions[index],
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+    }));
+
+    // A task in an imported named list (its Someday column matches a list's)
+    // lands in that list's new column; base-column tasks and orphans (a
+    // column with no matching list) land in the base Someday list.
+    const listColumnRemap = new Map<number, number>();
+    liveLists.forEach((list, index) => {
+        listColumnRemap.set(list.column, listRows[index].column);
+    });
+
     rows.forEach((task) => {
-        const key = listKey(task);
+        const column = task.someday_column ?? 0;
+        const key =
+            task.date !== null
+                ? task.date
+                : listColumnRemap.has(column)
+                  ? `someday-list:${column}`
+                  : SOMEDAY_LIST;
         const list = byList.get(key) ?? [];
         list.push(task);
         byList.set(key, list);
     });
 
-    const ends = await listEnds(database, new Set(byList.keys()));
+    // The last existing task of each day and of the base Someday list; the
+    // new named-list columns have no existing tasks, so they start at the top.
+    const endKeys = new Set<string>();
+    let hasSomeday = false;
+
+    byList.forEach((_tasks, key) => {
+        if (key === SOMEDAY_LIST || key.startsWith('someday-list:')) {
+            hasSomeday = true;
+        } else {
+            endKeys.add(key);
+        }
+    });
+
+    if (hasSomeday) {
+        endKeys.add(SOMEDAY_LIST);
+    }
+
+    const ends = await listEnds(database, endKeys);
     const sortKeys = new Map<string, SomedaySortKey>();
 
-    // Appended after the last task of each list, in the file's order. Someday
-    // tasks all take the column of the last Someday task (0 when empty), so
-    // they land at the end of the single list.
+    // Appended after the last task of each list, in the file's order. A day
+    // keeps each task's column; a named list takes its new column; the base
+    // Someday list takes the column of its last task (0 when empty), so
+    // imported base Someday tasks land at the end of that single list.
     byList.forEach((tasks, key) => {
-        const end = ends.get(key) ?? null;
+        const isDay = key !== SOMEDAY_LIST && !key.startsWith('someday-list:');
         const isSomeday = key === SOMEDAY_LIST;
+        const isNamedList = key.startsWith('someday-list:');
+        const end = isNamedList ? null : (ends.get(key) ?? null);
         const sorted = [...tasks].sort(
-            isSomeday ? compareSomedayOrder : compareTaskOrder,
+            isDay ? compareTaskOrder : compareSomedayOrder,
         );
         const keys = generateNKeysBetween(
             end?.position ?? null,
             null,
             sorted.length,
         );
+
         sorted.forEach((task, i) =>
             sortKeys.set(task.id, {
-                someday_column: isSomeday
-                    ? end === null
-                        ? 0
-                        : somedayColumnOf(end)
-                    : task.someday_column,
+                someday_column: isDay
+                    ? task.someday_column
+                    : isSomeday
+                      ? end === null
+                          ? 0
+                          : somedayColumnOf(end)
+                      : listColumnRemap.get(
+                            Number(key.slice('someday-list:'.length)),
+                        )!,
                 position: keys[i],
             }),
         );
@@ -271,6 +389,7 @@ export async function planImport(
             updated_at: now,
             deleted_at: task.deleted_at === null ? null : now,
         })),
+        lists: listRows,
     };
 }
 
@@ -279,10 +398,11 @@ function nextTick(): Promise<void> {
 }
 
 /**
- * Writes a plan to the local database in batches, each in one transaction
- * with its outbox entries (so a signed-in user syncs them), yielding to the
- * event loop between batches so a large import does not freeze the UI.
- * Batches already written stay if a later one fails.
+ * Writes a plan to the local database: the named lists (and their outbox
+ * entries) in one transaction, then the tasks in batches, each in one
+ * transaction with its outbox entries (so a signed-in user syncs them),
+ * yielding to the event loop between batches so a large import does not
+ * freeze the UI. Batches already written stay if a later one fails.
  */
 export async function applyImport(
     plan: ImportPlan,
@@ -291,6 +411,24 @@ export async function applyImport(
     const total = plan.tasks.length;
 
     try {
+        // Named lists first, so a task that lands in one finds it; their
+        // outbox entries ride in the same transaction.
+        if (plan.lists.length > 0) {
+            await database.transaction(
+                'rw',
+                database.someday_lists,
+                database.list_outbox,
+                async () => {
+                    await database.someday_lists.bulkAdd(plan.lists);
+                    await database.list_outbox.bulkPut(
+                        plan.lists.map((list) => ({
+                            list_id: list.id,
+                        })),
+                    );
+                },
+            );
+        }
+
         for (let start = 0; start < total; start += batchSize) {
             const batch = plan.tasks.slice(start, start + batchSize);
 
@@ -313,8 +451,8 @@ export async function applyImport(
             await nextTick();
         }
     } finally {
-        // Wake the sync engine once for the batches that were written.
-        if (total > 0) {
+        // Wake the sync engine once for what was written.
+        if (total > 0 || plan.lists.length > 0) {
             notifyLocalChange();
         }
     }

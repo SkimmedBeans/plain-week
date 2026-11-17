@@ -17,12 +17,11 @@ export const TASK_COLORS = [
 export type TaskColor = (typeof TASK_COLORS)[number];
 
 /**
- * Someday's legacy columns: only a sort key now (Someday is one list on
- * screen), kept as-is for the schema and the sync contract.
+ * Someday's legacy wire values: the server's push rule still rejects anything
+ * but 0, 1, 2, so import validation keeps enforcing them (stage 3 widens
+ * the server to any non-negative integer).
  */
 export const SOMEDAY_COLUMNS = [0, 1, 2] as const;
-
-export type SomedayColumn = (typeof SOMEDAY_COLUMNS)[number];
 
 export type Subtask = {
     id: string;
@@ -55,9 +54,12 @@ export type Task = {
     text: string;
     /** 'YYYY-MM-DD', or null for Someday. */
     date: string | null;
-    /** Required when `date` is null, otherwise null. */
-    someday_column: SomedayColumn | null;
-    /** Fractional index key: order within a day, or within a Someday column. */
+    /**
+     * Required when `date` is null, otherwise null. 0 is the base Someday
+     * list; a number above is a named list's `column` (see `SomedayList`).
+     */
+    someday_column: number | null;
+    /** Fractional index key: order within a day, or within a Someday list. */
     position: string;
     done: boolean;
     done_at: string | null;
@@ -89,6 +91,34 @@ export type OutboxEntry = {
      * skipped by push until the task changes again.
      */
     failed_revision?: number;
+};
+
+/**
+ * A named list of the Someday area. Column 0 (the base Someday list) has no
+ * row here. Rows are local-first; the server mirrors them (stage 3).
+ */
+export type SomedayList = {
+    id: string;
+    name: string;
+    /**
+     * The `tasks.someday_column` value that belongs to this list. A number
+     * above 2; never reused (the max column over all lists, deleted ones
+     * included).
+     */
+    column: number;
+    /** Fractional index key: order of the named lists. */
+    position: string;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+};
+
+/**
+ * A named list pending in the outbox (`list_outbox.list_id`). Rewritten, not
+ * deleted and re-added, on every mutation of the list.
+ */
+export type ListOutboxEntry = {
+    list_id: string;
 };
 
 /**

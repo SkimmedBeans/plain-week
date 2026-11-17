@@ -80,11 +80,12 @@ describe('resolveListDrop', () => {
     });
 
     it('moves to and from Someday', () => {
-        const s = task('s', { date: null, someday_column: 1 });
+        const s = task('s', { date: null, someday_column: 0 });
 
-        expect(resolveListDrop(a, { date: null }, [s], 0)).toEqual({
+        expect(resolveListDrop(a, { date: null, list: 0 }, [s], 0)).toEqual({
             move: {
                 date: null,
+                list: 0,
                 afterId: null,
                 beforeId: 's',
             },
@@ -95,8 +96,8 @@ describe('resolveListDrop', () => {
             afterId: 'a',
             beforeId: 'b',
         });
-        // Someday is one list, whatever column its rows are in.
-        expect(resolveListDrop(s, { date: null }, [s], 1)).toBeNull();
+        // A task dropped where it already is does nothing.
+        expect(resolveListDrop(s, { date: null, list: 0 }, [s], 1)).toBeNull();
     });
 
     it('uses only untimed tasks as neighbours in a day', () => {
@@ -136,11 +137,40 @@ describe('resolveListDrop', () => {
         const s1 = task('s1', { date: null, someday_column: 0, time: '09:00' });
         const s2 = task('s2', { date: null });
 
-        expect(resolveListDrop(s2, { date: null }, [s1, s2], 0)?.move).toEqual({
+        expect(
+            resolveListDrop(s2, { date: null, list: 0 }, [s1, s2], 0)?.move,
+        ).toEqual({
             date: null,
+            list: 0,
             afterId: null,
             beforeId: 's1',
         });
+    });
+
+    it('moves to and between named Someday lists', () => {
+        const n1 = task('n1', { date: null, someday_column: 1 });
+        const n2 = task('n2', { date: null, someday_column: 2 });
+
+        expect(
+            resolveListDrop(a, { date: null, list: 1 }, [n1], 0, 'Ideas'),
+        ).toEqual({
+            move: { date: null, list: 1, afterId: null, beforeId: 'n1' },
+            name: 'Ideas',
+            indicator: { listKey: 'someday:1', beforeTaskId: 'n1' },
+        });
+        expect(
+            resolveListDrop(n1, { date: null, list: 2 }, [n2], 1, 'Later')
+                ?.move,
+        ).toEqual({ date: null, list: 2, afterId: 'n2', beforeId: null });
+        // A named list is its own list: staying put is a no-op.
+        expect(
+            resolveListDrop(n1, { date: null, list: 1 }, [n1], 1, 'Ideas'),
+        ).toBeNull();
+        // Someday and a named list are different lists.
+        expect(
+            resolveListDrop(n1, { date: null, list: 0 }, [], 0, 'Someday')
+                ?.move,
+        ).toEqual({ date: null, list: 0, afterId: null, beforeId: null });
     });
 });
 
@@ -196,6 +226,41 @@ describe('resolveDrop', () => {
             ),
         ).toBeNull();
     });
+
+    it('passes the named list’s name through', () => {
+        const n1 = task('n1', { date: null, someday_column: 1 });
+
+        expect(
+            resolveDrop(
+                a,
+                {
+                    type: 'task',
+                    placement: { date: null, list: 1 },
+                    tasks: [n1],
+                    name: 'Ideas',
+                    taskId: 'n1',
+                    below: true,
+                },
+                WEEK,
+            ),
+        ).toEqual({
+            move: { date: null, list: 1, afterId: 'n1', beforeId: null },
+            name: 'Ideas',
+            indicator: { listKey: 'someday:1', beforeTaskId: null },
+        });
+        expect(
+            resolveDrop(
+                task('x', { date: TUESDAY }),
+                {
+                    type: 'list',
+                    placement: { date: null, list: 2 },
+                    tasks: [n1],
+                    name: 'Later',
+                },
+                WEEK,
+            )?.move,
+        ).toEqual({ date: null, list: 2, afterId: 'n1', beforeId: null });
+    });
 });
 
 describe('edgeDropDate', () => {
@@ -236,9 +301,17 @@ describe('edgeDropDate', () => {
 describe('placementKey and placementLabel', () => {
     it('names days and Someday', () => {
         expect(placementKey({ date: MONDAY })).toBe(MONDAY);
-        expect(placementKey({ date: null })).toBe('someday');
+        expect(placementKey({ date: null, list: 0 })).toBe('someday');
         expect(placementLabel({ date: MONDAY })).toBe('Mon 12 Oct');
-        expect(placementLabel({ date: null })).toBe('Someday');
+        expect(placementLabel({ date: null, list: 0 })).toBe('Someday');
+    });
+
+    it('names named lists by column, the label from the list name', () => {
+        expect(placementKey({ date: null, list: 1 })).toBe('someday:1');
+        expect(placementKey({ date: null, list: 2 })).toBe('someday:2');
+        expect(placementLabel({ date: null, list: 1 }, 'Ideas')).toBe('Ideas');
+        // Without a name it falls back to Someday.
+        expect(placementLabel({ date: null, list: 1 })).toBe('Someday');
     });
 });
 

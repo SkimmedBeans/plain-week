@@ -1,11 +1,19 @@
 import { Dexie } from 'dexie';
 import type { EntityTable } from 'dexie';
-import type { MetaEntry, OutboxEntry, Task } from './types';
+import type {
+    ListOutboxEntry,
+    MetaEntry,
+    OutboxEntry,
+    SomedayList,
+    Task,
+} from './types';
 
 export class PlainWeekDatabase extends Dexie {
     tasks!: EntityTable<Task, 'id'>;
     outbox!: EntityTable<OutboxEntry, 'task_id'>;
     meta!: EntityTable<MetaEntry, 'key'>;
+    someday_lists!: EntityTable<SomedayList, 'id'>;
+    list_outbox!: EntityTable<ListOutboxEntry, 'list_id'>;
 
     constructor(name = 'plain-week') {
         super(name);
@@ -33,6 +41,14 @@ export class PlainWeekDatabase extends Dexie {
                         task.occurrence_date ??= null;
                     }),
             );
+
+        // Named Someday lists (stage 2: client only; the server mirrors the
+        // rows in stage 3). No data migration: existing tasks keep their
+        // columns, and column 0 is the base Someday list.
+        this.version(3).stores({
+            someday_lists: 'id, column, deleted_at',
+            list_outbox: 'list_id',
+        });
     }
 }
 
@@ -40,7 +56,13 @@ export const db = new PlainWeekDatabase();
 
 /** Every table of the database; transactions that wipe must include them all. */
 export function allTables(database: PlainWeekDatabase) {
-    return [database.tasks, database.outbox, database.meta];
+    return [
+        database.tasks,
+        database.outbox,
+        database.meta,
+        database.someday_lists,
+        database.list_outbox,
+    ];
 }
 
 /**

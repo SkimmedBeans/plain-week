@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/database';
 import type { PlainWeekDatabase } from '@/lib/db/database';
 import { demoIds } from '@/lib/db/demo';
+import { compareListOrder } from '@/lib/db/position';
 import { APP_VERSION, EXPORT_FORMAT, EXPORT_VERSION } from './format';
 import type { ExportFile } from './format';
 import { backupRows } from './rows';
@@ -15,6 +16,11 @@ export async function buildExport(
 ): Promise<ExportFile> {
     const demo = await demoIds(database);
     const rows = await database.tasks.toArray();
+    const lists = (
+        await database.someday_lists
+            .filter((list) => list.deleted_at === null)
+            .toArray()
+    ).sort(compareListOrder);
 
     return {
         format: EXPORT_FORMAT,
@@ -22,5 +28,6 @@ export async function buildExport(
         exported_at: now.toISOString(),
         app_version: appVersion,
         tasks: backupRows(rows.filter((row) => !demo.has(row.id))),
+        someday_lists: lists,
     };
 }

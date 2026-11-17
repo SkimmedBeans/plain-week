@@ -40,7 +40,7 @@ test('a daily series and its exceptions round-trip through push and pull', funct
 
     push([$series, $moved])->assertOk()->assertJsonPath('applied', [$series['id'], $moved['id']]);
 
-    pull()->assertOk()->assertExactJson(['tasks' => [$series, $moved], 'cursor' => 2, 'has_more' => false]);
+    pull()->assertOk()->assertExactJson(['tasks' => [$series, $moved], 'lists' => [], 'cursor' => 2, 'has_more' => false]);
 
     expect(Task::find($series['id'])->recurrence)->toBe(['type' => 'daily', 'every' => 21, 'until' => '2027-10-15']);
 });
@@ -64,7 +64,7 @@ test('clients without the header (v0.0.3) pull a daily series as a tombstone', f
 
     $hidden = [...$daily, 'deleted_at' => $daily['updated_at']];
 
-    pull([], null)->assertExactJson(['tasks' => [$hidden, $exception, $weekly, $plain], 'cursor' => 4, 'has_more' => false]);
+    pull([], null)->assertExactJson(['tasks' => [$hidden, $exception, $weekly, $plain], 'lists' => [], 'cursor' => 4, 'has_more' => false]);
     pull([], SyncFormat::Legacy)->assertJsonPath('tasks.0', $hidden);
     pull()->assertJsonPath('tasks.0', $daily);
 
@@ -74,7 +74,7 @@ test('clients without the header (v0.0.3) pull a daily series as a tombstone', f
     $turned = [...$weekly, 'recurrence' => ['type' => 'daily', 'every' => 3], 'updated_at' => '2026-10-16T00:00:00.000Z'];
     push([$turned]);
     pull(['cursor' => 4], null)->assertExactJson([
-        'tasks' => [[...$turned, 'deleted_at' => $turned['updated_at']]], 'cursor' => 5, 'has_more' => false,
+        'tasks' => [[...$turned, 'deleted_at' => $turned['updated_at']]], 'lists' => [], 'cursor' => 5, 'has_more' => false,
     ]);
 
     // A real tombstone keeps its own deletion time.

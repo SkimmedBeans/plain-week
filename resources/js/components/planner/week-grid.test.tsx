@@ -1,15 +1,22 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { WeekGrid } from '@/components/planner/week-grid';
 import { wipeLocalDatabase } from '@/lib/db/database';
+import { createList } from '@/lib/db/lists';
 
 describe('WeekGrid', () => {
     beforeEach(() => wipeLocalDatabase());
     afterEach(cleanup);
 
-    it('lists the days in reading order, then Someday spanning the last three tracks', async () => {
+    it('lists the days in reading order, then Someday, on every window shape', async () => {
         render(
             <ScopePromptProvider>
                 <WeekGrid
@@ -20,8 +27,9 @@ describe('WeekGrid', () => {
             </ScopePromptProvider>,
         );
 
-        // The five-track grid places its children in DOM order: Monday to
-        // Friday on top, then Saturday, Sunday and Someday (three tracks).
+        // Every desktop grid places its children in DOM order: five tracks
+        // with Someday spanning three (wide windows), four tracks (near
+        // square) or three with Someday spanning two (tall).
         const sections = await screen.findAllByRole('region');
 
         expect(
@@ -40,9 +48,40 @@ describe('WeekGrid', () => {
             'Sun 18 Oct',
             'Someday',
         ]);
-        expect(sections[0].parentElement?.className).toContain(
-            'lg:grid-cols-5',
+        const grid = sections[0].parentElement?.className;
+        expect(grid).toContain('lg:week-wide:grid-cols-5');
+        expect(grid).toContain('lg:week-square:grid-cols-4');
+        expect(grid).toContain('lg:week-tall:grid-cols-3');
+        expect(sections[7].className).toContain('lg:week-wide:col-span-3');
+        expect(sections[7].className).toContain('lg:week-tall:col-span-2');
+    });
+
+    it('renders a column for every named list, after the base list, in column order', async () => {
+        await createList('Ideas');
+        await createList('Health');
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
         );
-        expect(sections[7].className).toContain('lg:col-span-3');
+
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(10),
+        );
+
+        const tail = screen
+            .getAllByRole('region')
+            .slice(7)
+            .map(
+                (section) =>
+                    within(section).getByRole('heading', { level: 2 })
+                        .textContent,
+            );
+        expect(tail).toEqual(['Someday', 'Ideas', 'Health']);
     });
 });

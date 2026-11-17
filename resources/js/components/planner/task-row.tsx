@@ -1,5 +1,5 @@
 import { useSortable } from '@dnd-kit/sortable';
-import { CircleCheck, GripVertical, Repeat } from 'lucide-react';
+import { CircleCheck, GripVertical, Repeat, X } from 'lucide-react';
 import {
     CURSOR_ROW_CLASS,
     useCursorFocus,
@@ -39,6 +39,8 @@ type Props = {
     /** The list the row is in, and its tasks in display order (for drops). */
     placement: TaskPlacement;
     tasks: PlannerTask[];
+    /** The named list's name, when the row is in one. */
+    name?: string;
     /** The keyboard cursor is on this task. */
     isCursor?: boolean;
     /** Opens the task (click, Enter or Space on its text). */
@@ -159,6 +161,7 @@ export function TaskRow({
     task,
     placement,
     tasks,
+    name,
     isCursor = false,
     onOpen,
     onToggleDone,
@@ -185,6 +188,7 @@ export function TaskRow({
                 task,
                 placement,
                 tasks,
+                name,
             } satisfies TaskDragData,
             attributes: { roleDescription: 'movable task' },
         });
@@ -270,6 +274,26 @@ export function TaskRow({
                 >
                     <GripVertical className="size-5" />
                 </Button>
+                {/* A done task can be cleared in one click, left of its
+                    tick, on every screen (a done Someday task otherwise stays
+                    until its week is over). */}
+                {task.done && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Delete ${task.text}`}
+                        data-test="task-delete"
+                        onClick={() =>
+                            void scoped('delete', (scope) =>
+                                deleteWithUndo(task.id, scope),
+                            )
+                        }
+                        className="mt-1 shrink-0 rounded-full text-muted-foreground hover:bg-transparent hover:text-destructive"
+                    >
+                        <X className="size-5" />
+                    </Button>
+                )}
                 <Button
                     type="button"
                     variant="ghost"
