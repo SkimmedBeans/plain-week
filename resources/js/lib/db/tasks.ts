@@ -871,6 +871,26 @@ export function setRecurrence(
     );
 }
 
+/**
+ * A check, taken right after the mutations logged in `log`: whether every row
+ * they touched is still exactly as they left them (same `updated_at`, or
+ * still absent). Lets a late undo refuse to overwrite newer changes.
+ */
+export async function unchangedSince(
+    log: UndoLog,
+): Promise<() => Promise<boolean>> {
+    const ids = [...log.before.keys()];
+    const stamps = (await db.tasks.bulkGet(ids)).map(
+        (row) => row?.updated_at ?? null,
+    );
+
+    return async () => {
+        const now = await db.tasks.bulkGet(ids);
+
+        return now.every((row, i) => (row?.updated_at ?? null) === stamps[i]);
+    };
+}
+
 export function createUndoLog(): UndoLog {
     return { before: new Map() };
 }

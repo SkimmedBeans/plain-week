@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Smartphone, Undo2 } from 'lucide-react';
 import { AccountButton } from '@/components/planner/account-button';
 import { HintedLabel } from '@/components/planner/shortcut-hint';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/tooltip';
 import { installAppStore, isReachableFromPhone } from '@/lib/install-app';
 import { formatMonthTitle, formatWeekNumber } from '@/lib/planner/format';
+import { undoLastDelete, useDeleteHistory } from '@/lib/planner/undo';
 import { isoWeekNumber, weekThursday } from '@/lib/planner/week';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +39,10 @@ export function PlannerHeader({
     // ISO weeks belong to the month and year of their Thursday.
     const thursday = weekThursday(weekStart);
     const week = isoWeekNumber(weekStart);
+    const deletes = useDeleteHistory();
+    const undoLabel = deletes.latestTitle
+        ? `Undo delete: ${deletes.latestTitle}`
+        : 'Undo delete';
 
     return (
         <header className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-background/95 px-4 py-3 backdrop-blur-sm lg:static lg:px-6 lg:pt-5 lg:pb-0 lg:backdrop-blur-none">
@@ -98,6 +103,28 @@ export function PlannerHeader({
                         Install mobile app
                     </Button>
                 )}
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {/* A disabled button gets no pointer events, so the
+                            tooltip hangs on a wrapper. */}
+                        <span className="inline-flex">
+                            <Button
+                                variant="ghost"
+                                size="icon-lg"
+                                className="size-10 rounded-full"
+                                onClick={() => void undoLastDelete()}
+                                disabled={deletes.count === 0}
+                                aria-label={undoLabel}
+                                data-test="undo-delete"
+                            >
+                                <Undo2 className="size-5 rtl:-scale-x-100" />
+                            </Button>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                        {deletes.count === 0 ? 'Nothing to undo' : undoLabel}
+                    </TooltipContent>
+                </Tooltip>
                 <AccountButton />
                 <Tooltip>
                     <TooltipTrigger asChild>

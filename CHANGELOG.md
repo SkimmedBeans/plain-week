@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   stand as their own ruled columns after Someday, each with its name, and a task can be typed into, dropped
   into or moved into any of them; the keyboard cursor walks past Someday through the named lists in column
   order.
+- **Clear done tasks in one click.** A ticked task shows an × just left of its tick that deletes it (a repeating
+  task still asks "this one or all"), with the usual "Undo" toast. Handy for done Someday tasks, which otherwise stay
+  until their week is over.
+- **Undo delete in the header.** An undo button next to the account button restores the last deleted task, newest
+  first, even after its toast has gone (up to 20, until the page reloads). It refuses, and says so, when the task was
+  changed or restored since.
 - **Named lists in export and import.** The export file now carries the named lists, and import accepts them:
   lists keep their names, get fresh ids and columns on this device, and a task whose list is missing from the
   file lands in Someday. Import files without lists still import.
