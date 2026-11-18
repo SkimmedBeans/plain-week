@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   unticking one puts it back in its place.
 - **Reorder named lists.** A named list's menu has Move left and Move right (Move up and Move down on phones); the
   order syncs across devices, and the keyboard cursor follows it. New lists are added at the end.
+- **Completed section in every list.** In days, Someday and named lists, ticked tasks move below the open ones under a
+  "Completed (n)" label; unticking one puts it back in its place. Only the view changes, not the stored order.
 - **Named lists in export and import.** The export file now carries the named lists, and import accepts them:
   lists keep their names, get fresh ids and columns on this device, and a task whose list is missing from the
   file lands in Someday. Import files without lists still import.

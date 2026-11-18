@@ -233,6 +233,23 @@ describe('positions', () => {
         expect(await texts(DAY)).toEqual(['first', 'A', 'between', 'B']);
     });
 
+    it('lands right after the "after" task when the neighbours are out of order', async () => {
+        // The view shows done tasks below open ones, so a drop between the
+        // groups can name an "after" that is stored after its "before".
+        const a = await createTask({ text: 'A', date: DAY });
+        const b = await createTask({ text: 'B', date: DAY });
+        const c = await createTask({ text: 'C', date: DAY });
+        const d = await createTask({ text: 'D', date: DAY });
+
+        await moveTask(d.id, { date: DAY, afterId: c.id, beforeId: a.id });
+
+        expect(await texts(DAY)).toEqual(['A', 'B', 'C', 'D']);
+
+        await moveTask(a.id, { date: DAY, afterId: c.id, beforeId: b.id });
+
+        expect(await texts(DAY)).toEqual(['B', 'C', 'A', 'D']);
+    });
+
     it('moves a task within a day', async () => {
         const a = await createTask({ text: 'A', date: DAY });
         const b = await createTask({ text: 'B', date: DAY });

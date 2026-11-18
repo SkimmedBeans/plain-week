@@ -21,7 +21,8 @@
 >   Undo toast. Handy for done Someday tasks, which otherwise stay until their week is over.
 > - **Undo delete in the header:** restores your recent deletes, newest first, even after the toast has gone (up to
 >   20, until the page reloads). It refuses if the task changed since.
-> - **Completed subtasks:** ticked subtasks move to a "Completed" section; unticking puts them back in their place.
+> - **Completed sections:** in every day and list, ticked tasks move below the open ones under "Completed", and
+>   ticked subtasks do the same inside a task; unticking puts them back in their place.
 >
 > **Image:** `ghcr.io/skimmedbeans/plain-week:edge`, built from `main` by GitHub Actions. Changes reach `main` only
 > through pull requests with the full test suite (`ci`) green. Details of each change are in

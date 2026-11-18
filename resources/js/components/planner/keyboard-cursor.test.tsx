@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+    cleanup,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -130,9 +136,6 @@ describe('KeyboardCursorProvider', () => {
         await user.keyboard('j{Enter}');
         expect(onOpenTask).toHaveBeenCalledWith(milk.id);
 
-        await user.keyboard('x');
-        await screen.findByRole('button', { name: 'Buy milk (done)' });
-
         await user.keyboard('J');
         await waitFor(async () =>
             expect(await textsOf(MONDAY)).toEqual(['Call mom', 'Buy milk']),
@@ -141,6 +144,49 @@ describe('KeyboardCursorProvider', () => {
         await waitFor(() =>
             expect(cursorRow()?.textContent).toContain('Buy milk'),
         );
+
+        await user.keyboard('x');
+        await screen.findByRole('button', { name: 'Buy milk (done)' });
+    });
+
+    it('shows done tasks under Completed and puts an unticked one back in its place', async () => {
+        const user = userEvent.setup();
+        render(<Planner onOpenTask={() => {}} />);
+        await screen.findByRole('button', { name: 'Buy milk' });
+        const monday = () =>
+            document.querySelector(`[data-list="${MONDAY}"]`) as HTMLElement;
+        const shown = () =>
+            [
+                ...monday().querySelectorAll(
+                    '[data-task-id], [data-completed-label]',
+                ),
+            ].map((el) =>
+                el.hasAttribute('data-completed-label')
+                    ? el.textContent
+                    : el
+                          .querySelector('[data-task-open]')
+                          ?.getAttribute('aria-label'),
+            );
+
+        await user.keyboard('jx');
+
+        await waitFor(() =>
+            expect(shown()).toEqual([
+                'Call mom',
+                'Completed (1)',
+                'Buy milk (done)',
+            ]),
+        );
+        // Only the view moved it: the stored order is unchanged.
+        expect(await textsOf(MONDAY)).toEqual(['Buy milk', 'Call mom']);
+
+        await user.click(
+            within(monday()).getAllByRole('button', {
+                name: 'Mark as not done',
+            })[0],
+        );
+
+        await waitFor(() => expect(shown()).toEqual(['Buy milk', 'Call mom']));
     });
 
     it('moves the task to the next day with the cursor on it', async () => {
