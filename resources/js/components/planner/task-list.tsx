@@ -3,7 +3,7 @@ import {
     SortableContext,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Fragment, useLayoutEffect, useRef } from 'react';
+import { Fragment, useLayoutEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import {
     useKeyboardCursor,
@@ -49,7 +49,8 @@ function DropIndicator() {
 }
 
 /**
- * A ruled list: the tasks, then one empty row that appends new ones. Creating
+ * A ruled list: the open tasks, then the done ones under a "Completed (n)"
+ * label, then one empty row that appends new ones. Creating
  * with Enter keeps focus in that row, now below the new task, so typing can go
  * on. On desktop the list fills the rest of its cell: ruled lines carry on
  * below the empty row to the bottom (a click there focuses the empty row, a
@@ -65,9 +66,23 @@ export function TaskList({
     className,
 }: Props) {
     const newTaskInput = useRef<HTMLInputElement>(null);
-    const taskCount = tasks?.length ?? 0;
+    // Done tasks are shown below the open ones, under "Completed"; each group
+    // keeps its stored order, so an unticked task returns to its place. The
+    // drag-and-drop data and the keyboard cursor use this shown order.
+    const listTasks = useMemo(() => {
+        const all = tasks ?? [];
+
+        return [
+            ...all.filter((task) => !task.done),
+            ...all.filter((task) => task.done),
+        ];
+    }, [tasks]);
+    const shownTasks = tasks === undefined ? undefined : listTasks;
+    const doneCount = listTasks.filter((task) => task.done).length;
+    const firstDoneId =
+        doneCount > 0 ? listTasks[listTasks.length - doneCount].id : null;
+    const taskCount = listTasks.length;
     const listKey = placementKey(placement);
-    const listTasks = tasks ?? [];
     const { setNodeRef } = useDroppable({
         id: listDroppableId(listKey),
         data: {
@@ -87,10 +102,10 @@ export function TaskList({
 
     // Tell the keyboard cursor what this list shows.
     useLayoutEffect(() => {
-        if (tasks !== undefined) {
-            return registerList(listKey, { placement, tasks });
+        if (shownTasks !== undefined) {
+            return registerList(listKey, { placement, tasks: shownTasks });
         }
-    }, [registerList, listKey, placement, tasks]);
+    }, [registerList, listKey, placement, shownTasks]);
 
     // A new task pushes the empty row down: keep it in view while typing in
     // it, in a list that scrolls inside its cell (desktop).
@@ -149,6 +164,14 @@ export function TaskList({
             >
                 {listTasks.map((task, index) => (
                     <Fragment key={rowKey(task)}>
+                        {task.id === firstDoneId && (
+                            <div
+                                data-completed-label
+                                className="flex items-end border-b border-border px-1.5 pt-3 pb-1 text-xs font-medium text-muted-foreground"
+                            >
+                                Completed ({doneCount})
+                            </div>
+                        )}
                         {indicatorBefore === task.id && <DropIndicator />}
                         <TaskRow
                             task={task}

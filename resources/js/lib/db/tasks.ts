@@ -263,6 +263,12 @@ async function slotIn(
         beforeIndex = afterIndex + 1;
     } else if (afterIndex === -1) {
         afterIndex = beforeIndex - 1;
+    } else if (afterIndex >= beforeIndex) {
+        // Neighbours out of stored order: the view can show tasks in another
+        // order than their positions (done tasks below the open ones), so a
+        // drop between the two groups names an "after" that sorts after its
+        // "before". Land right after the "after" task.
+        beforeIndex = afterIndex + 1;
     }
 
     return slotBetween(placement, siblings[afterIndex], siblings[beforeIndex]);
