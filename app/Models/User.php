@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Billing\Plan;
 use App\Enums\ReferralSource;
+use App\Support\Translations;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,11 +42,12 @@ use Laravel\Passport\HasApiTokens;
  * @property string $notification_morning_time
  * @property ReferralSource|null $referral_source
  * @property string|null $locale
+ * @property string|null $language
  * @property Carbon|null $welcomed_at
  */
 #[Fillable(['name', 'email', 'password', 'referral_source', 'locale'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'stripe_id', 'pm_type', 'pm_last_four', 'lifetime_payment_id'])]
-class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable, PasskeyUser
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail, OAuthenticatable, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use Billable, HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
@@ -73,6 +76,15 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
             'welcomed_at' => 'datetime',
             'referral_source' => ReferralSource::class,
         ];
+    }
+
+    /**
+     * The language picked in Settings › Preferences, when the instance still offers it. Mail and notifications use
+     * it; null ("Browser default") leaves the request's language, or APP_LOCALE outside a request.
+     */
+    public function preferredLocale(): ?string
+    {
+        return app(Translations::class)->isAvailable($this->language) ? $this->language : null;
     }
 
     /**

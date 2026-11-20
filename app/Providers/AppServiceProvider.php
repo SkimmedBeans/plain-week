@@ -5,12 +5,16 @@ namespace App\Providers;
 use App\Agents\AuthorizationPage;
 use App\Push\PushSender;
 use App\Push\WebPushSender;
+use App\Support\TranslationOverridesLoader;
+use App\Support\Translations;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Translation\Loader;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -35,6 +39,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(PushSender::class, WebPushSender::class);
 
+        // Self-hosted translation files (TRANSLATIONS_PATH), read at most once per request.
+        $this->app->scoped(Translations::class);
+        $this->app->extend('translation.loader', fn (Loader $loader) => new TranslationOverridesLoader($loader));
+
         // Only the authorization code grant (MCP clients, native apps) and personal access tokens are used.
         Passport::$deviceCodeGrantEnabled = false;
     }
@@ -52,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
         $this->configureOAuth();
 
         $this->configureRateLimits();
+
+        // The queue worker is long-lived: re-read translation files (TRANSLATIONS_PATH) for each job.
+        Queue::before(fn () => $this->app->make('translator')->setLoaded([]));
 
         // `composer dev` also runs the scheduler (routes/console.php), like the Docker image does.
         DevCommands::artisan('schedule:work', 'scheduler');
