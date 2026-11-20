@@ -63,15 +63,12 @@ class HandleInertiaRequests extends Middleware
                 'enabled' => $pushEnabled,
                 'vapidPublicKey' => $pushEnabled ? PushConfig::publicKey() : null,
             ],
-            // The MCP server for AI agents (MCP_ENABLED): Settings › Agents exists only while it is on.
+            // The MCP server for AI agents (MCP_ENABLED): Settings › Agents & apps shows its MCP part only while it is on.
             'mcp' => [
                 'enabled' => McpConfig::enabled(),
             ],
             // Lazy: computed per request only for signed-in users (it may query the subscription).
-            'account' => fn () => $user instanceof User ? [
-                'hasAccess' => $user->hasAccess(),
-                'plan' => $user->plan()?->value,
-            ] : null,
+            'account' => fn () => $user instanceof User ? $user->accountSummary() : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
