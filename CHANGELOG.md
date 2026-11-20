@@ -27,6 +27,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   hold a task and it lifts at once; then move it, however long you held it. A long press no longer opens the task
   menu instead, and a little jitter while holding no longer turns the press into a scroll.
 
+### Changed
+
+- **"Install mobile app" moved to the account menu.** It now sits right below "Send feedback" in the account menu
+  (signed in or not) instead of in the planner header, which keeps the header for the week. It still shows the QR code
+  of your Plain Week, and is left out on touch screens and on `localhost`.
+
 ## [0.4.0] - 2026-11-20
 
 ### Added
