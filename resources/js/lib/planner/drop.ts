@@ -95,7 +95,10 @@ export function isSomedayKey(key: string): boolean {
  * "Mon 12 Oct", "Someday" or the named list's name, for screen reader
  * announcements.
  */
-export function placementLabel(placement: TaskPlacement, name?: string): string {
+export function placementLabel(
+    placement: TaskPlacement,
+    name?: string,
+): string {
     if (placement.date !== null) {
         return t('planner.placementDay', {
             weekday: formatWeekday(placement.date),
