@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { updateSubtasks } from '@/lib/db/tasks';
 import type { Subtask } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
+import { t } from '@/lib/i18n';
 import { useTaskEditor } from './task-editor';
 
 const FIELD_CLASS =
@@ -82,14 +83,14 @@ export function TaskSubtasks() {
         <li key={subtask.id} className="group/subtask flex items-center gap-2">
             <Checkbox
                 checked={subtask.done}
-                aria-label={`Complete "${subtask.text}"`}
+                aria-label={t('task.completeSubtask', { text: subtask.text })}
                 onCheckedChange={(checked) =>
                     edit(subtask.id, { done: checked === true })
                 }
                 className="rounded-full"
             />
             <Input
-                aria-label="Subtask"
+                aria-label={t('task.subtask')}
                 defaultValue={subtask.text}
                 onChange={(event) => {
                     const field = event.target;
@@ -125,7 +126,7 @@ export function TaskSubtasks() {
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                aria-label={`Delete "${subtask.text}"`}
+                aria-label={t('task.deleteSubtask', { text: subtask.text })}
                 onClick={() => remove(subtask.id)}
                 className="rounded-full text-muted-foreground pointer-fine:opacity-0 pointer-fine:group-focus-within/subtask:opacity-100 pointer-fine:group-hover/subtask:opacity-100"
             >
@@ -148,9 +149,9 @@ export function TaskSubtasks() {
                     <Input
                         ref={addInputRef}
                         data-add-subtask
-                        aria-label="Add subtask"
+                        aria-label={t('task.addSubtask')}
                         onBlur={(event) => add(event.currentTarget)}
-                        placeholder="Add subtask..."
+                        placeholder={t('task.addSubtaskPlaceholder')}
                         enterKeyHint="enter"
                         onKeyDown={(event) => {
                             if (

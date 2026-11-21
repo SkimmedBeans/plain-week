@@ -113,6 +113,8 @@ Dexie transaction, with an undo toast like the other moves.
 
 Web routes with session auth and CSRF, JSON in and out. All require authentication; guests get `401`. In SaaS mode an
 account without a paid plan gets `402 Payment Required` ([saas.md](./saas.md)); a self-hosted instance never sends it.
+Each user may send 120 sync requests a minute (`throttle:sync`, shared with the app API), then `429`. Token clients
+(native apps) use the same contract under `/api/v1/sync/*`, see [App API](#app-api).
 
 Both take an optional `X-Sync-Format: <int>` header that says what the client understands: none (or `1`) is a client
 up to v0.0.3; `2` adds daily rules. A missing or malformed header counts as `1`; a higher one as the newest the server
@@ -642,7 +644,8 @@ writes the local database (`moveTask`); sync follows in the background.
 | `lib/planner/drop.ts`                               | Pure functions: drop target → `moveTask` input and the insertion line (`resolveDrop`), edge-zone dates (`edgeDropDate`)             |
 
 - Sensors: mouse after 5 px of movement (so a click still opens the task; the right button never drags), touch with a
-  press that holds 250 ms and then moves (a swipe scrolls, a still hold opens the task's context menu instead; see
+  press that holds 250 ms, which picks the task up, and then moves (a swipe scrolls; a long press never opens the
+  context menu, which touch users reach from the row's ⋮ button; see
   [style.md](./style.md#touch-gestures-on-a-task-row)), keyboard from the row's move button (Space or Enter, arrows,
   Space or Enter to drop, Escape to cancel).
   The click that follows a pointer drag (also one cancelled with Escape) is swallowed. Planner shortcuts are
@@ -761,8 +764,8 @@ The data layer only helps offline if the app itself loads offline. A service wor
 - **Registration** happens in `resources/js/lib/pwa/register.ts`, called from `app.tsx`. Under the Vite dev server it
   instead unregisters any worker left over from testing a production build on the same origin.
 - **Installing it.** The web manifest makes the planner installable as an app. On desktop, "Install mobile app" in
-  the planner header shows a QR code of the instance's `/` and the iPhone and Android steps to add it to the home
-  screen (see [style.md](./style.md#install-mobile-app-card)); there is no in-page install prompt.
+  the planner's account menu shows a QR code of the instance's `/` and the iPhone and Android steps to add it to the
+  home screen (see [style.md](./style.md#install-mobile-app-card)); there is no in-page install prompt.
 - **Offline UX.** Nothing extra is shown while offline: the planner works from IndexedDB and the account button's sync
   status dot covers connectivity. Only server pages need the network. A full-page load of one gets the static
   `/offline.html` page (with a link back to the planner); an in-app Inertia visit to one shows a "You're offline" toast
@@ -776,6 +779,48 @@ The data layer only helps offline if the app itself loads offline. A service wor
   none or it can't be navigated. Only same-origin URLs are followed; anything
   else opens `/`. The logic lives in `lib/pwa/push-handlers.ts` (tested without a worker); `sw.ts` only wires the
   events.
+
+## Translations
+
+English is the only bundled language, and every user-facing string goes through a translation lookup, so an instance
+can add languages or reword English with JSON files ([self-hosting.md](./self-hosting.md#translations)).
+
+**Client.** An in-house, typed `t()` (`resources/js/lib/i18n`), no library: the catalog is the `as const` object in
+`resources/js/lang/en.ts`, merged from one file per area (`lang/en/planner.ts`, `settings.ts`, …), so keys are
+`keyof typeof en` and a missing or misspelled key fails `tsc`. Keys are flat, `<area>.<name>`; values are a string with
+`{name}` placeholders or a plural `{ one, other, … }` keyed by `Intl.PluralRules` category (plural keys require a
+`count`). `tRich(key, { link: (text) => … })` (`lib/i18n/rich.tsx`) renders `<link>…</link>` tags in a message with
+React elements, so a sentence with a link stays one message. `t()` reads a module-level catalog that `app.tsx` sets in
+`withApp` from the first page's `i18n` props, before the first render; never call it at module top level (labels in
+module constants are getters or functions). The bundled English is the fallback for every key the instance does not
+translate.
+
+**Dates.** `lib/planner/format.ts` formats with `Intl` in the active locale (`dateLocale()`, `dateFormat(options)`,
+cached formatters); English stays `en-GB` ("12 Oct", weeks start on Monday). The shadcn `Calendar` gets `Intl`
+captions, weekday names and labels for other languages (`lib/i18n/calendar.ts`), so no date-fns locale is bundled.
+Typed dates in the task input (`lib/planner/smart-date.ts`) are English words in every language. The guest demo
+tasks are written to IndexedDB in the language active when they are seeded and stay so. The hosted service's terms and
+privacy pages (`pages/legal/*`) stay English on purpose.
+
+**Server.** `App\Support\Translations` lists the offered locales (`en`, then each `<locale>.json` in
+`config('app.translations_path')`) and reads the files (a file that is not a JSON object is logged and ignored).
+`App\Http\Middleware\SetLocale` (web group) sets the request locale: `users.language` when still offered, else the
+best match for `Accept-Language` (exact, then same language), else `APP_LOCALE` when offered, else `en`; it adds
+`Vary: Accept-Language`. `<html lang dir>` follow it (`dir="rtl"` by language, see [style.md](./style.md#rtl)).
+`App\Support\TranslationOverridesLoader` lays the same files over Laravel's JSON translations, so `__('English text')`
+and framework keys (`validation.required`) are translated with no `lang/` directory in the repository. Mail and
+notifications use `User::preferredLocale()` (`language` while offered; null keeps the request's locale); the push
+notification job sets it, or `APP_LOCALE`, around its sends. The queue worker forgets loaded translations before each
+job, so edited files reach queued mail and pushes without a restart. (`users.locale`, the sign-up language, only picks
+the SaaS welcome email.)
+
+**Delivery and offline.** The shared Inertia prop `i18n` is `{ locale, locales, messages }`: `messages` is the English
+overrides plus the active locale's, sent as a once prop keyed by locale and content hash, so visits do not resend it
+until a file changes. The full page load embeds it, and so does the cached offline shell, so the planner renders
+translated offline with no extra request. A language change (Settings › Preferences, or a login into an account with
+another language) arrives as an Inertia response whose `i18n.locale` differs from the running one; the page then
+reloads (`lib/i18n/reload-on-change.ts`). The same response changes `auth.user` (`language`), so the shell is
+re-cached ([Offline app shell](#offline-app-shell)).
 
 ## Server side
 
@@ -801,6 +846,7 @@ Laravel provides:
 | `/settings/*`                                |                                       | `auth`.                                                                              |
 | `GET /settings/data`                         | `data.edit`                           | `auth`. Inertia page `settings/data` (export / import run client-side).              |
 | `GET /settings/preferences`                  | `preferences.edit`                    | `auth`. Inertia page `settings/preferences` (values stored in the browser).          |
+| `PATCH /settings/language`                   | `language.update`                     | `auth`. `{ language: <offered locale> \| null }` (`users.language`); redirects back. |
 | `GET /settings/integrations`                 | `integrations.edit`                   | `auth`.² Inertia page `settings/integrations`.                                       |
 | `GET /settings/integrations/google/connect`  | `integrations.google.connect`         | `auth`.¹ ² Redirects to Google's consent screen (`throttle:10,1`).                   |
 | `GET /settings/integrations/google/callback` | `integrations.google.callback`        | `auth`.¹ ² Google's OAuth redirect URI: stores the connection, creates the calendar. |
@@ -809,6 +855,12 @@ Laravel provides:
 | `PATCH /settings/notifications`              | `notifications.update`                | `auth`.¹ ³ `{ morning_time: 'HH:mm' }`; redirects back.                              |
 | `POST /notifications/subscriptions`          | `notifications.subscriptions.store`   | `auth`.¹ ³ This browser's `PushSubscription.toJSON()`; `204`.                        |
 | `DELETE /notifications/subscriptions`        | `notifications.subscriptions.destroy` | `auth`.³ `{ endpoint }`; `204`.                                                      |
+| `GET /settings/agents`                       | `agents.edit`                         | `auth`.⁴ Inertia page `settings/agents` (`mcpUrl`, `api`, tokens, apps, activity).   |
+| `POST /settings/agents/tokens`               | `agents.tokens.store`                 | `auth`.⁴ `{ name }`; flashes `newToken: { name, token }` once (`throttle:10,1`).     |
+| `DELETE /settings/agents/tokens/{token}`     | `agents.tokens.destroy`               | `auth`.⁴ Revokes one of the user's personal tokens (idempotent; never another's).    |
+| `DELETE /settings/agents/apps/{client}`      | `agents.apps.destroy`                 | `auth`.⁴ Disconnects an OAuth app: deletes the user's tokens and codes for it.       |
+| `POST /mcp` and the `/oauth`, `.well-known`  |                                       | See [MCP server](#mcp-server).                                                       |
+| `/api/v1/*`                                  | `api.*`                               | Bearer token (`auth:api`). See [App API](#app-api).                                  |
 
 ¹ Plus `EnsureHasAccess`: in SaaS mode a signed-in account without a paid plan is redirected to the paywall (pages) or
 gets `402` (sync). Billing and legal routes are listed in [saas.md](./saas.md).
@@ -819,7 +871,59 @@ connecting needs a plan in SaaS mode, so an account whose plan lapsed can still 
 ³ Plus `EnsureWebPushConfigured`: `404` unless `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` are set.
 Unsubscribing needs no plan in SaaS mode, so a browser can always be removed.
 
+⁴ Settings › Agents & apps (the path stays `/settings/agents`). Always there, whatever `MCP_ENABLED` says: with the MCP
+server off, `mcpUrl` is `null` and the page hides the MCP URL, the agent snippets and the empty activity log. No plan
+is needed in SaaS mode: tokens and apps can always be managed, and the MCP server and the API sync answer with the
+paywall.
+
 After login, registration and email verification Fortify redirects to `/` (`config/fortify.php` → `home`).
+
+**Sign-up can be closed.** `REGISTRATION_ENABLED=false` (`config/auth.php` → `registration.enabled`, default `true`)
+closes it: `App\Http\Middleware\EnsureRegistrationOpen`, in Fortify's route middleware, answers `404` on `register` and
+`register.store`. The routes stay registered so the Wayfinder helpers keep building. `App\Auth\Registration::open()`
+is the rule (on, or no users yet, so a fresh instance can create its first account) and is shared with every page as
+`canRegister`, which hides the login page's sign-up link and points the planner's "Sync your week" at the login page.
+
+**Single sign-on (OIDC).** An external OpenID Connect IdP can log users in (`config/oidc.php`, `OIDC_*`; operator
+guide in [self-hosting.md](./self-hosting.md#oidc--single-sign-on)). `App\Auth\Oidc\Oidc::enabled()` needs the issuer,
+the client id and the kill switch `OIDC_ENABLED` (default on, off when `SAAS_ENABLED=true`, an explicit value wins);
+otherwise `App\Http\Middleware\EnsureOidcEnabled` answers `404` on `/auth/oidc/redirect` and `/auth/oidc/callback`
+(both `throttle:oidc`, 20 a minute per IP), and the shared `oidc` prop (`enabled`, `only`, `label`) hides the button.
+
+- **Protocol.** `App\Auth\Oidc\OidcProvider` is a first-party Socialite driver (`oidc`, registered in
+  `OidcServiceProvider`): the authorization code flow with PKCE (S256), Socialite's `state` and a `nonce`, endpoints
+  from the discovery document (`OidcDiscovery`, cached an hour; it must name the configured issuer). The ID token is
+  verified against the IdP's JWKS (refetched once for an unknown `kid`; `none` and HMAC algorithms are never accepted):
+  `iss`, `aud` (and `azp` with several audiences), `exp` and `iat` (required) and `nbf` with a minute of leeway, and the
+  session's `nonce`.
+  Its `sub` is authoritative; the userinfo response, when the IdP has the endpoint, adds the profile claims and must
+  carry the same `sub`. The token request uses `client_secret_basic` (or `client_secret_post` when it is the only one
+  the IdP lists), or no secret for a public client.
+- **Accounts.** `users.oidc_issuer` + `users.oidc_sub` (unique together) link an account; `users.password` is nullable.
+  `App\Auth\Oidc\ResolveOidcUser` finds the account by issuer and `sub`, else links the account with the same email
+  only when `email_verified` is `true` (and it is not linked to another `sub` at the same issuer; a link to another
+  issuer is replaced), else creates a password-less account while `Registration::open()`. Linking an account whose own
+  email was never verified first drops every credential it had (password, two-factor, passkeys, remember token,
+  database sessions, Passport tokens and codes): whoever signed up with the address before its owner proved it
+  ("pre-hijacking") keeps no way in. A unique-constraint race between two first logins retries the lookup once. Each refusal is an
+  `OidcLoginRefused` reason flashed as `oidcError` and explained on the login page (`auth.oidcError.*`).
+- **Two-factor.** An account with confirmed two-factor goes through Fortify's challenge after the IdP
+  (`login.id`/`login.remember` in the session, like a password login): the IdP replaces the password, not the second
+  factor.
+- **Password-less accounts.** They never pass a password check (`EloquentUserProvider` refuses a null hash). Where
+  Laravel asks to confirm the password (`password.confirm`: Settings › Security, two-factor and passkey setup), the
+  confirm page offers "Confirm with single sign-on": `/auth/oidc/redirect?confirm=1` asks the IdP for `prompt=login`
+  and `max_age=600`, and the callback marks the password confirmed (`auth.password_confirmed_at`) only for the same
+  issuer and `sub`, and only with an ID token `auth_time` from the last ten minutes (an IdP must send it when `max_age`
+  is asked; without it the IdP may have reused its session). It returns to the page RequirePassword stored, or to the
+  page with the button (the Referer), only when that is a URL of this app. Deleting the account and setting a
+  password (no current password for them) need that recent confirmation instead of a password field
+  (`App\Auth\PasswordConfirmation`).
+- **`OIDC_ONLY`.** `App\Http\Middleware\EnsurePasswordLoginAllowed` (Fortify's route middleware, and on
+  `user-password.update`) answers `404` on password login, sign-up, password reset, passkey login and setting a
+  password; `canRegister` is false and the login page shows only the IdP button.
+- The callback never switches a signed-in browser to another account (only a re-authentication comes back signed in).
+- Logout is local; the IdP session is left alone (no RP-initiated logout).
 
 **Email verification never blocks the app.** Self-hosted instances often have no mail server, so no route uses the
 `verified` middleware. The verify-email flow (notice page, resend link, signed verification URL) still works for
@@ -833,7 +937,7 @@ browser request without the token when it carries `Sec-Fetch-Site: same-origin`;
 browsers work.) Use the Wayfinder helpers
 (`@/actions/App/Http/Controllers/SyncController` or `@/routes/sync`) to build the URLs.
 
-The `TrimStrings` and `ConvertEmptyStringsToNull` middleware are skipped for `sync/*`, so strings (empty `notes`,
+The `TrimStrings` and `ConvertEmptyStringsToNull` middleware are skipped for `sync/*` and `api/*/sync/*`, so strings (empty `notes`,
 leading spaces in `text`) round-trip exactly.
 
 ### Tables
@@ -867,6 +971,7 @@ leading spaces in `text`) round-trip exactly.
 | `notification_morning_time` | string(5)            | `HH:mm`, default `08:00`: when the morning notifications go out, in `timezone`                                     |
 | `referral_source`           | string(32), nullable | `App\Enums\ReferralSource`, asked at sign-up in SaaS mode only (see [saas.md](./saas.md#sign-up-answers))          |
 | `locale`                    | string(5), nullable  | `en` or `es`, from `Accept-Language` at sign-up; the language of emails (see [saas.md](./saas.md#sign-up-answers)) |
+| `language`                  | string(35), nullable | Interface language picked in Settings › Preferences; null follows the browser (see [Translations](#translations))  |
 | `welcomed_at`               | timestamp, nullable  | When the welcome email was claimed (SaaS mode, first access; see [saas.md](./saas.md#welcome-email))               |
 
 `sync_versions`: a single row (`id = 1`) holding the last version handed out, seeded by its migration.
@@ -940,6 +1045,53 @@ It is a port of the client's expansion (`lib/recurrence/expand.ts` and `queryRan
 three queries: the dated rows by `(user_id, date)`, the series rows, and their exceptions by `(user_id, series_id)`.
 `rowsForUser($user, $from, $to)` is the same without generating occurrences (live plain tasks and winning exception
 rows only), for ranges too long to expand series over.
+
+### Task changes on the server
+
+`App\Tasks\TaskRepository::for($user)` changes a user's tasks on the server with exactly the planner's semantics, for
+agents that act on the user's behalf (the MCP connector). It is a port of the client repository
+([Repository API](#repository-api-libdbtasksts), [Recurring tasks (client)](#recurring-tasks-client)) with the same
+test cases (`tests/Feature/Tasks/TaskRepositoryTest.php`, `TaskRecurrenceMutationsTest.php`, `TaskImportTest.php`),
+so a change to one side goes into both. Browsers pick its writes up on their next pull; nothing waits on it.
+
+| Method                                                    | Client counterpart                                                    |
+| --------------------------------------------------------- | --------------------------------------------------------------------- |
+| `findTask($id)`, `listTasksIn($date \| null)`             | `queryTask`, `listTasksIn`                                            |
+| `createTask($input)`, `createTasks($inputs)`              | `createTask` (a batch is placed as if created one after the other)    |
+| `updateTask($id, $patch, $scope)`, `toggleDone($id)`      | `updateTask`, `toggleDone`                                            |
+| `updateSubtasks($id, $update, $scope)`                    | `updateSubtasks`                                                      |
+| `deleteTask($id, $scope)`, `restoreTask($id)`             | `deleteTask`, `restoreTask`                                           |
+| `moveTask($id, $date, $beforeId, $afterId)`               | `moveTask`                                                            |
+| `duplicateTask($id)`, `setRecurrence($id, $rule, $scope)` | `duplicateTask`, `setRecurrence`                                      |
+| `carryOverTasks($today)`                                  | `carryOverTasks`                                                      |
+| `import($file)`                                           | `parseImport` + `planImport` + `applyImport` (`App\Tasks\TaskImport`) |
+| `materializeOccurrence($id)`                              | (server only) gives an occurrence its unchanged exception row         |
+
+- **Shapes.** Rows are arrays with the sync wire shape (`Task::toRecord()`, also what `TaskResource` returns); items
+  are `App\Tasks\PlannerItem` (`kind`: `task`, `series`, `occurrence`, `exception`, plus the record). Reads go
+  through `App\Tasks\TaskQueries`, which reuses `TaskOccurrences::expandSeries` and `winningException`. Every `$id`
+  also accepts an occurrence id (one with an impossible date, such as `…:2026-02-31`, is not found). `Scope::This` / `Scope::Future` defaults are the client's.
+- **Errors.** A missing, deleted or someone else's task throws `TaskNotFound`; a change the planner refuses (an
+  invalid rule, a Someday task that should repeat, moving a series row, a row that would not pass the push rules (the
+  message lists the field errors), a neighbour whose stored position is not a valid key, a date that is not
+  `YYYY-MM-DD`) throws `InvalidTaskChange`; a file that cannot be imported throws `ImportError`. All
+  extend `TaskDomainException`, and the message is meant for the user. Nothing is written when one is thrown.
+- **Writes.** Each method runs in one transaction whose first statement takes the `sync_versions` write lock
+  (`App\Actions\Sync\SyncVersions::lock()`), so it reads and writes as if alone, like a push. Every written row is
+  validated with the push rules (`App\Tasks\TaskRecordRules`, shared with `PushRequest`), gets a fresh version
+  (`SyncVersions::reserve()`, as in [Versioning](#versioning)) and `updated_at` = max(now, stored `updated_at` + 1 ms,
+  the previous timestamp it handed out + 1 ms) in UTC ms, so it wins last-write-wins against what it replaces; new rows
+  get `created_at` = `updated_at`. Like a push that applied rows, a write queues the Google Calendar sync.
+- **Dates.** "Today" and target dates come from the caller as `YYYY-MM-DD` in the user's time zone; the clock is only
+  read for timestamps.
+- **Positions.** `App\Tasks\FractionalIndex` is a port of npm `fractional-indexing` v4 (default alphabets) and
+  `App\Tasks\TaskOrder` of `lib/db/position.ts`. `tests/fixtures/fractional-indexing.json` holds keys generated by
+  the npm library (`resources/js/test/fractional-indexing-fixture.ts`); a Pest test checks the port against it and a
+  JS test fails if the file drifts from the library (regenerate with `UPDATE_FIXTURES=1 bun run test:js && bun run check:fix`).
+- **Import.** Same rules as the browser's ([Export format](#export-format)): `backupRows` selection, new UUID v7 ids
+  with series first, positions appended after each list's last row, one timestamp. Rows are checked with the push
+  rules, except that ids only need to be unique strings; the error message names the task (`Task 3: …`) but uses
+  Laravel's validation wording. A file is written in one transaction.
 
 ### Google Calendar
 
@@ -1057,6 +1209,174 @@ shared Inertia prop `notifications` is `{ enabled: false, vapidPublicKey: null }
       is `/`. The `tag` is `morning:<date>` either way.
     - A notification with the same tag replaces the shown one.
 
+### MCP server
+
+A remote [MCP](https://modelcontextprotocol.io) server so AI agents (claude.ai, Claude Desktop, Claude Code, any
+Streamable HTTP client) can use the signed-in user's planner. It is `laravel/mcp`, registered in `routes/ai.php`
+(loaded by the package, outside the `web` group: no session, no CSRF). It writes to the server database like a sync
+push; browsers pick changes up on their next pull. The offline-first rule is untouched: the UI never waits on it.
+
+| Route                                                  | What                                                                                           |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `POST /mcp` (`mcp`)                                    | JSON-RPC over Streamable HTTP. `GET`/`DELETE` answer `405` (no server-sent stream)             |
+| `GET /.well-known/oauth-protected-resource[/{path}]`   | Protected resource metadata (RFC 9728) for `/mcp` or `/api/v1`: `resource`, servers, scopes    |
+| `GET /.well-known/oauth-authorization-server[/{path}]` | Authorization server metadata (RFC 8414): endpoints, PKCE `S256`, grant types                  |
+| `POST /oauth/register`                                 | Dynamic client registration (RFC 7591): a public client (no secret), `201`; 30 a minute per IP |
+| `GET /oauth/authorize`                                 | Passport: the consent card (`oauth/authorize`); guests log in first and come back              |
+| `POST`/`DELETE /oauth/authorize`                       | Passport: Approve / Deny, a redirect back to the client with a code or `access_denied`         |
+| `POST /oauth/token`                                    | Passport: authorization code (PKCE) and refresh token grants                                   |
+
+- **Auth.** `/mcp` uses `auth:api`, a Passport guard (`config/auth.php`). It takes both kinds of Bearer token: OAuth
+  access tokens (an MCP client that registered itself and that the user approved) and personal access tokens (created
+  in Settings › Agents & apps for headless agents). The same tokens work on the [App API](#app-api). Both are Passport tokens signed with the instance's RSA key pair
+  (`storage/oauth-*.key` or `PASSPORT_PRIVATE_KEY`/`PASSPORT_PUBLIC_KEY`), so one guard, one table
+  (`oauth_access_tokens`) and one revoke path cover them; Sanctum would have added a second guard and token table for
+  the same behaviour. Every token has full access (the single scope `mcp:use`; there is no scopes UI). OAuth access
+  tokens last a day and refresh tokens a year; personal tokens ten years. A session cookie never authenticates `/mcp`.
+  Without a valid token the answer is `401` with
+  `WWW-Authenticate: Bearer realm="mcp", resource_metadata="<APP_URL>/.well-known/oauth-protected-resource/mcp"`, which
+  is how a client discovers the OAuth flow.
+- **Consent.** Passport's authorization view is `App\Agents\AuthorizationPage`: the Inertia page `oauth/authorize`, a
+  floating card over the planner (see [style.md](./style.md#oauth-consent-card)). Approve and Deny are plain form posts
+  (with the CSRF token) because Passport answers them with a redirect to the client. An app the user already approved
+  skips the card; when that happens on an Inertia visit (right after logging in), `LeaveForOAuthClient` turns the
+  redirect into an Inertia location visit. The page is sent with `X-Frame-Options: DENY`.
+- **Who may register.** Registration is open and any redirect domain is accepted (`config/mcp.php`): connectors live
+  on claude.ai, other hosts and localhost callbacks. The consent card names the client and shows the redirect host
+  prominently, so a look-alike client name gives itself away; the user approves every client.
+- **Tokens and apps** (`App\Agents\AgentAccess`): personal tokens are the user's tokens of the personal access
+  client (created on first use); OAuth apps are the user's other tokens grouped by client, listed while an access token
+  is valid or its refresh token can get a new one. Revoking a personal token deletes it; disconnecting an app deletes
+  the user's access tokens (and, by foreign key, their refresh tokens) and authorization codes for that client.
+  Deleting an account deletes its tokens the same way, so a reused user id can never inherit one.
+  `oauth_access_tokens.last_used_at` is set by `TouchAccessToken` on `/mcp` and `/api/v1`, at most once a minute per
+  token.
+  `passport:purge` runs daily (revoked tokens, and expired ones whose refresh token is dead too).
+- **Gating.** `MCP_ENABLED` (`config/mcp.php`, default `true`). When `false`, `routes/ai.php` registers no `/mcp`
+  (`404`) and the shared Inertia prop `mcp.enabled` is `false`. OAuth (Passport's `/oauth` routes, the metadata and
+  registration) and the App API stay, and so does Settings › Agents & apps, without its MCP part.
+- **Paywall.** In SaaS mode a tool call needs the same entitlement as sync (`User::hasAccess()`, the check behind
+  `EnsureHasAccess`). `App\Mcp\Methods\CallToolWithAccess` replaces `tools/call`: without a plan it answers a tool
+  error (`isError: true`) whose text says a paid plan is needed and gives the `/plans` URL, which MCP clients show to
+  the model and the user. Connecting, `tools/list` and tools marked `AvailableWithoutPlan` (`get_profile`, which reports
+  `sync_access: false` and `plans_url`) still work, so an agent can explain what is missing. Self-hosted, never.
+- **Rate limit.** `throttle:mcp`: `MCP_RATE_LIMIT` requests a minute (default 120) per user.
+- **Server** (`App\Mcp\Servers\PlainWeekServer`): name `Plain Week`, version from `package.json`, tools only. Its
+  instructions tell agents what Plain Week is, that ids are UUIDs, that a `null` date is Someday, that a recurring
+  occurrence is `<series id>:<YYYY-MM-DD>`, that every date is a calendar date in the user's time zone, which tools
+  read, how to place a task (`before_id` / `after_id`), that `delete_task` returns a `restore_id`, and that the user
+  sees their changes in Settings › Agents & apps › Activity.
+- **Tools** (`app/Mcp/Tools`, [catalogue below](#mcp-tools)).
+- **Activity log** ([below](#mcp-activity-log)): every successful write, for Settings › Agents & apps.
+
+#### MCP tools
+
+Every planner tool extends `App\Mcp\Tools\PlannerTool`, on top of the task domain (`App\Tasks\TaskRepository`,
+`TaskQueries`, `TaskImport`; see [Task changes on the server](#task-changes-on-the-server)), so an agent changes tasks exactly like the
+planner would. The base class:
+
+- refuses arguments the schema does not declare (`Unknown argument: date. This tool takes: …`), since the domain
+  silently ignores unknown patch keys; the input schemas say `additionalProperties: false` too, nested objects
+  included;
+- turns the domain's errors (`TaskNotFound`, `InvalidTaskChange`, `ImportError`) and validation errors into tool errors
+  (`isError: true`) with their message, never a `500`;
+- comes as `ReadTool` (marked `IsReadOnly`, no transaction) or `WriteTool`, which runs in one transaction that takes the
+  sync write lock first (the tool reads before the repository writes, and a SQLite read transaction that later writes
+  fails if a push committed in between) together with its activity entry, so a refused call changes nothing and logs
+  nothing;
+- returns structured content (mirrored as JSON text). Tasks come in a compact shape (`App\Mcp\Support\TaskOutput`):
+  `id`, `kind` (`task`, `series`, `occurrence`, `exception`), `text`, `date` (null: Someday), `done`, `color`, `time`,
+  `notes`, `subtasks`, plus `series_id` and `occurrence_date` for occurrences and exceptions and `recurrence` for a
+  series. No positions, timestamps or versions.
+
+"Today" and every default date are the user's (`User::timezoneOrDefault()`, `App\Mcp\Support\Planner`). Every id
+argument also takes an occurrence id (`<series id>:<YYYY-MM-DD>`); `scope` (`this` / `future`) only matters for
+occurrences. `before_id` / `after_id` must name a task of the target list (the domain would ignore a stray one); the
+tool answers an error instead. `tools/list` returns every tool in one page.
+
+| Tool             | Annotations             | What it does                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_profile`    | read-only, idempotent   | `name`, `email`, `timezone`, `today` and `weekday` in it, `app_version`, `sync_access`, `plans_url`. The only tool without a plan (`AvailableWithoutPlan`)                                                                                                                                                                                                                                               |
+| `list_tasks`     | read-only, idempotent   | `from`–`to` (inclusive, at most 92 days): every day with its tasks in display order (timed first by time, then position), occurrences and done tasks included, plus `today`                                                                                                                                                                                                                              |
+| `list_someday`   | read-only, idempotent   | The Someday list in its order. Tasks done before the current week's Monday (user's midnight) are archived and left out unless `include_archived`, like the client's `isArchivedSomeday`; `archived_hidden` counts them                                                                                                                                                                                   |
+| `get_task`       | read-only, idempotent   | One item by id or occurrence id, and for an occurrence or exception its `series` (with the rule)                                                                                                                                                                                                                                                                                                         |
+| `search_tasks`   | read-only, idempotent   | `query` in text, notes or subtask texts (case-insensitive) over the live rows: a series is found once as the series, changed occurrences as exceptions, losing duplicates never. Filters `from`/`to` (a series counts while it runs in the range), `done`, `color`, `recurring`. Ordered by date, Someday last; `limit` (20, max 100) and an offset `cursor`                                             |
+| `export_tasks`   | read-only, idempotent   | The [export file](#export-format), rows selected by `TaskImport::backupRows` like the client's export                                                                                                                                                                                                                                                                                                    |
+| `create_tasks`   | not destructive         | Up to 100 tasks, all or none: `text`, `date` (omitted: today; null: Someday), `before_id`/`after_id`, `color`, `time`, `notes`, `subtasks`, `recurrence`. Created one by one in the transaction; tasks of the batch with the same anchor (date, `after_id`, `before_id`) are chained after each other so they keep their order (the domain alone would reverse them). Errors name the task (`Task 2: …`) |
+| `update_task`    | not destructive         | `text`, `done`, `color`, `time`, `notes`, with `scope` (default `this`). `done` with scope `future` on an occurrence is refused (done is per occurrence)                                                                                                                                                                                                                                                 |
+| `set_subtasks`   | not destructive         | A list of `add` / `edit` / `toggle` / `remove` / `reorder` operations by subtask id, applied in order inside `updateSubtasks` (one transaction); an unknown subtask id fails the whole call                                                                                                                                                                                                              |
+| `move_task`      | not destructive         | To a day or Someday (`date: null`, required), between `before_id` / `after_id`. An occurrence moves alone (it becomes an exception); a series cannot move (the error points at its occurrence ids)                                                                                                                                                                                                       |
+| `duplicate_task` | not destructive         | A plain copy right after the original, new ids for it and its subtasks                                                                                                                                                                                                                                                                                                                                   |
+| `set_recurrence` | not destructive         | `recurrence` (a rule or null, required) with `scope` (default `future`), as `setRecurrence`. Returns what stands for the task and its `series`                                                                                                                                                                                                                                                           |
+| `delete_task`    | destructive             | `scope` (default `this`). Returns the deleted item and a `restore_id` (the occurrence id for a deleted occurrence, the row id otherwise; null when `future` only ended the series, which then comes back as `series`)                                                                                                                                                                                    |
+| `restore_task`   | not destructive         | Restores a tombstone by id or occurrence id; refuses a task that is not deleted, and one date of a deleted series before the series. Restoring a series does not restore the exceptions deleted with it (the description says so)                                                                                                                                                                        |
+| `carry_over`     | not destructive, idemp. | `carryOverTasks` for the user's today; returns `today`, `moved` and the moved tasks                                                                                                                                                                                                                                                                                                                      |
+| `import_tasks`   | not destructive         | `file`: the export file as an object or a JSON string; adds its tasks like the client's import. At most 2000 tasks per call, because the import holds the sync write lock for its whole transaction. Returns `added`, `recurring` and the new ids                                                                                                                                                        |
+
+Every tool also says `openWorldHint: false`.
+
+#### MCP activity log
+
+`mcp_activities` (`App\Models\McpActivity`): one row per successful write tool call, never for reads, errors or a
+call that changed nothing (`carry_over` with nothing to move, an empty import).
+Columns: `user_id`, `tool`, `client_type` (`token` or `oauth`), `client_id` (the personal token's id or the OAuth
+client's id) and `client_name` (its name at the time of the call, so entries stay readable after a revoke; from
+`AgentAccess::clientOf()`), `task_ids` (JSON: the ids the call touched, occurrence ids and series ids included, at
+most 200),
+`summary` (readable English built by the tool, for example "Created 3 tasks on Mon 23 Nov", "Completed “Buy milk”",
+"Moved “Call Ana” to Someday", "Set “Gym” to repeat every Mon, Wed") and `created_at`. It is read-only: there is no
+revert. Rows older than 90 days go with the daily `model:prune --model=App\Models\McpActivity`
+(`routes/console.php`); Settings › Agents & apps also hides them before that. The page lists the user's rows newest first,
+20 per page (`?activity_page=`, a simple paginator), see [style.md](./style.md#settings--agents--apps).
+
+Test a running instance with a personal token, for example
+`bunx @modelcontextprotocol/inspector --cli <APP_URL>/mcp --transport http --header "Authorization: Bearer <token>" --method tools/list`
+(`--method tools/call --tool-name create_tasks --tool-arg 'tasks=[{"text":"Try it"}]'` to call one).
+
+### App API
+
+REST routes for native apps (the Tauri apps, [#98](https://github.com/victor-falcon/plain-week/issues/98)) and other
+token clients, in `routes/api.php` (the `api` group under `/api`: no session, cookies or CSRF). They take the same
+Passport Bearer tokens as the [MCP server](#mcp-server) through `auth:api` and stay on when `MCP_ENABLED=false`.
+
+| Route                    | Name            | What                                                                                                           |
+| ------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/me`         | `api.me`        | `{ user, account: { hasAccess, plan } }`, also without a plan, so an app can show a paywall                    |
+| `POST /api/v1/sync/push` | `api.sync.push` | [`POST /sync/push`](#post-syncpush), the same `SyncController@push`                                            |
+| `GET /api/v1/sync/pull`  | `api.sync.pull` | [`GET /sync/pull`](#get-syncpullcursorint-default-0limitint-11000-default-500), the same `SyncController@pull` |
+
+- **Getting a token.** Never with email and password. Either the user creates a personal token in Settings › Agents &
+  apps and pastes it into the app, or the app runs OAuth 2.1 as a public client: it registers itself
+  (`POST /oauth/register`, dynamic client registration) with a loopback redirect (`http://127.0.0.1:<port>/…`) or a
+  `plainweek://…` one (`config/mcp.php` `custom_schemes`), sends the user to `/oauth/authorize` with PKCE (`S256`),
+  and exchanges the code at `/oauth/token`; it refreshes the day-long access token with the refresh token. The
+  endpoints are in `/.well-known/oauth-authorization-server`. The consent card shows a custom-scheme redirect as
+  `plainweek://<host>`. The only scope is `mcp:use` (full access); the API does not check scopes.
+- **Sync.** The exact web contract: validation, last-write-wins, cursor, `X-Sync-Format`, `X-Timezone`
+  (`RememberTimezone`), the 500-record batches and the raw strings (no trimming, no empty-to-null). In SaaS mode an
+  account without a plan gets `402` (`EnsureHasAccess`, which never redirects a request without a session).
+- **Errors** are always JSON. Without a valid token the answer is `401` with
+  `WWW-Authenticate: Bearer realm="plain-week", resource_metadata="<APP_URL>/.well-known/oauth-protected-resource/api/v1"`
+  (`AddResourceMetadataHeader`); that metadata names `<APP_URL>/api/v1` as the resource and the instance as its
+  authorization server. When a token was sent but refused (invalid, expired, revoked, or its app disconnected) the
+  header adds `error="invalid_token"` (RFC 6750), so the app refreshes or signs in again; that happens at once.
+- **CORS** (`config/cors.php`): `api/*`, `oauth/token`, `oauth/register` and the `.well-known/oauth-*` metadata answer
+  any origin (no credentials; `WWW-Authenticate` exposed), so an app calling from a webview works. Pages, the web sync
+  and the consent card stay same-origin.
+- **Rate limits** (per user, `AppServiceProvider`): `throttle:sync` 120 a minute for the sync routes, shared with the
+  web sync; `throttle:api` 120 a minute for the rest.
+- **Last used.** `TouchAccessToken` runs on these routes too, so Settings › Agents & apps shows when an app last
+  synced; apps appear there (OAuth apps by the name they registered, personal tokens by theirs) and are revoked there.
+
+Try it with a personal token:
+
+```sh
+curl -H "Authorization: Bearer $TOKEN" "$APP_URL/api/v1/me"
+curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -H 'X-Sync-Format: 2' \
+  -d '{"tasks":[]}' "$APP_URL/api/v1/sync/push"
+curl -H "Authorization: Bearer $TOKEN" -H 'X-Sync-Format: 2' "$APP_URL/api/v1/sync/pull?cursor=0"
+```
+
 ### Versioning
 
 A push runs in one database transaction (`App\Actions\Sync\PushTasks`). Its first statement increments the
@@ -1065,7 +1385,9 @@ first, the transaction holds the write lock from the start (the row lock on MySQ
 on SQLite), so concurrent pushes wait for each other and commit their versions in order. A reader therefore never sees
 a version appear behind a cursor it has already passed.
 
-Each applied record takes the next version from the block. Records that are skipped (stale or rejected) leave gaps;
+Server-side task changes ([Task changes on the server](#task-changes-on-the-server)) take the same lock first
+(`SyncVersions::lock()`) and reserve their block once they know how many rows they write. Each applied record takes the
+next version from the block. Records that are skipped (stale or rejected) leave gaps;
 versions only need to increase, not be contiguous. Versions are global across users, so a user's versions are not
 consecutive either. The SQLite connection sets `busy_timeout` to 5 s (`DB_BUSY_TIMEOUT`) so concurrent writers wait
 instead of failing.
@@ -1080,7 +1402,7 @@ instead of failing.
   pull position: other devices may have written versions below it that this client has not pulled yet. Only advance
   the stored pull cursor from `/sync/pull` responses.
 
-Validation (`App\Http\Requests\Sync\PushRequest`) rejects the whole batch with `422` if any record is invalid:
+Validation (`App\Http\Requests\Sync\PushRequest`, with the record rules in `App\Tasks\TaskRecordRules`) rejects the whole batch with `422` if any record is invalid:
 `tasks` must be a list of at most 500 records; every field of the contract must be present; `id` a UUID; `date`
 `YYYY-MM-DD` or `null`; `someday_column` `0`–`2` and required when `date` is `null`; `color` one of the nine values;
 `time` `HH:mm` or `null`; `done` and subtask `done` real booleans; `subtasks` a list of `{ id, text, done }` (subtask

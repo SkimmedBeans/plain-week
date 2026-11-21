@@ -6,12 +6,14 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { InstallAppMenuItem } from '@/components/install-app/install-app-menu-item';
 import { SendFeedbackMenuItem } from '@/components/send-feedback';
 import { UserInfo } from '@/components/user-info';
 import { useLogout } from '@/hooks/use-logout';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { edit } from '@/routes/profile';
 import type { User } from '@/types';
+import { t } from '@/lib/i18n';
 
 type Props = {
     user: User;
@@ -39,10 +41,11 @@ export function UserMenuContent({ user }: Props) {
                         onClick={cleanup}
                     >
                         <Settings className="me-2" />
-                        Settings
+                        {t('app.settings')}
                     </Link>
                 </DropdownMenuItem>
                 <SendFeedbackMenuItem onClick={cleanup} />
+                <InstallAppMenuItem />
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -51,7 +54,7 @@ export function UserMenuContent({ user }: Props) {
                 data-test="logout-button"
             >
                 <LogOut className="me-2" />
-                Log out
+                {t('auth.logOut')}
             </DropdownMenuItem>
         </>
     );

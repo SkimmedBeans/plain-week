@@ -6,6 +6,7 @@ import type { Task } from '@/lib/db/types';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 import { formatDay, formatWeekday } from '@/lib/planner/format';
 import { addDays, addWeeks, weekdayIndex } from '@/lib/planner/week';
+import { t } from '@/lib/i18n';
 
 /**
  * Drag and drop of tasks, as pure functions: where a dragged task lands, given
@@ -99,9 +100,13 @@ export function placementLabel(
     name?: string,
 ): string {
     if (placement.date !== null) {
-        return `${formatWeekday(placement.date)} ${formatDay(placement.date)}`;
+        return t('planner.placementDay', {
+            weekday: formatWeekday(placement.date),
+            day: formatDay(placement.date),
+        });
     }
-    return name ?? 'Someday';
+
+    return name ?? t('planner.someday');
 }
 
 /**

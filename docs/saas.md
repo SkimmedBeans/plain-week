@@ -4,6 +4,13 @@ Plain Week is also offered as a paid hosted service at plainweek.eu. Everything 
 `SAAS_ENABLED=true`. The default is `false` (repository, `.env.example`, Docker image): a self-hosted instance has free
 accounts that sync, no billing UI, and every route below answers `404`.
 
+`REGISTRATION_ENABLED=false` ([self-hosting.md](./self-hosting.md#closing-sign-up)) also works in SaaS mode: existing
+subscribers keep logging in, and the landing card shows the plans without their sign-up buttons.
+
+Single sign-on with an external OIDC IdP ([self-hosting.md](./self-hosting.md#oidc--single-sign-on)) is off in SaaS
+mode: `OIDC_ENABLED` defaults to `false` when `SAAS_ENABLED=true`, so plainweek.eu needs no extra variable, and
+`/auth/oidc/*` answer `404` there. Only an explicit `OIDC_ENABLED=true` would turn it on.
+
 ## Product rules
 
 - No free accounts and no trials: an account exists to sync, and syncing needs a paid plan. Guests still use the
@@ -35,12 +42,14 @@ still in its paid period). `User::plan()` returns `Plan::Lifetime`, `Plan::Weekl
 
 It is used by:
 
-| Where                                        | Effect without access                                                         |
-| -------------------------------------------- | ----------------------------------------------------------------------------- |
-| `EnsureHasAccess` on `/` and `sync/*`        | Pages redirect to `/plans`; JSON requests (sync) get `402 Payment Required`   |
-| Inertia shared props                         | `saas.enabled`, `account: { hasAccess, plan } \| null` (null for guests)      |
-| `SyncProvider` and the sync engine           | The engine does not start; a `402` stops it, keeps local data, shows `/plans` |
-| `EnsureHasAccess` on Google Calendar connect | Redirect to `/plans` (the page and disconnecting stay reachable)              |
+| Where                                        | Effect without access                                                                         |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `EnsureHasAccess` on `/` and `sync/*`        | Pages redirect to `/plans`; JSON requests (sync) get `402 Payment Required`                   |
+| Inertia shared props                         | `saas.enabled`, `account: { hasAccess, plan } \| null` (null for guests)                      |
+| `SyncProvider` and the sync engine           | The engine does not start; a `402` stops it, keeps local data, shows `/plans`                 |
+| `EnsureHasAccess` on Google Calendar connect | Redirect to `/plans` (the page and disconnecting stay reachable)                              |
+| MCP server `tools/call` (`/mcp`)             | A tool error saying a plan is needed, with the `/plans` URL (`get_profile` works)             |
+| `EnsureHasAccess` on `/api/v1/sync/*`        | `402 Payment Required` (never a redirect); `GET /api/v1/me` works and says `hasAccess: false` |
 
 Settings (profile, security, data) stay reachable without a plan, so an account can always export its tasks or be
 deleted; the paywall links to the export. A weekly subscription whose payment failed (`past_due`, `incomplete`) gives
@@ -207,7 +216,7 @@ php artisan plainweek:grant-lifetime owner@example.com --revoke # remove it
 
 The webhook endpoint must send the events in the table above.
 
-**Send feedback.** The account menu (users and guests) and the settings sidebar link to the shared `feedbackUrl` prop
+**Send feedback.** The account menu (users and guests) and the settings footer link to the shared `feedbackUrl` prop
 (`App\Support\Feedback`). In SaaS mode it is a `mailto:` to `SAAS_CONTACT_EMAIL` with the subject "Plain Week
 feedback"; with SaaS mode off, or while the address is empty or still an `example.com` placeholder, it is the project's
 GitHub Discussions. Set `SAAS_CONTACT_EMAIL` on plainweek.eu.

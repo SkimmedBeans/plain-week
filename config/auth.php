@@ -42,6 +42,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Bearer tokens for the MCP server (`/mcp`): OAuth access tokens and personal access tokens, both Passport.
+        'api' => [
+            'driver' => 'passport',
+            'provider' => 'users',
+        ],
     ],
 
     /*
@@ -113,5 +119,21 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Registration
+    |--------------------------------------------------------------------------
+    |
+    | Anyone can create an account by default. `REGISTRATION_ENABLED=false`
+    | closes sign-up on a private instance: only existing users can log in
+    | (and reset their password). While the instance has no users at all,
+    | sign-up stays open so the first account can be created.
+    |
+    */
+
+    'registration' => [
+        'enabled' => (bool) env('REGISTRATION_ENABLED', true),
+    ],
 
 ];

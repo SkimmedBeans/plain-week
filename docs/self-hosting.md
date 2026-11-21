@@ -55,6 +55,8 @@ echo "base64:$(openssl rand -base64 32)"
 | `APP_URL`               | `http://localhost`                      | The public URL, for example `https://plan.example.com`. Used in emails, generated links and link previews (og:image)                                                                                                                                                        |
 | `APP_NAME`              | `Plain Week`                            | Shown in the page title and emails                                                                                                                                                                                                                                          |
 | `APP_NOINDEX`           | `false`                                 | `true` asks search engines not to index the instance (see [Noindex](#noindex))                                                                                                                                                                                              |
+| `APP_LOCALE`            | `en`                                    | Language for browsers that ask for none the instance offers, and for push notifications of accounts on "Browser default". Must be `en` or a locale with a translation file (see [Translations](#translations))                                                              |
+| `TRANSLATIONS_PATH`     | `/app/storage/translations`             | Directory of `<locale>.json` translation files that add languages or reword English (see [Translations](#translations)). Missing or empty: English only                                                                                                                     |
 | `DB_DATABASE`           | `/app/storage/database/database.sqlite` | The SQLite file. Keep it under `/app/storage` so it lives on the volume                                                                                                                                                                                                     |
 | `TRUSTED_PROXIES`       | private ranges                          | Proxies whose `X-Forwarded-*` headers are trusted: comma-separated IPs/CIDRs, or `*` (any caller). The default trusts loopback and private networks (`127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,::1,fc00::/7`), which covers Coolify and a proxy on the same host |
 | `SESSION_SECURE_COOKIE` | on when `APP_URL` is `https://`         | Only send the session cookie over HTTPS. Set `false` if `APP_URL` says `https://` but users reach the app over plain HTTP                                                                                                                                                   |
@@ -68,19 +70,32 @@ echo "base64:$(openssl rand -base64 32)"
 | `MAIL_FROM_NAME`        | `Plain Week`                            | Sender name                                                                                                                                                                                                                                                                 |
 | `LOG_CHANNEL`           | `stderr`                                | Logs go to the container output (`docker logs`)                                                                                                                                                                                                                             |
 | `LOG_LEVEL`             | `debug`                                 | `warning` keeps the logs quiet                                                                                                                                                                                                                                              |
+| `REGISTRATION_ENABLED`  | `true`                                  | `false` closes sign-up on a private instance: only existing users can log in; see [Closing sign-up](#closing-sign-up). Stays open while the instance has no users, for the first account                                                                                    |
+| `OIDC_ISSUER`           | (empty)                                 | Single sign-on: the issuer URL of your OpenID Connect IdP (Pocket ID, Authentik, Keycloak...); see [OIDC / single sign-on](#oidc--single-sign-on). Empty hides it                                                                                                           |
+| `OIDC_CLIENT_ID`        | (empty)                                 | The client id of Plain Week at the IdP. Empty hides single sign-on                                                                                                                                                                                                          |
+| `OIDC_CLIENT_SECRET`    | (empty)                                 | The client secret that goes with it; empty for a public client (PKCE only). Keep it secret                                                                                                                                                                                  |
+| `OIDC_LABEL`            | (empty)                                 | The button text, e.g. `Log in with Authentik`. Empty shows "Log in with SSO" (translated)                                                                                                                                                                                   |
+| `OIDC_ENABLED`          | on, off with `SAAS_ENABLED=true`        | Kill switch for single sign-on. `false` turns it off (`/auth/oidc/*` answer `404`, no button) even when configured; empty means the default                                                                                                                                 |
+| `OIDC_ONLY`             | `false`                                 | `true` makes the IdP the only way in: no password login, sign-up form, password reset or passkey login. Only with an IdP configured                                                                                                                                         |
 | `SAAS_ENABLED`          | `false`                                 | Leave it `false`. `true` turns the instance into the paid hosted service (accounts need a Stripe plan to sync); see [saas.md](./saas.md) for it and its `STRIPE_*` and `SAAS_*` variables                                                                                   |
 | `GOOGLE_CLIENT_ID`      | (empty)                                 | OAuth client id for the optional Google Calendar sync; see [Google Calendar](#google-calendar). Empty hides the integration                                                                                                                                                 |
 | `GOOGLE_CLIENT_SECRET`  | (empty)                                 | OAuth client secret that goes with `GOOGLE_CLIENT_ID`                                                                                                                                                                                                                       |
 | `VAPID_PUBLIC_KEY`      | (empty)                                 | VAPID public key (base64url) for the optional push notifications; see [Notifications](#notifications). Empty turns them off                                                                                                                                                 |
 | `VAPID_PRIVATE_KEY`     | (empty)                                 | VAPID private key that goes with `VAPID_PUBLIC_KEY`. Keep it secret                                                                                                                                                                                                         |
 | `VAPID_SUBJECT`         | (empty)                                 | Contact for the push services, `mailto:you@example.com` or an `https://` URL                                                                                                                                                                                                |
+| `MCP_ENABLED`           | `true`                                  | The MCP server for AI agents (`/mcp`); see [AI agents (MCP)](#ai-agents-mcp). `false` removes `/mcp` (`404`); OAuth, the app API and Settings › Agents & apps stay                                                                                                          |
+| `MCP_RATE_LIMIT`        | `120`                                   | Requests a minute one user's agents may send to `/mcp`                                                                                                                                                                                                                      |
+| `PASSPORT_PRIVATE_KEY`  | (empty)                                 | Optional: the RSA private key (PEM) that signs agent tokens, instead of the file the container creates in the volume. Keep it secret                                                                                                                                        |
+| `PASSPORT_PUBLIC_KEY`   | (empty)                                 | The public key (PEM) that goes with `PASSPORT_PRIVATE_KEY`                                                                                                                                                                                                                  |
 
 With `SAAS_ENABLED=false` (the default) accounts are free and sync without limits, there is no billing anywhere and the
 billing, terms and privacy routes are `404`; no Stripe variable is needed. Any other Laravel setting (`config/*.php`)
 can be set the same way. Email verification never blocks the app, so an
 instance without mail works.
 
-On start, the container creates the storage layout and the SQLite file if they are missing, runs the migrations and
+On start, the container creates the storage layout and the SQLite file if they are missing, creates the key pair that
+signs agent tokens (`storage/oauth-private.key` and `storage/oauth-public.key`, unless `PASSPORT_PRIVATE_KEY` is set),
+runs the migrations and
 caches the configuration, routes and views. Then FrankenPHP serves the app on port 8080 as the unprivileged user
 `plainweek` (uid 1000). `/up` is the health check (the image's `HEALTHCHECK` uses it).
 
@@ -216,6 +231,195 @@ Set the two keys and `VAPID_SUBJECT=mailto:<your email>`, and redeploy. Browsers
 (or `localhost`). Delivery failures are logged as warnings in the container output; a browser that unsubscribed is
 forgotten the next time a notification is sent to it.
 
+## AI agents (MCP)
+
+On by default, nothing to configure. Plain Week is a remote [MCP](https://modelcontextprotocol.io) server at
+`APP_URL/mcp`, so AI agents can read and plan a user's week. Each user connects their agents in **Settings › Agents & apps**:
+
+- **claude.ai and Claude Desktop**: add a custom connector with the URL. The connector registers itself and the user
+  approves it on a Plain Week consent page (OAuth 2.1 with dynamic client registration); the app is then listed under
+  Connected apps, where it can be disconnected.
+- **Claude Code and other headless agents**: create a personal token there and send it as
+  `Authorization: Bearer <token>`, for example
+  `claude mcp add --transport http plain-week https://plan.example.com/mcp --header "Authorization: Bearer <token>"`.
+
+Agents have the same access as the user. Their changes reach the user's devices on the next sync. Each user may send
+`MCP_RATE_LIMIT` requests a minute (120 by default). `APP_URL` must be the public URL: the OAuth metadata and the URL
+shown in Settings › Agents & apps come from it, and clients like claude.ai need it on `https://`.
+
+Tokens are signed with an RSA key pair. The container creates it in the storage volume on first start
+(`storage/oauth-private.key`, `storage/oauth-public.key`; it is never part of the image) and keeps it across updates.
+To manage it yourself instead, set `PASSPORT_PRIVATE_KEY` and `PASSPORT_PUBLIC_KEY` to the PEM keys (with their line
+breaks). A new key pair invalidates every token: users then reconnect their apps and create new tokens.
+
+`MCP_ENABLED=false` removes it: `/mcp` answers `404` and Settings › Agents & apps hides the MCP part. OAuth (`/oauth`,
+`.well-known/oauth-*`) and the [app API](#native-apps) stay, and so do the tokens.
+
+## Native apps
+
+The Plain Week apps (and any other token client) sync through the app API at `APP_URL/api/v1` (`/me`, `/sync/push`,
+`/sync/pull`), always on, nothing to configure. They use the same tokens as agents: the user signs in from the app
+(OAuth 2.1 with PKCE; the app registers itself and redirects to a loopback address or a `plainweek://` URL) or pastes
+a personal token created in Settings › Agents & apps, where every connected app can be disconnected. There is no
+email-and-password login for apps. Details in [architecture.md](./architecture.md#app-api).
+
+## Closing sign-up
+
+By default anyone who reaches the instance can create an account. For a private instance, set
+`REGISTRATION_ENABLED=false`: `/register` (the page and the form) answers `404` and the sign-up links are gone (the login
+page has no "Sign up", and the planner's "Sync your week" leads to the login page). Existing users keep logging in,
+resetting their password and using everything else as before.
+
+While the instance has no users at all, sign-up stays open anyway, so a fresh instance can still create its first
+account; it closes as soon as that account exists. To add someone later, set `REGISTRATION_ENABLED=true` for as long as
+they need to sign up.
+
+## OIDC / single sign-on
+
+Users can log in with an account they already have at an OpenID Connect identity provider (Pocket ID, Authentik,
+Keycloak, or any IdP with a discovery document at `<issuer>/.well-known/openid-configuration`), instead of keeping a
+separate password. Register Plain Week at the IdP as a web application (authorization code flow) with:
+
+- **Redirect URI:** `APP_URL/auth/oidc/callback`, for example `https://plan.example.com/auth/oidc/callback`.
+- **Scopes:** `openid email profile`.
+- PKCE (S256) is always used. A client secret is optional (a public client works too).
+
+Then set `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and optionally `OIDC_LABEL`, and restart. The login page
+(and the sign-up page, while sign-up is open) shows the button; nothing shows until the issuer and the client id are set.
+
+What happens when someone logs in through the IdP:
+
+1. The account already linked to that IdP identity (its issuer and `sub`) logs in.
+2. Otherwise, an existing account with the same email is linked to it, **only if the IdP says the email is verified**
+   (`email_verified: true`). An unverified address could belong to anyone, so the login is refused with an explanation;
+   the user can still log in with their password. An account already linked to another identity at the same IdP is
+   never relinked. If the account's own email was never verified in Plain Week, it loses its password, two-factor,
+   passkeys, other sessions and app tokens when it is linked, since someone else could have signed up with that
+   address; its owner logs in through the IdP and can set a new password.
+3. Otherwise a new account is created (name and email from the IdP, the email marked verified when the IdP verified
+   it), only while sign-up is open (`REGISTRATION_ENABLED`, see [Closing sign-up](#closing-sign-up)). Accounts created
+   this way have no password.
+
+Two-factor authentication still applies: an account with two-factor on gets its code prompt after the IdP. Before
+sensitive settings (two-factor, passkeys, deleting the account), an account without a password confirms by logging in
+at the IdP again instead of typing a password. Plain Week asks the IdP to log the user in again (`prompt=login`,
+`max_age`) and needs a recent `auth_time` in the ID token, which the OpenID Connect spec requires in that case. If
+confirming fails with "did not ask you to log in again", the IdP left it out. In Settings › Security it can set a password, to also log in with its
+email (unless `OIDC_ONLY` is on). Logging out of Plain Week does not log out of the IdP.
+
+`OIDC_ONLY=true` makes the IdP the only way in: the login page shows only its button, and password login, the sign-up
+form, password reset, passkey login and setting a password answer `404`. Existing users log in through the IdP and are
+linked by their verified email, so make sure their address is the same and verified there.
+
+`OIDC_ENABLED=false` turns single sign-on off without removing the other variables. It defaults to on, and to off when
+`SAAS_ENABLED=true`. When it is off, accounts created through the IdP log in again with "Forgot it?" (a password reset
+by email).
+
+Changing to another IdP (another issuer) is fine: users are linked again by their verified email on their first login.
+
+### Pocket ID
+
+In Pocket ID, open **OIDC Clients › Add OIDC Client**, name it Plain Week and set the callback URL to
+`https://plan.example.com/auth/oidc/callback`. Pocket ID shows the client id and secret once:
+
+```dotenv
+OIDC_ISSUER=https://id.example.com
+OIDC_CLIENT_ID=0f1e2d3c-...
+OIDC_CLIENT_SECRET=...
+OIDC_LABEL="Log in with Pocket ID"
+```
+
+### Authentik
+
+In Authentik, create an **OAuth2/OpenID Provider** (client type confidential, redirect URI
+`https://plan.example.com/auth/oidc/callback`, the default `openid`, `email` and `profile` scopes) and an
+**Application** with the slug `plain-week` that uses it. The issuer is the application's "OpenID Configuration Issuer":
+
+```dotenv
+OIDC_ISSUER=https://authentik.example.com/application/o/plain-week/
+OIDC_CLIENT_ID=...
+OIDC_CLIENT_SECRET=...
+OIDC_LABEL="Log in with Authentik"
+```
+
+Linking existing accounts by email needs the IdP to send `email_verified: true`. If yours sends `false` (check the
+user's claims at the IdP, e.g. Authentik's email scope mapping), existing users get "has not verified the address" until
+it does.
+
+### Keycloak
+
+Create an OpenID Connect client with client authentication on and the valid redirect URI above. The issuer is the
+realm URL:
+
+```dotenv
+OIDC_ISSUER=https://keycloak.example.com/realms/home
+OIDC_CLIENT_ID=plain-week
+OIDC_CLIENT_SECRET=...
+```
+
+## Translations
+
+Plain Week ships in English only. You can add languages, or reword the English text, without rebuilding the image: put
+one JSON file per language in the translations directory (`TRANSLATIONS_PATH`, by default `translations/` in the
+storage volume, so `/app/storage/translations`) and reload the page. No restart is needed, for emails and push
+notifications either.
+
+```text
+/app/storage/translations/
+├── de.json      # adds German
+├── pt-BR.json   # adds Brazilian Portuguese
+└── en.json      # rewords English (optional)
+```
+
+The file name is the language: a two- or three-letter code (`de`, `fil`), optionally with a region or script (`pt-BR`,
+`zh_Hant`). Each file is a flat JSON object of keys and texts (`"planner.someday": "…"`, not nested objects). A key you leave out
+shows in English, so a file can start with a few keys and grow. Entries that are neither a text nor a plural are
+skipped and logged.
+
+```json
+{
+    "planner.someday": "Irgendwann",
+    "planner.carriedOver": {
+        "one": "{count} offene Aufgabe auf heute verschoben",
+        "other": "{count} offene Aufgaben auf heute verschoben"
+    },
+    "Profile updated.": "Profil gespeichert.",
+    "validation.required": "Das Feld :attribute ist erforderlich.",
+    "Reset your password": "Passwort zurücksetzen"
+}
+```
+
+- **App keys** (`planner.someday`, `settings.profile.title`, …) cover every text of the app. They are listed with their
+  English text in [`resources/js/lang/en`](../resources/js/lang/en), one file per area. `{name}` is a placeholder
+  filled in by the app; keep it. A plural is an object with one text per
+  [plural category](https://cldr.unicode.org/index/cldr-spec/plural-rules) of the language (`zero`, `one`, `two`,
+  `few`, `many`, `other`; `other` is required), and `{count}` is the number.
+- **Server texts** are keyed by their English text: flash messages ("Profile updated."), push notifications ("Today",
+  ":count tasks today"), the password reset and verification emails ("Reset your password", …) and the page's
+  link preview description. Laravel's own messages use its keys (`validation.required`, `auth.failed`,
+  `passwords.reset`, …; see [Laravel's `lang/en`](https://github.com/laravel/framework/tree/13.x/src/Illuminate/Translation/lang/en)).
+  `:name` is a placeholder there (the app's keys use `{name}`). A server plural is one string with the forms separated
+  by `|` (`":count tasks today": ":count Aufgabe heute|:count Aufgaben heute"`, Laravel's `trans_choice`). Grouped Laravel keys work one by one (`validation.required`), not as nested
+  objects, so `validation.attributes.*` and `validation.custom.*` can't be overridden.
+
+**Which language is used.** Settings › Preferences shows a **Language** picker as soon as the instance offers more
+than English: "Browser default" (the default) or one of the languages, saved to the account so every device and the
+emails and push notifications follow it. Otherwise the browser's preferred languages pick the first language the
+instance offers (`de-AT` matches `de`, `pt` matches `pt-BR`), then `APP_LOCALE`, then English. Guests always get the
+browser's language. Arabic, Persian, Hebrew and Urdu are laid out right to left.
+
+**Offline.** The page carries the active language's translations, and the offline copy of the planner keeps them, so a
+translated planner stays translated offline. After you change a file, open the app once online to pick it up.
+
+**Not translated:** the terms and privacy pages of the hosted service (SaaS mode), the offline fallback page
+(`/offline.html`), the founder's welcome email (SaaS mode, English or Spanish), the MCP tool descriptions that AI agents
+read, and typed dates in the task input ("tomorrow", "fri"), which stay English words. A file that is not valid JSON
+is ignored and logged as a warning, so a typo never takes the instance down.
+
+With Docker Compose, mount a directory there, for example `./translations:/app/storage/translations:ro`. In Coolify,
+add a **Directory Mount** (or one **File Mount** per language) to the `plainweek` service at
+`/app/storage/translations`.
+
 ## Noindex
 
 With `APP_NOINDEX=true`, every response carries `X-Robots-Tag: noindex, nofollow`, the page has
@@ -224,7 +428,9 @@ With `APP_NOINDEX=true`, every response carries `X-Robots-Tag: noindex, nofollow
 
 ## Backups
 
-Everything the server stores (accounts and synced tasks) is in the SQLite file on the volume. Guest data only lives in
+Everything the server stores (accounts, synced tasks and agent tokens) is in the SQLite file on the volume; the key
+pair that signs agent tokens is next to it (`storage/oauth-*.key`), so back up the whole volume to keep agents
+connected after a restore. Guest data only lives in
 each browser. Back up while the app runs with SQLite's online backup:
 
 ```sh
