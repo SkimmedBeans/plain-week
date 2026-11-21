@@ -36,6 +36,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   still applies. Accounts created this way have no password: they confirm sensitive settings by logging in at the IdP
   again, and can set a password in Settings › Security. `OIDC_ONLY=true` makes the IdP the only way in, and
   `OIDC_ENABLED=false` turns it off (off by default in SaaS mode). See docs/self-hosting.md.
+- **Drag to reorder named lists.** A named Someday list can be dragged by its header (left/right on desktop,
+  up/down on phones) to move it among the named lists; the base Someday column stays first and is not draggable.
+  Keyboard and screen-reader users drag it the same way as a task row, and the order persists and syncs like the
+  menu moves.
 
 ### Changed
 

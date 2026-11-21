@@ -34,6 +34,33 @@ export type TaskDragData = TaskListRef & { type: 'task'; task: PlannerTask };
 /** dnd-kit `data` of a list droppable (a day or the Someday list). */
 export type ListDropData = TaskListRef & { type: 'list' };
 
+/**
+ * dnd-kit `data` of a named list's column droppable, used by list drags: a
+ * dragged list lands on a whole column, on the boundary its pointer (or the
+ * keyboard step) points at.
+ */
+export type ColumnDropData = {
+    type: 'column';
+    /** The list this column is rendering. */
+    listId: string;
+    /** The list's name (for screen-reader announcements). */
+    name: string;
+    /** The column's index among the named lists, in display order. */
+    index: number;
+};
+
+/**
+ * dnd-kit `data` of a named list's header while it is being dragged to
+ * reorder the named lists (F5): the list it belongs to, its name (for
+ * announcements) and its index among the named lists when the drag started.
+ */
+export type ListDragData = {
+    type: 'listDrag';
+    listId: string;
+    name: string;
+    index: number;
+};
+
 /** dnd-kit `data` of an edge-zone droppable. */
 export type EdgeDropData = { type: 'edge'; direction: WeekDirection };
 
@@ -204,6 +231,36 @@ export function originalSpot(
         afterId: tasks.slice(0, Math.max(index, 0)).findLast(positional)?.id,
         beforeId: tasks.slice(index + 1).find(positional)?.id,
     };
+}
+
+/**
+ * Where a dragged list lands when dropped on the `before` or `after`
+ * boundary of the column of the list `hitId`: the index to hand to
+ * `moveListTo` (insert before the list at that index of the current order;
+ * `lists.length` is after the last one). `null` when a list is missing, or
+ * the drop would leave the list where it is (its own slot, or the gap right
+ * after it).
+ */
+export function resolveListReorder(
+    lists: { listId: string }[],
+    draggedId: string,
+    hitId: string,
+    before: boolean,
+): { toIndex: number } | null {
+    const fromIndex = lists.findIndex((list) => list.listId === draggedId);
+    const hitIndex = lists.findIndex((list) => list.listId === hitId);
+
+    if (fromIndex === -1 || hitIndex === -1) {
+        return null;
+    }
+
+    const toIndex = before ? hitIndex : hitIndex + 1;
+
+    if (toIndex === fromIndex || toIndex === fromIndex + 1) {
+        return null;
+    }
+
+    return { toIndex };
 }
 
 /** Where `active` lands when dropped on `target` (`null`: nowhere new). */

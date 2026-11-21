@@ -1,7 +1,13 @@
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { GripVertical, MoreHorizontal, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { TaskList } from '@/components/planner/task-list';
+import {
+    columnDroppableId,
+    listDraggableId,
+    usePlannerDnd,
+} from '@/components/planner/planner-dnd';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -37,6 +43,8 @@ import {
     renameList,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
+import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type Props = {
@@ -50,29 +58,90 @@ type Props = {
     /** 'YYYY-MM-DD' of today. */
     today: string;
     onOpenTask: (taskId: string) => void;
+    /** The named list's index among the named lists (drag reorder, F5). */
+    index?: number;
     /** A named list can move one place earlier / later among the lists. */
     canMoveEarlier?: boolean;
     canMoveLater?: boolean;
 };
+
+/** The insertion bar shown while a dragged list is over this column edge. */
+function ListDropIndicator({
+    edge,
+}: {
+    edge: 'start' | 'top' | 'end' | 'bottom';
+}) {
+    const before = edge === 'start' || edge === 'top';
+
+    return (
+        <div
+            data-list-drop-indicator
+            data-edge={edge}
+            aria-hidden
+            className={cn(
+                'pointer-events-none absolute z-[11] rounded-full bg-primary',
+                // Vertical bar in the horizontal (desktop) layout.
+                'inset-y-0 w-0.5',
+                before ? 'start-0' : 'end-0',
+                // Horizontal bar in the stacked (phone) layout.
+                'max-lg:inset-x-0 max-lg:inset-y-auto max-lg:h-0.5 max-lg:w-auto',
+                before ? 'max-lg:top-0' : 'max-lg:bottom-0',
+            )}
+        />
+    );
+}
 
 /**
  * One Someday column: the base list (column 0) or a named list, in the order
  * the week grid places them. Tasks move between Someday and any named list
  * like between days. The base header opens the dialog that creates a named
  * list; a named list's menu renames it or deletes it (deleting moves its
- * tasks to Someday, in one write).
+ * tasks to Someday, in one write). A named list's header is also its drag
+ * handle: drag it over another column's edge to reorder the lists (F5).
  */
 export function SomedaySection({
     list,
     weekStart,
     today,
     onOpenTask,
+    index = 0,
     canMoveEarlier = false,
     canMoveLater = false,
 }: Props) {
     const titleId = useId();
+    const instructionsId = useId();
     const tasks = useSomedayTasks(weekStart, today, list.column);
     const placement = { date: null, list: list.column } as const;
+    const { activeListId, listIndicator } = usePlannerDnd();
+    const isNamed = list.id !== undefined;
+
+    // A named list's header is the drag handle and its whole column the drop
+    // target while a list is dragged; the base list never moves.
+    const {
+        attributes,
+        listeners,
+        setActivatorNodeRef,
+        setNodeRef: setHandleRef,
+    } = useDraggable({
+        id: listDraggableId(list.id ?? ''),
+        disabled: !isNamed,
+        data: {
+            type: 'listDrag',
+            listId: list.id ?? '',
+            name: list.name,
+            index,
+        },
+    });
+    const { setNodeRef: setColumnRef } = useDroppable({
+        id: columnDroppableId(list.id ?? ''),
+        disabled: !isNamed,
+        data: {
+            type: 'column',
+            listId: list.id ?? '',
+            name: list.name,
+            index,
+        },
+    });
     const [createOpen, setCreateOpen] = useState(false);
     const [name, setName] = useState('');
     const [renameOpen, setRenameOpen] = useState(false);
@@ -121,12 +190,25 @@ export function SomedaySection({
         });
     };
 
+    const listIndicatorEdge =
+        listIndicator !== null && listIndicator.hit.listId === list.id
+            ? listIndicator.edge
+            : null;
+
     return (
         <section
+            ref={isNamed ? setColumnRef : undefined}
             aria-labelledby={titleId}
-            className="flex min-h-0 min-w-0 flex-col"
+            className={cn(
+                'relative flex min-h-0 min-w-0 flex-col',
+                activeListId === list.id && 'opacity-60',
+            )}
         >
-            <h2 className="flex items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg leading-7 font-bold tracking-tight lg:text-xl">
+            <h2
+                ref={isNamed ? setHandleRef : undefined}
+                {...listeners}
+                className="flex cursor-grab items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg leading-7 font-bold tracking-tight active:cursor-grabbing lg:text-xl"
+            >
                 <span id={titleId} className="truncate">
                     {list.name}
                 </span>
@@ -142,70 +224,97 @@ export function SomedaySection({
                             <Plus />
                         </Button>
                     ) : (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    className="text-muted-foreground"
-                                    aria-label={`More options for the ${list.name} list`}
-                                >
-                                    <MoreHorizontal />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setRenameName(list.name);
-                                        setRenameOpen(true);
-                                    }}
-                                >
-                                    Rename
-                                </DropdownMenuItem>
-                                {/* Lists run left to right on desktop and top
+                        <>
+                            <Button
+                                ref={setActivatorNodeRef}
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                {...attributes}
+                                aria-label={t('planner.moveList', {
+                                    text: list.name,
+                                })}
+                                aria-describedby={instructionsId}
+                                className="sr-only shrink-0 rounded-full hover:bg-transparent focus-visible:not-sr-only"
+                            >
+                                <GripVertical className="size-5" />
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className="text-muted-foreground"
+                                        aria-label={`More options for the ${list.name} list`}
+                                    >
+                                        <MoreHorizontal />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setRenameName(list.name);
+                                            setRenameOpen(true);
+                                        }}
+                                    >
+                                        Rename
+                                    </DropdownMenuItem>
+                                    {/* Lists run left to right on desktop and top
                                     to bottom on phones. */}
-                                <DropdownMenuItem
-                                    disabled={!canMoveEarlier}
-                                    onClick={() =>
-                                        void moveList(list.id!, -1).catch(() =>
-                                            toast.error(
-                                                'Could not move the list.',
-                                            ),
-                                        )
-                                    }
-                                >
-                                    <span className="max-lg:hidden">
-                                        Move left
-                                    </span>
-                                    <span className="lg:hidden">Move up</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    disabled={!canMoveLater}
-                                    onClick={() =>
-                                        void moveList(list.id!, 1).catch(() =>
-                                            toast.error(
-                                                'Could not move the list.',
-                                            ),
-                                        )
-                                    }
-                                >
-                                    <span className="max-lg:hidden">
-                                        Move right
-                                    </span>
-                                    <span className="lg:hidden">Move down</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => setDeleteOpen(true)}
-                                >
-                                    Delete list
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                    <DropdownMenuItem
+                                        disabled={!canMoveEarlier}
+                                        onClick={() =>
+                                            void moveList(list.id!, -1).catch(
+                                                () =>
+                                                    toast.error(
+                                                        'Could not move the list.',
+                                                    ),
+                                            )
+                                        }
+                                    >
+                                        <span className="max-lg:hidden">
+                                            Move left
+                                        </span>
+                                        <span className="lg:hidden">
+                                            Move up
+                                        </span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        disabled={!canMoveLater}
+                                        onClick={() =>
+                                            void moveList(list.id!, 1).catch(
+                                                () =>
+                                                    toast.error(
+                                                        'Could not move the list.',
+                                                    ),
+                                            )
+                                        }
+                                    >
+                                        <span className="max-lg:hidden">
+                                            Move right
+                                        </span>
+                                        <span className="lg:hidden">
+                                            Move down
+                                        </span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => setDeleteOpen(true)}
+                                    >
+                                        Delete list
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </>
                     )}
                 </span>
             </h2>
+            {isNamed && (
+                <span id={instructionsId} className="sr-only">
+                    {t('planner.listDragInstructions')}
+                </span>
+            )}
             <TaskList
                 placement={placement}
                 name={list.name}
@@ -213,6 +322,9 @@ export function SomedaySection({
                 newTaskLabel={`New ${list.name} task`}
                 onOpenTask={onOpenTask}
             />
+            {listIndicatorEdge !== null && (
+                <ListDropIndicator edge={listIndicatorEdge} />
+            )}
             {list.column === 0 && (
                 <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                     <DialogContent>
