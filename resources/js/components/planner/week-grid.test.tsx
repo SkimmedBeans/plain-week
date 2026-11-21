@@ -28,8 +28,9 @@ describe('WeekGrid', () => {
         );
 
         // Every desktop grid places its children in DOM order: five tracks
-        // with Someday spanning three (wide windows), four tracks (near
-        // square) or three with Someday spanning two (tall).
+        // (wide windows), four tracks (near square) or two tracks (tall);
+        // every column — the days, Someday and the named lists — is exactly
+        // one track wide, so no section spans columns in any shape.
         const sections = await screen.findAllByRole('region');
 
         expect(
@@ -51,9 +52,10 @@ describe('WeekGrid', () => {
         const grid = sections[0].parentElement?.className;
         expect(grid).toContain('lg:week-wide:grid-cols-5');
         expect(grid).toContain('lg:week-square:grid-cols-4');
-        expect(grid).toContain('lg:week-tall:grid-cols-3');
-        expect(sections[7].className).toContain('lg:week-wide:col-span-3');
-        expect(sections[7].className).toContain('lg:week-tall:col-span-2');
+        expect(grid).toContain('lg:week-tall:grid-cols-2');
+        for (const section of sections) {
+            expect(section.className).not.toContain('col-span');
+        }
     });
 
     it('renders a column for every named list, after the base list, in column order', async () => {

@@ -13,7 +13,8 @@
 @custom-variant cursor-row (&[data-cursor], &:has([data-task-open]:focus-visible));
 /*
  * The desktop week grid by window shape (docs/style.md, Planner layout): wide windows get
- * Monday to Friday over the weekend and Someday, near square ones a 4x2 grid, tall ones a 3x3 grid.
+ * Monday to Friday over the weekend and Someday, near square ones a 4x2 grid, tall ones a 2x4
+ * grid; every column is one track wide.
  */
 @custom-variant week-wide (@media (aspect-ratio >= 6/5));
 @custom-variant week-square (@media (4/5 <= aspect-ratio < 6/5));
