@@ -34,6 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Weekday first in day headers.** Each day's header shows the weekday in bold at the start and the date, muted, at
   the end.
+- **Someday as wide as a day.** In every desktop window shape the Someday column is now exactly one track wide, the
+  same as a day's column (it spanned up to three tracks before). The shapes re-derived around it: wide windows keep
+  Monday to Friday on top with Saturday, Sunday and Someday below, near square ones the 4x2 grid, tall ones a 2x4
+  grid.
 
 ## [0.3.18] - 2026-11-17
 

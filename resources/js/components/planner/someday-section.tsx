@@ -37,7 +37,6 @@ import {
     renameList,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type Props = {
@@ -51,8 +50,6 @@ type Props = {
     /** 'YYYY-MM-DD' of today. */
     today: string;
     onOpenTask: (taskId: string) => void;
-    /** The column span on the wide grid. */
-    className?: string;
     /** A named list can move one place earlier / later among the lists. */
     canMoveEarlier?: boolean;
     canMoveLater?: boolean;
@@ -70,7 +67,6 @@ export function SomedaySection({
     weekStart,
     today,
     onOpenTask,
-    className,
     canMoveEarlier = false,
     canMoveLater = false,
 }: Props) {
@@ -128,7 +124,7 @@ export function SomedaySection({
     return (
         <section
             aria-labelledby={titleId}
-            className={cn('flex min-h-0 min-w-0 flex-col', className)}
+            className="flex min-h-0 min-w-0 flex-col"
         >
             <h2 className="flex items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg leading-7 font-bold tracking-tight lg:text-xl">
                 <span id={titleId} className="truncate">
