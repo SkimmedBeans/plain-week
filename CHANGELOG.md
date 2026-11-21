@@ -45,6 +45,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   same as a day's column (it spanned up to three tracks before). The shapes re-derived around it: wide windows keep
   Monday to Friday on top with Saturday, Sunday and Someday below, near square ones the 4x2 grid, tall ones a 2x4
   grid.
+- **New-task row above the Completed section.** In every list, the empty new-task row now sits between the open and
+  done tasks, just above the "Completed (n)" label, so a new task is always added to the open group; the keyboard
+  cursor stops there between the open and done tasks.
 
 ## [0.4.2] - 2026-11-20
 

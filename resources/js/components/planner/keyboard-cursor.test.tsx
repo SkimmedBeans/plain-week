@@ -158,21 +158,26 @@ describe('KeyboardCursorProvider', () => {
         const shown = () =>
             [
                 ...monday().querySelectorAll(
-                    '[data-task-id], [data-completed-label]',
+                    '[data-task-id], [data-completed-label], [data-new-task-row]',
                 ),
             ].map((el) =>
                 el.hasAttribute('data-completed-label')
                     ? el.textContent
-                    : el
-                          .querySelector('[data-task-open]')
-                          ?.getAttribute('aria-label'),
+                    : el.hasAttribute('data-new-task-row')
+                      ? 'new task row'
+                      : el
+                            .querySelector('[data-task-open]')
+                            ?.getAttribute('aria-label'),
             );
 
         await user.keyboard('jx');
 
+        // The empty row sits between the open task and the Completed
+        // section, just above its label.
         await waitFor(() =>
             expect(shown()).toEqual([
                 'Call mom',
+                'new task row',
                 'Completed (1)',
                 'Buy milk (done)',
             ]),
@@ -186,7 +191,9 @@ describe('KeyboardCursorProvider', () => {
             })[0],
         );
 
-        await waitFor(() => expect(shown()).toEqual(['Buy milk', 'Call mom']));
+        await waitFor(() =>
+            expect(shown()).toEqual(['Buy milk', 'Call mom', 'new task row']),
+        );
     });
 
     it('moves the task to the next day with the cursor on it', async () => {

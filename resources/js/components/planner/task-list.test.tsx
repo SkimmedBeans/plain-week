@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+    cleanup,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -325,5 +331,55 @@ describe('TaskList with tasks', () => {
         ].map((row) => (row.matches('[data-task-id]') ? 'task' : 'empty'));
 
         expect(order).toEqual(['task', 'task', 'task', 'empty']);
+    });
+
+    it('keeps the empty row above the Completed section', async () => {
+        const user = userEvent.setup();
+        render(<Someday />);
+
+        for (const text of ['Open', 'First', 'Second']) {
+            await createTask({ text, date: null, list: 0 });
+        }
+        await screen.findByRole('button', { name: 'Second' });
+
+        const order = () =>
+            [
+                ...list().querySelectorAll(
+                    '[data-task-id], [data-completed-label], [data-new-task-row]',
+                ),
+            ].map((row) =>
+                row.matches('[data-task-id]')
+                    ? 'task'
+                    : row.matches('[data-completed-label]')
+                      ? 'completed'
+                      : 'empty',
+            );
+
+        // All open: the row is last.
+        expect(order()).toEqual(['task', 'task', 'task', 'empty']);
+
+        // A done task: the row sits between the open tasks and the
+        // Completed section, with the label just below it.
+        const firstRow = list().querySelector<HTMLElement>('[data-task-id]')!;
+        await user.click(
+            within(firstRow).getByRole('button', { name: 'Mark as done' }),
+        );
+        await screen.findByRole('button', { name: 'Open (done)' });
+
+        expect(order()).toEqual(['task', 'task', 'empty', 'completed', 'task']);
+
+        // A new task lands above the row, in the open group.
+        await user.click(screen.getByLabelText(SOMEDAY_LABEL));
+        await user.keyboard('Fresh{Enter}');
+        await screen.findByRole('button', { name: 'Fresh' });
+
+        expect(order()).toEqual([
+            'task',
+            'task',
+            'task',
+            'empty',
+            'completed',
+            'task',
+        ]);
     });
 });

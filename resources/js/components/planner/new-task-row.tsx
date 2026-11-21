@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils';
 type Props = {
     ref?: Ref<HTMLInputElement>;
     label: string;
-    /** The keyboard cursor is on this row (it is the list's last stop). */
+    /** The keyboard cursor is on this row (the stop between the list's open
+     *  and done tasks). */
     isCursor?: boolean;
     /** Called with the trimmed text when the row is submitted. */
     onSubmit: (text: string) => void;

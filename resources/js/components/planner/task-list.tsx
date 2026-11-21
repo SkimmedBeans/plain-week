@@ -50,11 +50,12 @@ function DropIndicator() {
 }
 
 /**
- * A ruled list: the open tasks, then the done ones under a "Completed (n)"
- * label, then one empty row that appends new ones. Creating
- * with Enter keeps focus in that row, now below the new task, so typing can go
- * on. On desktop the list fills the rest of its cell: ruled lines carry on
- * below the empty row to the bottom (a click there focuses the empty row, a
+ * A ruled list: the open tasks, then one empty row that appends new ones,
+ * then the done ones under a "Completed (n)" label (the row is last when
+ * there are no done tasks). Creating
+ * with Enter keeps focus in that row, now below the new task, so typing can
+ * go on. On desktop the list fills the rest of its cell: ruled lines carry on
+ * below the last row to the bottom (a click there focuses the empty row, a
  * drop there lands at the end of the list), and the list scrolls on its own
  * when its tasks do not fit.
  */
@@ -67,9 +68,10 @@ export function TaskList({
     className,
 }: Props) {
     const newTaskInput = useRef<HTMLInputElement>(null);
-    // Done tasks are shown below the open ones, under "Completed"; each group
-    // keeps its stored order, so an unticked task returns to its place. The
-    // drag-and-drop data and the keyboard cursor use this shown order.
+    // Done tasks are shown below the open ones (and below the empty row),
+    // under "Completed"; each group keeps its stored order, so an unticked
+    // task returns to its place. The drag-and-drop data and the keyboard
+    // cursor use this shown order.
     const listTasks = useMemo(() => {
         const all = tasks ?? [];
 
@@ -104,9 +106,13 @@ export function TaskList({
     // Tell the keyboard cursor what this list shows.
     useLayoutEffect(() => {
         if (shownTasks !== undefined) {
-            return registerList(listKey, { placement, tasks: shownTasks });
+            return registerList(listKey, {
+                placement,
+                tasks: shownTasks,
+                openCount: taskCount - doneCount,
+            });
         }
-    }, [registerList, listKey, placement, shownTasks]);
+    }, [registerList, listKey, placement, shownTasks, taskCount, doneCount]);
 
     // A new task pushes the empty row down: keep it in view while typing in
     // it, in a list that scrolls inside its cell (desktop).
@@ -169,12 +175,23 @@ export function TaskList({
                 {listTasks.map((task, index) => (
                     <Fragment key={rowKey(task)}>
                         {task.id === firstDoneId && (
-                            <div
-                                data-completed-label
-                                className="flex items-end border-b border-border px-1.5 pt-3 pb-1 text-xs font-medium text-muted-foreground"
-                            >
-                                Completed ({doneCount})
-                            </div>
+                            <>
+                                {/* The empty row sits between the open tasks
+                                    and the Completed section. */}
+                                <NewTaskRow
+                                    ref={newTaskInput}
+                                    label={newTaskLabel}
+                                    isCursor={cursorOnNewRow}
+                                    onSubmit={handleSubmit}
+                                    onCancel={handleCancel}
+                                />
+                                <div
+                                    data-completed-label
+                                    className="flex items-end border-b border-border px-1.5 pt-3 pb-1 text-xs font-medium text-muted-foreground"
+                                >
+                                    Completed ({doneCount})
+                                </div>
+                            </>
                         )}
                         {indicatorBefore === task.id && <DropIndicator />}
                         <TaskRow
@@ -191,14 +208,20 @@ export function TaskList({
                     </Fragment>
                 ))}
             </SortableContext>
-            {indicatorBefore === null && taskCount === 0 && <DropIndicator />}
-            <NewTaskRow
-                ref={newTaskInput}
-                label={newTaskLabel}
-                isCursor={cursorOnNewRow}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-            />
+            {doneCount === 0 && (
+                <>
+                    {indicatorBefore === null && taskCount === 0 && (
+                        <DropIndicator />
+                    )}
+                    <NewTaskRow
+                        ref={newTaskInput}
+                        label={newTaskLabel}
+                        isCursor={cursorOnNewRow}
+                        onSubmit={handleSubmit}
+                        onCancel={handleCancel}
+                    />
+                </>
+            )}
             {/* Desktop: ruled lines down to the bottom of the cell. Pointer
                 only; the empty row above is the keyboard's way in. */}
             <div

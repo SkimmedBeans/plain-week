@@ -13,10 +13,10 @@ import {
 import type { CursorList } from './cursor';
 
 const LISTS: CursorList[] = [
-    { key: '2026-10-12', taskIds: ['a', 'b', 'c'] },
-    { key: '2026-10-13', taskIds: ['d'] },
-    { key: '2026-10-14', taskIds: [] },
-    { key: 'someday', taskIds: ['s'] },
+    { key: '2026-10-12', taskIds: ['a', 'b', 'c'], openCount: 3 },
+    { key: '2026-10-13', taskIds: ['d'], openCount: 1 },
+    { key: '2026-10-14', taskIds: [], openCount: 0 },
+    { key: 'someday', taskIds: ['s'], openCount: 1 },
 ];
 
 describe('compareListKeys', () => {
@@ -172,6 +172,75 @@ describe('cursorAfterRemoval', () => {
     });
 });
 
+describe('a list with done tasks', () => {
+    // p and q are open, r is done: the row order is p, q, row, r.
+    const LISTS: CursorList[] = [
+        { key: '2026-10-15', taskIds: ['p', 'q', 'r'], openCount: 2 },
+    ];
+    const on = (index: number) =>
+        resolveCursor(LISTS, { listKey: '2026-10-15', taskId: null, index })!;
+
+    it('keeps the new-task row between the open and done tasks', () => {
+        expect(resolveCursor(LISTS, newTaskRowCursor('2026-10-15'))).toEqual({
+            listKey: '2026-10-15',
+            taskId: null,
+            index: 2,
+        });
+        expect(moveCursor(LISTS, on(1), 'down')).toEqual({
+            listKey: '2026-10-15',
+            taskId: null,
+            index: 2,
+        });
+        expect(moveCursor(LISTS, on(2), 'down')).toEqual({
+            listKey: '2026-10-15',
+            taskId: 'r',
+            index: 3,
+        });
+        expect(moveCursor(LISTS, on(3), 'up')).toEqual({
+            listKey: '2026-10-15',
+            taskId: null,
+            index: 2,
+        });
+    });
+
+    it('resolves a done task one row below its shown order', () => {
+        expect(
+            resolveCursor(LISTS, {
+                listKey: '2026-10-15',
+                taskId: 'r',
+                index: 0,
+            }),
+        ).toEqual({ listKey: '2026-10-15', taskId: 'r', index: 3 });
+    });
+
+    it('jumps to the first open task and the last done task', () => {
+        expect(firstInList(LISTS, on(3)).taskId).toBe('p');
+        expect(lastInList(LISTS, on(0))).toEqual({
+            listKey: '2026-10-15',
+            taskId: 'r',
+            index: 3,
+        });
+    });
+
+    it('moves the row up when an open task is removed', () => {
+        expect(
+            cursorAfterRemoval(LISTS, {
+                listKey: '2026-10-15',
+                taskId: 'q',
+                index: 1,
+            }),
+        ).toEqual({ listKey: '2026-10-15', taskId: null, index: 1 });
+        // Removing the last done task leaves the cursor on the row.
+        expect(
+            cursorAfterRemoval(LISTS, {
+                listKey: '2026-10-15',
+                taskId: 'r',
+                index: 3,
+            }),
+        ).toEqual({ listKey: '2026-10-15', taskId: null, index: 2 });
+    });
+});
+
 describe('shiftCursorWeeks', () => {
     it('keeps the weekday and row in another week', () => {
         expect(
@@ -203,10 +272,10 @@ describe('shiftCursorWeeks', () => {
 
 describe('named Someday lists', () => {
     const NAMED: CursorList[] = [
-        { key: '2026-10-12', taskIds: ['a'] },
-        { key: 'someday', taskIds: ['s'] },
-        { key: 'someday:1', taskIds: ['n1'] },
-        { key: 'someday:2', taskIds: ['n2'] },
+        { key: '2026-10-12', taskIds: ['a'], openCount: 1 },
+        { key: 'someday', taskIds: ['s'], openCount: 1 },
+        { key: 'someday:1', taskIds: ['n1'], openCount: 1 },
+        { key: 'someday:2', taskIds: ['n2'], openCount: 1 },
     ];
 
     it('walks from Someday on to the named lists, in column order', () => {
