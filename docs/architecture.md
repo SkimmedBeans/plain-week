@@ -636,13 +636,13 @@ forward, like a paper planner rewritten each morning.
 Built on `@dnd-kit/core` + `@dnd-kit/sortable` (shadcn has no DnD primitive). Like every other action, a drop only
 writes the local database (`moveTask`, or `moveListTo` for a list); sync follows in the background.
 
-| Piece                                               | Role                                                                                                                                                                           |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PlannerDnd` (`components/planner/planner-dnd.tsx`) | The `DndContext` around the week and Someday: sensors, collision detection, edge zones, drag overlay, announcements, the drop write                                            |
-| `TaskList`                                          | A droppable per list (`list:<date>` / `list:someday`) carrying its `placement` and tasks, and a `SortableContext` of its rows                                                  |
-| `TaskRow`                                           | A sortable item carrying its task, `placement` and list; dims while dragged                                                                                                    |
-| `SomedaySection`                                    | A named list's column: a droppable (`column:<list>`) for list drags, its header the list's drag handle (the base column has neither)                                           |
-| `lib/planner/drop.ts`                               | Pure functions: drop target → `moveTask` input and the insertion line (`resolveDrop`), edge-zone dates (`edgeDropDate`), list drop → `moveListTo` index (`resolveListReorder`) |
+| Piece                                               | Role                                                                                                                                                                                                             |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PlannerDnd` (`components/planner/planner-dnd.tsx`) | The `DndContext` around the week and Someday: sensors, collision detection, edge zones, drag overlay, announcements, the drop write                                                                              |
+| `TaskList`                                          | A droppable per list (`list:<date>` / `list:someday`) carrying its `placement` and tasks, and a `SortableContext` of its rows                                                                                    |
+| `TaskRow`                                           | A sortable item carrying its task, `placement` and list; dims while dragged                                                                                                                                      |
+| `SomedaySection`                                    | A named list's column: a droppable (`column:<list>`) for list drags, its header the list's drag handle (the base column has neither); its header name opens the list card (rename / delete) while still dragging |
+| `lib/planner/drop.ts`                               | Pure functions: drop target → `moveTask` input and the insertion line (`resolveDrop`), edge-zone dates (`edgeDropDate`), list drop → `moveListTo` index (`resolveListReorder`)                                   |
 
 - Sensors: mouse after 5 px of movement (so a click still opens the task; the right button never drags), touch with a
   press that holds 250 ms, which picks the task up, and then moves (a swipe scrolls; a long press never opens the

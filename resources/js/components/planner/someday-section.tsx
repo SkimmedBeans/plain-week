@@ -3,6 +3,7 @@ import { GripVertical, MoreHorizontal, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { TaskList } from '@/components/planner/task-list';
+import { ListDialog } from '@/components/planner/list-dialog';
 import {
     columnDroppableId,
     listDraggableId,
@@ -114,6 +115,8 @@ export function SomedaySection({
     const placement = { date: null, list: list.column } as const;
     const { activeListId, listIndicator } = usePlannerDnd();
     const isNamed = list.id !== undefined;
+    // Narrowed once: property narrowing does not survive into closures.
+    const namedListId = list.id;
 
     // A named list's header is the drag handle and its whole column the drop
     // target while a list is dragged; the base list never moves.
@@ -147,6 +150,8 @@ export function SomedaySection({
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameName, setRenameName] = useState('');
     const [deleteOpen, setDeleteOpen] = useState(false);
+    // The list card (F6): which named list it is open on, null when closed.
+    const [cardListId, setCardListId] = useState<string | null>(null);
 
     const submitCreate = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -199,6 +204,7 @@ export function SomedaySection({
         <section
             ref={isNamed ? setColumnRef : undefined}
             aria-labelledby={titleId}
+            data-list-id={namedListId}
             className={cn(
                 'relative flex min-h-0 min-w-0 flex-col',
                 activeListId === list.id && 'opacity-60',
@@ -209,9 +215,26 @@ export function SomedaySection({
                 {...listeners}
                 className="flex cursor-grab items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg leading-7 font-bold tracking-tight active:cursor-grabbing lg:text-xl"
             >
-                <span id={titleId} className="truncate">
-                    {list.name}
-                </span>
+                {isNamed && namedListId !== undefined ? (
+                    // The name opens the list card (F6); it is not a
+                    // drag-stop: a click opens, a 5px move starts the drag.
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        data-list-open
+                        aria-label={list.name}
+                        onClick={() => setCardListId(namedListId)}
+                        className="h-auto min-w-0 flex-1 justify-start gap-0 self-stretch rounded-none border-0 px-0 py-0 text-lg leading-7 font-bold tracking-tight text-inherit hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0 lg:text-xl dark:hover:bg-transparent"
+                    >
+                        <span id={titleId} className="min-w-0 truncate">
+                            {list.name}
+                        </span>
+                    </Button>
+                ) : (
+                    <span id={titleId} className="truncate">
+                        {list.name}
+                    </span>
+                )}
                 <span className="flex shrink-0 items-center gap-1">
                     {list.column === 0 ? (
                         <Button
@@ -423,6 +446,10 @@ export function SomedaySection({
                     </AlertDialog>
                 </>
             )}
+            <ListDialog
+                listId={cardListId}
+                onClose={() => setCardListId(null)}
+            />
         </section>
     );
 }

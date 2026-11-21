@@ -271,4 +271,32 @@ describe('SomedaySection', () => {
         const [kept] = await queryLists();
         expect(kept?.id).toBe(list.id);
     });
+
+    it('opens the list card from the named list’s name, by click and keyboard', async () => {
+        const list = await createList('Ideas');
+        const user = userEvent.setup();
+        render(<Section list={sectionProps(list)} />);
+
+        await user.click(screen.getByRole('button', { name: 'Ideas' }));
+        const card = await screen.findByRole('dialog', { name: 'Edit list' });
+        expect(
+            (within(card).getByLabelText('List name') as HTMLInputElement)
+                .value,
+        ).toBe('Ideas');
+
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+        // Keyboard: the name is a button, so Enter opens the card too.
+        screen.getByRole('button', { name: 'Ideas' }).focus();
+        await user.keyboard('{Enter}');
+        await screen.findByRole('dialog', { name: 'Edit list' });
+    });
+
+    it('keeps the base list’s name plain, with no card to open', () => {
+        render(<Section list={BASE} />);
+
+        expect(screen.getByText('Someday')).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'Someday' })).toBeNull();
+    });
 });
