@@ -89,6 +89,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     weekStart={weekStart}
                     today={today}
                     onOpenTask={onOpenTask}
+                    index={index}
                     canMoveEarlier={index > 0}
                     canMoveLater={index < namedLists.length - 1}
                 />
