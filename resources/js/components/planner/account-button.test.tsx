@@ -17,6 +17,7 @@ type Props = {
     auth: { user: { id: number; name: string; email: string } | null };
     account: { hasAccess: boolean } | null;
     saas: { enabled: boolean };
+    canRegister: boolean;
     feedbackUrl: string;
 };
 
@@ -71,6 +72,7 @@ beforeEach(() => {
         auth: { user },
         account: { hasAccess: true },
         saas: { enabled: false },
+        canRegister: true,
         feedbackUrl: 'https://github.com/victor-falcon/plain-week/discussions',
     };
     status = 'idle';
@@ -79,6 +81,9 @@ beforeEach(() => {
 afterEach(() => {
     cleanup();
     sync.mockClear();
+    (
+        window as unknown as { happyDOM: { setURL: (url: string) => void } }
+    ).happyDOM.setURL('http://localhost:3000/');
 });
 
 describe('AccountButton', () => {
@@ -156,5 +161,57 @@ describe('AccountButton', () => {
         expect(
             screen.queryByRole('menuitem', { name: 'About Plain Week' }),
         ).toBeNull();
+    });
+
+    it('sends guests to log in when sign-up is closed', async () => {
+        const browser = userEvent.setup();
+
+        props.auth.user = null;
+        props.account = null;
+        props.canRegister = false;
+        renderButton();
+
+        expect(
+            screen
+                .getByRole('link', { name: /Sync your week/ })
+                .getAttribute('href'),
+        ).toBe('/login');
+
+        // The phone menu leads with sign-up; with it closed only Log in is left.
+        await browser.click(
+            screen.getByRole('button', { name: /^Sync your week\./ }),
+        );
+
+        expect(
+            await screen.findByRole('menuitem', { name: 'Log in' }),
+        ).not.toBeNull();
+        expect(
+            screen.queryByRole('menuitem', { name: 'Sync your week' }),
+        ).toBeNull();
+    });
+
+    it('offers guests the mobile app right below Send feedback', async () => {
+        const browser = userEvent.setup();
+
+        props.auth.user = null;
+        props.account = null;
+        (
+            window as unknown as { happyDOM: { setURL: (url: string) => void } }
+        ).happyDOM.setURL('https://plainweek.example/');
+        renderButton();
+
+        await browser.click(
+            screen.getByRole('button', { name: 'More account options' }),
+        );
+        await screen.findByRole('menuitem', { name: 'Log in' });
+
+        expect(
+            screen.getAllByRole('menuitem').map((item) => item.textContent),
+        ).toEqual([
+            'Log in',
+            'Send feedback',
+            'Install mobile app',
+            expect.stringContaining('Keyboard shortcuts'),
+        ]);
     });
 });

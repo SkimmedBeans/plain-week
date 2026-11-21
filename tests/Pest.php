@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\Sync\SyncFormat;
+use App\Agents\AgentAccess;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Laravel\Socialite\Facades\Socialite;
 use Tests\Support\FakeStripe;
 use Tests\TestCase;
 
@@ -207,4 +209,135 @@ function weeklySubscriber(string $status = 'active', ?DateTimeInterface $endsAt 
     ]);
 
     return $user;
+}
+
+/**
+ * An RSA key pair for Passport (signing OAuth and personal access tokens), made once per test run so tests never
+ * depend on storage/oauth-*.key.
+ */
+function usePassportKeys(): void
+{
+    static $keys = null;
+
+    if ($keys === null) {
+        $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        openssl_pkey_export($key, $private);
+        $keys = ['private' => $private, 'public' => openssl_pkey_get_details($key)['key']];
+    }
+
+    config(['passport.private_key' => $keys['private'], 'passport.public_key' => $keys['public']]);
+}
+
+/**
+ * Sends one JSON-RPC request to the MCP server like a Streamable HTTP client after the 2025-06-18 handshake.
+ *
+ * @param  array<string, mixed>  $params
+ */
+function mcp(?string $token, string $method, array $params = []): TestResponse
+{
+    $headers = ['Accept' => 'application/json, text/event-stream', 'MCP-Protocol-Version' => '2025-06-18'];
+
+    if ($token !== null) {
+        $headers['Authorization'] = 'Bearer '.$token;
+    }
+
+    // Each call authenticates from its own headers, as a separate HTTP request would.
+    app('auth')->forgetGuards();
+
+    return test()->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $params], $headers);
+}
+
+/**
+ * A personal access token for the MCP server.
+ */
+function personalToken(User $user, string $name = 'Claude Code'): string
+{
+    return app(AgentAccess::class)->createPersonalToken($user, $name);
+}
+
+/**
+ * Calls one MCP tool and returns the response (`result.structuredContent` holds the tool's data, `result.isError`
+ * tells a tool error).
+ *
+ * @param  array<string, mixed>  $arguments
+ */
+function callTool(string $token, string $name, array $arguments = []): TestResponse
+{
+    return mcp($token, 'tools/call', ['name' => $name, 'arguments' => (object) $arguments]);
+}
+
+/**
+ * The text of a tool error (asserting it is one).
+ *
+ * @param  array<string, mixed>  $arguments
+ */
+function toolError(string $token, string $name, array $arguments = []): string
+{
+    $response = callTool($token, $name, $arguments)->assertOk()->assertJsonPath('result.isError', true);
+
+    return (string) $response->json('result.content.0.text');
+}
+
+/**
+ * The structured result of a tool call (asserting it succeeded).
+ *
+ * @param  array<string, mixed>  $arguments
+ * @return array<string, mixed>
+ */
+function toolResult(string $token, string $name, array $arguments = []): array
+{
+    $response = callTool($token, $name, $arguments)->assertOk();
+
+    expect($response->json('result.isError'))->toBeFalse($response->json('result.content.0.text') ?? '');
+
+    return $response->json('result.structuredContent');
+}
+
+/**
+ * Single sign-on configured with a test IdP (https://idp.test), optionally as the only way in.
+ */
+function useOidc(bool $only = false): void
+{
+    config([
+        'oidc.enabled' => true,
+        'oidc.issuer' => 'https://idp.test',
+        'oidc.client_id' => 'plain-week',
+        'oidc.client_secret' => 'client-secret',
+        'oidc.label' => null,
+        'oidc.only' => $only,
+    ]);
+}
+
+/**
+ * An identity the IdP vouched for, as the `oidc` Socialite driver returns it (claims in `getRaw()`).
+ *
+ * @param  array<string, mixed>  $claims
+ */
+function oidcIdentity(array $claims = []): Laravel\Socialite\Two\User
+{
+    $claims = [
+        'sub' => 'idp-user-1',
+        'email' => 'ada@example.com',
+        'email_verified' => true,
+        'name' => 'Ada Lovelace',
+        ...$claims,
+    ];
+
+    return (new Laravel\Socialite\Two\User)->setRaw($claims)->map([
+        'id' => $claims['sub'],
+        'email' => $claims['email'],
+        'name' => $claims['name'],
+    ]);
+}
+
+/**
+ * Comes back from the IdP as `$identity` (Socialite faked), for a login or, with `$confirm`, a re-authentication.
+ */
+function oidcCallback(Laravel\Socialite\Two\User $identity, bool $confirm = false): TestResponse
+{
+    Socialite::fake('oidc', $identity);
+
+    return test()
+        ->withSession(['oidc.intent' => $confirm ? 'confirm' : 'login'])
+        ->get(route('oidc.callback', ['code' => 'code', 'state' => 'state']));
 }

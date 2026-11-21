@@ -3,6 +3,7 @@ import { parseDateKey } from '@/lib/db/dates';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 import { formatDay, formatWeekday } from '@/lib/planner/format';
 import { weekdayIndex } from '@/lib/planner/week';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -32,15 +33,16 @@ export function DayColumn({
 
     return (
         <section
-            aria-label={`${weekday} ${dayLabel}`}
+            aria-label={t('planner.dayLabel', { weekday, day: dayLabel })}
             aria-current={isToday ? 'date' : undefined}
             className={cn(
                 'flex min-h-0 min-w-0 flex-col',
                 // A soft tint that bleeds 10px past the start, end and top
                 // (and the bottom of the desktop cell), padded back so the
-                // header and rows stay in place.
+                // header and rows stay in place. The scroll margin (80px) keeps
+                // it clear of the sticky mobile header (64px) when scrolled to.
                 isToday &&
-                    '-mx-2.5 -mt-2.5 rounded-t-lg bg-planner-accent/6 px-2.5 pt-2.5 lg:-mb-2.5 lg:rounded-b-lg lg:pb-2.5 dark:bg-planner-accent/10',
+                    '-mx-2.5 -mt-2.5 rounded-t-lg bg-planner-accent/6 px-2.5 pt-2.5 max-lg:scroll-mt-20 lg:-mb-2.5 lg:rounded-b-lg lg:pb-2.5 dark:bg-planner-accent/10',
                 className,
             )}
         >
@@ -68,7 +70,10 @@ export function DayColumn({
             <TaskList
                 placement={{ date }}
                 tasks={tasks}
-                newTaskLabel={`New task for ${weekday} ${dayLabel}`}
+                newTaskLabel={t('planner.newTaskForDay', {
+                    weekday,
+                    day: dayLabel,
+                })}
                 onOpenTask={onOpenTask}
             />
         </section>

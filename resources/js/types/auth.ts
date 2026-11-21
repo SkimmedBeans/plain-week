@@ -5,6 +5,8 @@ export type User = {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
+    /** The interface language picked in Settings › Preferences; null follows the browser. */
+    language?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;
@@ -12,6 +14,17 @@ export type User = {
 
 export type Auth = {
     user: User;
+    /** False for an account created through single sign-on that never set a password. */
+    hasPassword: boolean;
+};
+
+/** Single sign-on through an OpenID Connect IdP (`OIDC_*`). */
+export type Oidc = {
+    enabled: boolean;
+    /** `OIDC_ONLY`: the IdP is the only way in (no password login, sign-up form or reset). */
+    only: boolean;
+    /** The button text (`OIDC_LABEL`); null shows the translated default. */
+    label: string | null;
 };
 
 /** SaaS mode (`SAAS_ENABLED`): accounts need a paid plan to sync. */
@@ -28,6 +41,11 @@ export type Integrations = {
 export type Notifications = {
     enabled: boolean;
     vapidPublicKey: string | null;
+};
+
+/** The MCP server for AI agents (`MCP_ENABLED`); Settings › Agents & apps shows its MCP part only while it is on. */
+export type Mcp = {
+    enabled: boolean;
 };
 
 export type Plan = 'weekly' | 'lifetime';

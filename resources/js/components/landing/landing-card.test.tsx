@@ -6,12 +6,17 @@ import type { Offers } from '@/components/billing/offers';
 import { LandingCard } from './landing-card';
 
 let offers: Offers | null | 'unavailable' = null;
+let mcpEnabled = true;
+let canRegister = true;
 
 vi.mock('@/hooks/use-plan-prices', () => ({
     usePlanPrices: () => offers,
 }));
 
 vi.mock('@inertiajs/react', () => ({
+    usePage: () => ({
+        props: { mcp: { enabled: mcpEnabled }, canRegister },
+    }),
     Link: ({
         children,
         href,
@@ -62,9 +67,36 @@ function lifetimeCard() {
 afterEach(() => {
     cleanup();
     offers = null;
+    mcpEnabled = true;
+    canRegister = true;
 });
 
 describe('LandingCard pricing', () => {
+    it('leads each plan to sign-up', () => {
+        offers = launchOffers;
+
+        render(<LandingCard />);
+
+        expect(
+            screen
+                .getByRole('link', { name: 'Get lifetime' })
+                .getAttribute('href'),
+        ).toBe('/register');
+    });
+
+    it('shows the plans without sign-up buttons while sign-up is closed', () => {
+        offers = launchOffers;
+        canRegister = false;
+
+        render(<LandingCard />);
+
+        expect(lifetimeCard().queryByText('€16')).not.toBeNull();
+        expect(screen.queryByRole('link', { name: 'Get lifetime' })).toBeNull();
+        expect(
+            screen.queryByRole('link', { name: 'Choose weekly' }),
+        ).toBeNull();
+    });
+
     it('shows the launch price without a featured code', () => {
         offers = launchOffers;
 
@@ -182,5 +214,68 @@ describe('LandingCard pricing', () => {
         expect((await screen.findByRole('status')).textContent).toBe(
             'Code copied',
         );
+    });
+});
+
+describe('LandingCard AI agents', () => {
+    const block = () =>
+        document.querySelector<HTMLElement>('[data-test="landing-agents"]');
+
+    it('announces the MCP connector with example requests and the plan it needs', () => {
+        render(<LandingCard />);
+
+        const agents = within(block()!);
+
+        expect(
+            agents.getByRole('heading', {
+                name: 'Your AI agent can plan your week',
+            }),
+        ).not.toBeNull();
+        expect(agents.queryByText('New')).not.toBeNull();
+        expect(
+            agents.getAllByRole('listitem').map((item) => item.textContent),
+        ).toEqual([
+            '“Move everything unfinished to Friday.”',
+            '“Plan next week from these notes.”',
+            "“What's left for today?”",
+        ]);
+        expect(agents.queryByText(/Comes with the sync plan/)).not.toBeNull();
+        expect(agents.queryAllByRole('link')).toHaveLength(0);
+        expect(agents.queryAllByRole('img')).toHaveLength(0);
+    });
+
+    it('comes right after the product shots', () => {
+        render(<LandingCard />);
+
+        const shots = screen.getByRole('figure', {
+            name: 'The planner on a desktop and on a phone',
+        });
+
+        expect(shots.nextElementSibling).toBe(block());
+    });
+
+    it('answers whether it works with Claude or ChatGPT', async () => {
+        const user = userEvent.setup();
+
+        render(<LandingCard />);
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Can I use it with Claude or ChatGPT?',
+            }),
+        );
+
+        expect(screen.queryByText(/Settings › Agents & apps/)).not.toBeNull();
+    });
+
+    it('leaves the block and its question out when the MCP server is off', () => {
+        mcpEnabled = false;
+        render(<LandingCard />);
+
+        expect(block()).toBeNull();
+        expect(
+            screen.queryByRole('button', {
+                name: 'Can I use it with Claude or ChatGPT?',
+            }),
+        ).toBeNull();
     });
 });

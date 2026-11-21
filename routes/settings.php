@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\Settings\AgentsController;
 use App\Http\Controllers\Settings\GoogleCalendarController;
+use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\NotificationsController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Middleware\EnsureGoogleCalendarConfigured;
 use App\Http\Middleware\EnsureHasAccess;
+use App\Http\Middleware\EnsurePasswordLoginAllowed;
 use App\Http\Middleware\EnsureWebPushConfigured;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -22,13 +25,15 @@ Route::middleware(['auth'])->group(function () {
         ->name('security.edit');
 
     Route::put('settings/password', [SecurityController::class, 'update'])
-        ->middleware('throttle:6,1')
+        ->middleware(['throttle:6,1', EnsurePasswordLoginAllowed::class])
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
 
     // Planner preferences are stored per device in the browser; the server only serves the page.
     Route::inertia('settings/preferences', 'settings/preferences')->name('preferences.edit');
+    // The interface language is the exception: it belongs to the account, so emails and push notifications use it.
+    Route::patch('settings/language', [LanguageController::class, 'update'])->name('language.update');
 
     // Export and import run in the browser against IndexedDB; the server only serves the page.
     Route::inertia('settings/data', 'settings/data')->name('data.edit');
@@ -55,6 +60,20 @@ Route::middleware(['auth'])->group(function () {
                     ->name('google.connect');
                 Route::get('google/callback', [GoogleCalendarController::class, 'callback'])->name('google.callback');
             });
+        });
+
+    // Settings › Agents & apps: the personal tokens and OAuth apps behind the MCP server and the app API. Always on
+    // (MCP_ENABLED only hides the MCP part). Tokens and apps can be managed without a plan in SaaS mode; the MCP
+    // server and the API sync answer with the paywall then.
+    Route::prefix('settings/agents')
+        ->name('agents.')
+        ->group(function () {
+            Route::get('/', [AgentsController::class, 'edit'])->name('edit');
+            Route::post('tokens', [AgentsController::class, 'storeToken'])
+                ->middleware('throttle:10,1')
+                ->name('tokens.store');
+            Route::delete('tokens/{token}', [AgentsController::class, 'destroyToken'])->name('tokens.destroy');
+            Route::delete('apps/{client}', [AgentsController::class, 'destroyApp'])->name('apps.destroy');
         });
 });
 

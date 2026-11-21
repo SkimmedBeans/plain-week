@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Billing\Plan;
 use App\Enums\ReferralSource;
+use App\Support\Translations;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,13 +20,15 @@ use Laravel\Cashier\Billable;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Passport\Contracts\OAuthenticatable;
+use Laravel\Passport\HasApiTokens;
 
 /**
  * @property int $id
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
- * @property string $password
+ * @property string|null $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -38,14 +42,17 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $notification_morning_time
  * @property ReferralSource|null $referral_source
  * @property string|null $locale
+ * @property string|null $language
  * @property Carbon|null $welcomed_at
+ * @property string|null $oidc_issuer
+ * @property string|null $oidc_sub
  */
 #[Fillable(['name', 'email', 'password', 'referral_source', 'locale'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'stripe_id', 'pm_type', 'pm_last_four', 'lifetime_payment_id'])]
-class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
+#[Hidden(['password', 'oidc_issuer', 'oidc_sub', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'stripe_id', 'pm_type', 'pm_last_four', 'lifetime_payment_id'])]
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail, OAuthenticatable, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use Billable, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use Billable, HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * The column defaults, so a new model has them before it is reloaded.
@@ -74,6 +81,24 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * The language picked in Settings › Preferences, when the instance still offers it. Mail and notifications use
+     * it; null ("Browser default") leaves the request's language, or APP_LOCALE outside a request.
+     */
+    public function preferredLocale(): ?string
+    {
+        return app(Translations::class)->isAvailable($this->language) ? $this->language : null;
+    }
+
+    /**
+     * False for an account created through single sign-on that never set a password: it can't log in with one, and
+     * confirms sensitive actions at the IdP instead.
+     */
+    public function hasPassword(): bool
+    {
+        return $this->password !== null;
+    }
+
+    /**
      * @return HasMany<Task, $this>
      */
     public function tasks(): HasMany
@@ -87,6 +112,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function somedayLists(): HasMany
     {
         return $this->hasMany(SomedayList::class);
+    }
+
+    /**
+     * @return HasMany<McpActivity, $this>
+     */
+    public function mcpActivities(): HasMany
+    {
+        return $this->hasMany(McpActivity::class);
     }
 
     /**
@@ -112,6 +145,21 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function hasAccess(): bool
     {
         return ! config('saas.enabled') || $this->plan() !== null;
+    }
+
+    /**
+     * The entitlement the clients show (the web's shared `account` prop, the app API's `/me`).
+     *
+     * @return array{hasAccess: bool, plan: string|null}
+     */
+    public function accountSummary(): array
+    {
+        $plan = $this->plan();
+
+        return [
+            'hasAccess' => ! config('saas.enabled') || $plan !== null,
+            'plan' => $plan?->value,
+        ];
     }
 
     /**
