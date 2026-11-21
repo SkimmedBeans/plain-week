@@ -143,6 +143,12 @@ export const planner = {
     'planner.listMoveFailed': 'Could not move the list.',
     'planner.listOver': 'Over the {place} list.',
     'planner.moveList': 'Move the {text} list',
+    'planner.listCardTitle': 'Edit list',
+    'planner.listName': 'List name',
+    'planner.renameFailed': 'Could not rename the list.',
+    'planner.deleteListTitle': 'Delete “{name}”?',
+    'planner.deleteListDescription': 'Its tasks will move to Someday.',
+    'planner.listDeleteFailed': 'Could not delete the list.',
     'planner.carriedOver': {
         one: 'Moved {count} unfinished task to today',
         other: 'Moved {count} unfinished tasks to today',
