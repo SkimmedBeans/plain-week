@@ -34,6 +34,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Weekday first in day headers.** Each day's header shows the weekday in bold at the start and the date, muted, at
   the end.
+- **New-task row above the Completed section.** In every list, the empty new-task row now sits between the open and
+  done tasks, just above the "Completed (n)" label, so a new task is always added to the open group; the keyboard
+  cursor stops there between the open and done tasks.
 
 ## [0.3.18] - 2026-11-17
 

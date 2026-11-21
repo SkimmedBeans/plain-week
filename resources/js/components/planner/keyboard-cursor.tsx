@@ -50,7 +50,12 @@ import { addDays } from '@/lib/planner/week';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 
 /** A list on screen, as its `TaskList` registers it. */
-type ListEntry = { placement: TaskPlacement; tasks: PlannerTask[] };
+type ListEntry = {
+    placement: TaskPlacement;
+    tasks: PlannerTask[];
+    /** The shown tasks' open count (the done ones are the rest). */
+    openCount: number;
+};
 
 type CursorApi = {
     /** A `TaskList` reports its tasks while it is on screen. */
@@ -274,10 +279,15 @@ export function KeyboardCursorProvider({
 
         return [...entries.keys()]
             .sort((a, b) => compareListKeys(a, b, rank))
-            .map((key) => ({
-                key,
-                taskIds: entries.get(key)!.tasks.map((task) => task.id),
-            }));
+            .map((key) => {
+                const { tasks, openCount } = entries.get(key)!;
+
+                return {
+                    key,
+                    taskIds: tasks.map((task) => task.id),
+                    openCount,
+                };
+            });
     }, [entries, somedayLists]);
     const resolved = useMemo(
         () => resolveCursor(lists, cursor),
@@ -436,14 +446,22 @@ export function KeyboardCursorProvider({
     const reorder = (direction: -1 | 1) =>
         onTask((task, at) => {
             const entry = entries.get(at.listKey);
-            const drop =
-                entry &&
-                resolveListDrop(
-                    task,
-                    entry.placement,
-                    entry.tasks,
-                    direction === -1 ? at.index - 1 : at.index + 2,
-                );
+
+            if (!entry) {
+                return;
+            }
+            // `at.index` is the task's row; done tasks render one row below
+            // their shown-order index (the new-task row sits between).
+            const shownIndex =
+                at.index < entry.openCount ? at.index : at.index - 1;
+            // One row over: the row above is before, the row below is after
+            // the next task.
+            const drop = resolveListDrop(
+                task,
+                entry.placement,
+                entry.tasks,
+                direction === -1 ? shownIndex - 1 : shownIndex + 2,
+            );
 
             if (drop) {
                 moveAndFollow(task, drop.move);

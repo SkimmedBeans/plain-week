@@ -689,11 +689,13 @@ writes the local database (`moveTask`); sync follows in the background.
   leaves the key's default alone.
 - Keys that point left or right are mirrored in RTL: `h` / `←` / `H` go to the next day or week there. `<` / `>` move a
   task to the previous / next day in either direction.
-- The cursor is one task, or one list's new-task row (the last stop of each list). Lists are in visual order: Monday to
+- The cursor is one task, or one list's new-task row (the stop between the list's open and done tasks). Lists are in
+  visual order: Monday to
   Sunday, then Someday, the reading order of the desktop grid too (Monday to Friday, then Saturday, Sunday and Someday
   in the row below): `l` from Friday goes on to Saturday and from Sunday to Someday. It is stored as list, task id and
   row index: it follows its task when the task moves (an occurrence moved becomes an exception with a new id, taken from
-  the move's result), and lands on the same row of its list when the task is gone. `h` / `l` go back to the row the
+  the move's result), and lands on the same row of its list when the task is gone. A list's rows are its open tasks in
+  their shown order, then the new-task row, then its done tasks. `h` / `l` go back to the row the
   cursor was last on in the list they enter (remembered per list until the week changes), or else the same row. `H` /
   `L` / `←` / `→` carry it to the same weekday and row; `t` puts it on today. The first motion with no cursor starts on
   today's first task (the first list in another week), or on the focused row when Tab got there first.

@@ -20,22 +20,29 @@ export const CURSOR_ROW_STOP_SELECTOR =
     '[data-cursor] [data-task-open], [data-cursor][data-new-task-row]';
 
 /** A day or the Someday list on screen, keyed like `placementKey`. */
-export type CursorList = { key: string; taskIds: string[] };
+export type CursorList = {
+    key: string;
+    taskIds: string[];
+    /** The shown tasks' open count (the done ones are the rest). */
+    openCount: number;
+};
 
 export type Cursor = {
     listKey: string;
     /** The task under the cursor; `null` for the list's new-task row. */
     taskId: string | null;
     /**
-     * Its row in the list (the new-task row is `taskIds.length`). Where the
-     * cursor lands when its task is gone (deleted, moved off screen).
+     * Its row in the list's visual order: the open tasks, then the new-task
+     * row, then the done tasks. Where the cursor lands when its task is
+     * gone (deleted, moved off screen).
      */
     index: number;
 };
 
 /**
  * The cursor on a list's new-task row, which stays there while tasks are
- * added above it (typing new tasks in that row).
+ * added above it (typing new tasks in that row). Its row moves with the
+ * open tasks; the infinity index always resolves to the row itself.
  */
 export function newTaskRowCursor(listKey: string): Cursor {
     return { listKey, taskId: null, index: Number.POSITIVE_INFINITY };
@@ -69,12 +76,27 @@ export function compareListKeys(
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
+/**
+ * The cursor at row `index` of `list`: its open tasks, then the new-task
+ * row (at `openCount`), then its done tasks. `POSITIVE_INFINITY` is always
+ * the new-task row, wherever the open tasks push it.
+ */
 function at(list: CursorList, index: number): Cursor {
+    if (index === Number.POSITIVE_INFINITY) {
+        return { listKey: list.key, taskId: null, index: list.openCount };
+    }
     const clamped = Math.min(Math.max(index, 0), list.taskIds.length);
+
+    if (clamped === list.openCount) {
+        return { listKey: list.key, taskId: null, index: clamped };
+    }
+    // The shown order is open then done; the new-task row takes one row
+    // between them, so done tasks render one row below their index.
+    const taskIndex = clamped < list.openCount ? clamped : clamped - 1;
 
     return {
         listKey: list.key,
-        taskId: list.taskIds[clamped] ?? null,
+        taskId: list.taskIds[taskIndex],
         index: clamped,
     };
 }
@@ -112,7 +134,13 @@ export function cursorOnTask(
         const index = list.taskIds.indexOf(taskId);
 
         if (index !== -1) {
-            return { listKey: list.key, taskId, index };
+            // Done tasks render one row below their shown-order index: the
+            // new-task row sits between the open and done tasks.
+            return {
+                listKey: list.key,
+                taskId,
+                index: index < list.openCount ? index : index + 1,
+            };
         }
     }
 
@@ -134,8 +162,9 @@ export function initialCursor(
 
 /**
  * Moves a resolved cursor: up and down within its list (the new-task row is
- * the last stop), to the previous / next list on the row it was last on there
- * (`rows`, by list key), or else roughly the same row.
+ * the stop between the open and done tasks), to the previous / next list on
+ * the row it was last on there (`rows`, by list key), or else roughly the
+ * same row.
  */
 export function moveCursor(
     lists: CursorList[],
@@ -172,17 +201,28 @@ export function firstInList(lists: CursorList[], cursor: Cursor): Cursor {
     return list ? at(list, 0) : cursor;
 }
 
-/** The last task of the cursor's list (its new-task row when empty). */
+/**
+ * The last task of the cursor's list: the last done task when there are
+ * any, else the last open one (its new-task row when empty).
+ */
 export function lastInList(lists: CursorList[], cursor: Cursor): Cursor {
     const list = lists.find(({ key }) => key === cursor.listKey);
 
-    return list ? at(list, list.taskIds.length - 1) : cursor;
+    if (!list) {
+        return cursor;
+    }
+    const doneCount = list.taskIds.length - list.openCount;
+
+    return at(
+        list,
+        doneCount > 0 ? list.taskIds.length : list.taskIds.length - 1,
+    );
 }
 
 /**
  * Where the cursor goes when its task leaves the list (deleted, moved to
  * another week or to Someday): the task that takes its row, or the new-task
- * row after the last one. Unlike `resolveCursor`, it does not follow the task.
+ * row. Unlike `resolveCursor`, it does not follow the task.
  */
 export function cursorAfterRemoval(
     lists: CursorList[],
@@ -193,11 +233,19 @@ export function cursorAfterRemoval(
     if (!list) {
         return cursor;
     }
+    const index =
+        cursor.taskId === null ? -1 : list.taskIds.indexOf(cursor.taskId);
+    // An open task was removed: the new-task row moves up one row.
+    const openCount =
+        index !== -1 && index < list.openCount
+            ? list.openCount - 1
+            : list.openCount;
 
     return at(
         {
             key: list.key,
             taskIds: list.taskIds.filter((id) => id !== cursor.taskId),
+            openCount,
         },
         cursor.index,
     );
