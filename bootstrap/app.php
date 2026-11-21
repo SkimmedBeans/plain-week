@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\Billing\WebhookController;
 use App\Http\Controllers\RobotsController;
+use App\Http\Middleware\AddResourceMetadataHeader;
 use App\Http\Middleware\AddRobotsTag;
 use App\Http\Middleware\EnsureSaasEnabled;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetLocale;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         // Outside the web group: crawlers get no session or cookies. Dynamic so APP_NOINDEX can close the instance.
@@ -31,14 +35,18 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(AddRobotsTag::class);
 
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        // It wraps `auth:api` to add the WWW-Authenticate header to its 401, so it must run before it.
+        $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: AddResourceMetadataHeader::class);
 
-        // Sync payloads must round-trip byte for byte (empty notes, leading spaces).
-        $isSync = fn (Request $request) => $request->is('sync/*');
+        $middleware->encryptCookies(except: ['appearance']);
+
+        // Sync payloads (web and app API) must round-trip byte for byte (empty notes, leading spaces).
+        $isSync = fn (Request $request) => $request->is('sync/*', 'api/*/sync/*');
         $middleware->trimStrings(except: [$isSync]);
         $middleware->convertEmptyStringsToNull(except: [$isSync]);
 
         $middleware->web(append: [
+            SetLocale::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
@@ -46,6 +54,6 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*', 'sync/*', 'stripe/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*', 'sync/*', 'stripe/*', 'mcp', 'oauth/token', 'oauth/register') || $request->expectsJson(),
         );
     })->create();

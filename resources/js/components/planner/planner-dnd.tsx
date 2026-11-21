@@ -21,11 +21,10 @@ import type {
     ScreenReaderInstructions,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { createContext, use, useEffect, useRef, useState } from 'react';
+import { createContext, use, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { EdgeZone } from '@/components/planner/edge-zone';
-import { openContextMenuAt } from '@/components/planner/task-context-menu';
 import { TaskLabel } from '@/components/planner/task-row';
 import { moveTask } from '@/lib/db/tasks';
 import type { MoveTaskInput } from '@/lib/db/tasks';
@@ -42,6 +41,7 @@ import type {
     TaskDragData,
     WeekDirection,
 } from '@/lib/planner/drop';
+import { t } from '@/lib/i18n';
 import { toastWithUndo } from '@/lib/planner/undo';
 
 /** A mouse drag starts after this much movement, so a click still opens. */
@@ -52,18 +52,20 @@ const MOUSE_DRAG_DISTANCE_PX = 5;
  *
  * - Moving more than TOUCH_DRAG_TOLERANCE_PX within the first
  *   TOUCH_DRAG_DELAY_MS scrolls the page; nothing is picked up.
- * - After TOUCH_DRAG_DELAY_MS the sensor activates and the task is "held":
- *   scrolling is blocked, but nothing shows yet.
- * - Moving more than TOUCH_HOLD_TOLERANCE_PX while held starts the visible
- *   drag (dragged pill, dimmed row, edge zones).
- * - Holding still until TOUCH_MENU_DELAY_MS (from touch start) cancels the
- *   drag and opens the task's context menu where the finger is; moving after
- *   that does not drag.
+ * - After TOUCH_DRAG_DELAY_MS the sensor activates and the task is picked up
+ *   where it is (dragged pill, dimmed row, edge zones), however long the
+ *   finger then stays still; the page no longer scrolls under it.
+ * - Until the finger has moved more than TOUCH_HOLD_TOLERANCE_PX the task is
+ *   "held": no insertion line, and releasing it moves nothing.
+ *
+ * A long press never opens the context menu (see `TaskRow`): the row's "more"
+ * button does.
  */
 const TOUCH_DRAG_DELAY_MS = 250;
-const TOUCH_DRAG_TOLERANCE_PX = 5;
+// Both about a finger's jitter: the first before the task is picked up, the
+// second after.
+const TOUCH_DRAG_TOLERANCE_PX = 8;
 const TOUCH_HOLD_TOLERANCE_PX = 8;
-export const TOUCH_MENU_DELAY_MS = 500;
 
 export function listDroppableId(listKey: string): string {
     return `list:${listKey}`;
@@ -186,10 +188,9 @@ function dropTargetOf(collision: Collision | undefined): DropTarget | null {
     }
 }
 
-const screenReaderInstructions: ScreenReaderInstructions = {
-    draggable:
-        'To move a task, press Space or Enter on its move button. Use the arrow keys to choose where it goes, Space or Enter to drop it, Escape to cancel.',
-};
+const screenReaderInstructions = (): ScreenReaderInstructions => ({
+    draggable: t('planner.dragInstructions'),
+});
 
 function overLabel(data: unknown): string | null {
     const over = data as DropData | undefined;
@@ -199,7 +200,9 @@ function overLabel(data: unknown): string | null {
     }
 
     if (over.type === 'edge') {
-        return over.direction === -1 ? 'the previous week' : 'the next week';
+        return over.direction === -1
+            ? t('planner.previousWeekLower')
+            : t('planner.nextWeekLower');
     }
 
     return placementLabel(over.placement, over.name);
@@ -222,40 +225,9 @@ export function usePlannerDnd(): PlannerDndState {
     return use(PlannerDndStateContext);
 }
 
-/** Where a touch started, or null for a mouse or keyboard drag. */
-function touchPointOf(event: Event): { x: number; y: number } | null {
-    if (typeof TouchEvent === 'undefined' || !(event instanceof TouchEvent)) {
-        return null;
-    }
-
-    const touch = event.touches[0] ?? event.changedTouches[0];
-
-    return touch ? { x: touch.clientX, y: touch.clientY } : null;
-}
-
-/**
- * Turns a still touch hold into the row's context menu: cancels the pointer
- * drag (dnd-kit has no API for it; its pointer sensors cancel on an Escape
- * keydown on the document) and opens the menu at the touch point.
- *
- * Both happen synchronously, before React renders the cancel: the row still
- * renders as not dragged (a held task is not `activeId`), so its
- * `contextmenu` guard lets the event through.
- */
-function openContextMenuFromHold(
-    taskId: string,
-    point: { x: number; y: number },
-): void {
-    document.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }),
-    );
-    const row = document.querySelector(
-        `[data-task-id="${CSS.escape(taskId)}"]`,
-    );
-
-    if (row) {
-        openContextMenuAt(row, point.x, point.y);
-    }
+/** Whether a drag was started by a finger (not a mouse or the keyboard). */
+function isTouchDrag(event: Event): boolean {
+    return typeof TouchEvent !== 'undefined' && event instanceof TouchEvent;
 }
 
 /**
@@ -293,9 +265,9 @@ type Props = {
  * Drag and drop for the planner: tasks move within a day, across days, to and
  * from Someday, and to the previous / next week through the screen-edge zones
  * (start = previous, end = next, so RTL mirrors). A mouse drag starts after
- * 5px of movement, a touch drag with a press that holds then moves (holding
- * still opens the context menu instead), and the move button of a row starts
- * a keyboard drag. Drops are written with `moveTask` (local only).
+ * 5px of movement, a touch drag with a press that holds (it picks the task
+ * up) then moves, and the move button of a row starts a keyboard drag. Drops
+ * are written with `moveTask` (local only).
  *
  * Rows use `@dnd-kit/sortable` for its keyboard coordinates and item
  * registration, but are not shifted with its transforms: an insertion line
@@ -329,11 +301,9 @@ export function PlannerDnd({
     // A dropped task stays dimmed until its write lands, so the row does not
     // flash back in its old place for a frame.
     const [settlingId, setSettlingId] = useState<string | null>(null);
-    // A touch drag is "held" (invisible) until the finger moves; holding
-    // still opens the context menu instead.
+    // A touch drag is "held" until the finger moves: picked up, but it
+    // points nowhere yet and releasing it moves nothing.
     const [held, setHeld] = useState(false);
-    const holdTimer = useRef<number | undefined>(undefined);
-    useEffect(() => () => window.clearTimeout(holdTimer.current), []);
     const lastResult = useRef<DropResult | null>(null);
     const draggedText = useRef('');
 
@@ -344,22 +314,11 @@ export function PlannerDnd({
         setDragged((active.data.current as TaskDragData | undefined) ?? null);
         setResult(null);
         lastResult.current = null;
-
-        const point = touchPointOf(activatorEvent);
-
-        if (point) {
-            const taskId = String(active.id);
-            setHeld(true);
-            holdTimer.current = window.setTimeout(
-                () => openContextMenuFromHold(taskId, point),
-                TOUCH_MENU_DELAY_MS - TOUCH_DRAG_DELAY_MS,
-            );
-        }
+        setHeld(isTouchDrag(activatorEvent));
     };
 
     const handleDragMove = ({ collisions, delta }: DragMoveEvent) => {
         if (held && Math.hypot(delta.x, delta.y) > TOUCH_HOLD_TOLERANCE_PX) {
-            window.clearTimeout(holdTimer.current);
             setHeld(false);
         }
 
@@ -375,7 +334,6 @@ export function PlannerDnd({
     };
 
     const finish = (activatorEvent: Event) => {
-        window.clearTimeout(holdTimer.current);
         setHeld(false);
 
         if (!(activatorEvent instanceof KeyboardEvent)) {
@@ -391,7 +349,7 @@ export function PlannerDnd({
 
         return moveTask(id, move)
             .catch((error: unknown) => {
-                toast.error('Could not move the task.');
+                toast.error(t('planner.moveTaskFailed'));
                 throw error;
             })
             .finally(() =>
@@ -418,7 +376,9 @@ export function PlannerDnd({
                     // The task left the screen: say where it went.
                     if (drop.indicator === null) {
                         toastWithUndo(
-                            `Moved to ${placementLabel(drop.move, drop.name)}.`,
+                            t('planner.movedTo', {
+                                place: placementLabel(drop.move, drop.name),
+                            }),
                             () => void write(task.id, undo),
                         );
                     }
@@ -455,22 +415,27 @@ export function PlannerDnd({
 
     const announcements: Announcements = {
         onDragStart: ({ active }) =>
-            `Picked up task ${textOf(active.data.current)}.`,
+            t('planner.pickedUp', { text: textOf(active.data.current) }),
         onDragOver: ({ over }) => {
             const label = overLabel(over?.data.current);
 
-            return label ? `Over ${label}.` : 'Not over a list.';
+            return label
+                ? t('planner.over', { place: label })
+                : t('planner.notOverList');
         },
         onDragEnd: ({ active }) => {
             const drop = lastResult.current;
             const text = textOf(active.data.current);
 
             return drop
-                ? `Moved ${text} to ${placementLabel(drop.move, drop.name)}.`
-                : `${text} was not moved.`;
+                ? t('planner.droppedAt', {
+                      text,
+                      place: placementLabel(drop.move, drop.name),
+                  })
+                : t('planner.notMoved', { text });
         },
         onDragCancel: ({ active }) =>
-            `Cancelled. ${textOf(active.data.current)} was not moved.`,
+            t('planner.dragCancelled', { text: textOf(active.data.current) }),
     };
 
     return (
@@ -482,7 +447,10 @@ export function PlannerDnd({
             measuring={{
                 droppable: { strategy: MeasuringStrategy.Always },
             }}
-            accessibility={{ announcements, screenReaderInstructions }}
+            accessibility={{
+                announcements,
+                screenReaderInstructions: screenReaderInstructions(),
+            }}
             onDragStart={handleDragStart}
             onDragMove={handleDragMove}
             onDragEnd={handleDragEnd}
@@ -490,13 +458,13 @@ export function PlannerDnd({
         >
             <PlannerDndStateContext
                 value={{
-                    activeId: (!held && dragged?.task.id) || settlingId,
+                    activeId: dragged?.task.id ?? settlingId,
                     indicator: held ? null : (result?.indicator ?? null),
                 }}
             >
                 {children}
             </PlannerDndStateContext>
-            {dragged && !held && (
+            {dragged && (
                 <>
                     <EdgeZone direction={-1} onHover={handleEdgeHover} />
                     <EdgeZone direction={1} onHover={handleEdgeHover} />
@@ -508,7 +476,7 @@ export function PlannerDnd({
               task being dragged.
             */}
             <DragOverlay dropAnimation={null} zIndex={10}>
-                {dragged && !held && (
+                {dragged && (
                     <div
                         data-drag-overlay
                         className="flex h-full min-h-row cursor-grabbing items-start rounded-md bg-background py-2 text-sm shadow-lg ring-1 ring-border max-lg:text-base"

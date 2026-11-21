@@ -37,6 +37,7 @@ import {
     renameList,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 

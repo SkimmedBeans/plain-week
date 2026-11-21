@@ -1,4 +1,5 @@
 import { MAX_EVERY_DAYS, TASK_COLORS } from '@/lib/db/types';
+import { t } from '@/lib/i18n';
 import { isValidEvery } from '@/lib/recurrence/expand';
 import type {
     IsoWeekday,
@@ -42,6 +43,11 @@ function isObject(value: unknown): value is Row {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** "Task 3": how a row is named in an import error (`index` is zero-based). */
+export function taskLabel(index: number): string {
+    return t('settings.transfer.task', { number: index + 1 });
+}
+
 /** A real calendar day in `YYYY-MM-DD` (Laravel `date_format:Y-m-d`). */
 export function isDateKey(value: unknown): value is string {
     if (typeof value !== 'string') {
@@ -82,7 +88,13 @@ class RowValidator {
     ) {}
 
     fail(field: string, rule: string): never {
-        throw new ImportError(`${this.label}: "${field}" ${rule}.`);
+        throw new ImportError(
+            t('settings.transfer.fieldError', {
+                label: this.label,
+                field,
+                rule,
+            }),
+        );
     }
 
     has(field: string): boolean {
@@ -91,7 +103,7 @@ class RowValidator {
 
     present(field: string): unknown {
         if (!this.has(field)) {
-            this.fail(field, 'is missing');
+            this.fail(field, t('settings.transfer.rule.missing'));
         }
 
         return this.row[field];
@@ -101,7 +113,7 @@ class RowValidator {
         const value = this.present(field);
 
         if (typeof value !== 'string') {
-            this.fail(field, 'must be a string');
+            this.fail(field, t('settings.transfer.rule.string'));
         }
 
         return value;
@@ -111,7 +123,7 @@ class RowValidator {
         const value = this.string(field);
 
         if (value === '') {
-            this.fail(field, 'cannot be empty');
+            this.fail(field, t('settings.transfer.rule.notEmpty'));
         }
 
         return value;
@@ -121,7 +133,7 @@ class RowValidator {
         const value = this.present(field);
 
         if (typeof value !== 'boolean') {
-            this.fail(field, 'must be true or false');
+            this.fail(field, t('settings.transfer.rule.boolean'));
         }
 
         return value;
@@ -149,10 +161,7 @@ class RowValidator {
         const value = this.present(field);
 
         if (!isTimestamp(value)) {
-            this.fail(
-                field,
-                'must be a timestamp like 2026-10-15T08:35:00.123Z',
-            );
+            this.fail(field, t('settings.transfer.rule.timestamp'));
         }
 
         return value;
@@ -161,14 +170,14 @@ class RowValidator {
 
 function parseSubtasks(v: RowValidator, value: unknown): Subtask[] {
     if (!Array.isArray(value)) {
-        v.fail('subtasks', 'must be a list');
+        v.fail('subtasks', t('settings.transfer.rule.list'));
     }
 
     return value.map((subtask: unknown, index) => {
         const field = `subtasks[${index}]`;
 
         if (!isObject(subtask)) {
-            v.fail(field, 'must be an object');
+            v.fail(field, t('settings.transfer.rule.object'));
         }
 
         const { id, text, done } = subtask;
@@ -180,16 +189,18 @@ function parseSubtasks(v: RowValidator, value: unknown): Subtask[] {
         ) {
             v.fail(
                 `${field}.id`,
-                `must be a string of 1 to ${MAX_SUBTASK_ID_LENGTH} characters`,
+                t('settings.transfer.rule.subtaskId', {
+                    max: MAX_SUBTASK_ID_LENGTH,
+                }),
             );
         }
 
         if (typeof text !== 'string') {
-            v.fail(`${field}.text`, 'must be a string');
+            v.fail(`${field}.text`, t('settings.transfer.rule.string'));
         }
 
         if (typeof done !== 'boolean') {
-            v.fail(`${field}.done`, 'must be true or false');
+            v.fail(`${field}.done`, t('settings.transfer.rule.boolean'));
         }
 
         return { id, text, done };
@@ -202,7 +213,7 @@ function parseRecurrence(v: RowValidator, value: unknown): Recurrence | null {
     }
 
     if (!isObject(value)) {
-        v.fail('recurrence', 'must be an object or null');
+        v.fail('recurrence', t('settings.transfer.rule.objectOrNull'));
     }
 
     const extra = Object.keys(value).find(
@@ -210,13 +221,16 @@ function parseRecurrence(v: RowValidator, value: unknown): Recurrence | null {
     );
 
     if (extra !== undefined) {
-        v.fail('recurrence', `has an unknown key "${extra}"`);
+        v.fail(
+            'recurrence',
+            t('settings.transfer.rule.unknownKey', { key: extra }),
+        );
     }
 
     const until = value.until ?? null;
 
     if (until !== null && !isDateKey(until)) {
-        v.fail('recurrence.until', 'must be a date like 2026-10-15 or null');
+        v.fail('recurrence.until', t('settings.transfer.rule.dateOrNull'));
     }
 
     const end = until === null ? {} : { until };
@@ -231,7 +245,7 @@ function parseRecurrence(v: RowValidator, value: unknown): Recurrence | null {
         ) {
             v.fail(
                 'recurrence.every',
-                `must be a number of days from 1 to ${MAX_EVERY_DAYS}`,
+                t('settings.transfer.rule.every', { max: MAX_EVERY_DAYS }),
             );
         }
 
@@ -255,10 +269,7 @@ function parseRecurrence(v: RowValidator, value: unknown): Recurrence | null {
                     (i === 0 || day > weekdays[i - 1]),
             )
         ) {
-            v.fail(
-                'recurrence.weekdays',
-                'must be a sorted list of unique weekdays from 1 to 7',
-            );
+            v.fail('recurrence.weekdays', t('settings.transfer.rule.weekdays'));
         }
 
         return { type: 'weekly', weekdays: weekdays as IsoWeekday[], ...end };
@@ -274,13 +285,16 @@ function parseRecurrence(v: RowValidator, value: unknown): Recurrence | null {
             (day as number) < 1 ||
             (day as number) > 31
         ) {
-            v.fail('recurrence.day', 'must be a day of the month from 1 to 31');
+            v.fail('recurrence.day', t('settings.transfer.rule.dayOfMonth'));
         }
 
         return { type: 'monthly', day: day as number, ...end };
     }
 
-    return v.fail('recurrence.type', 'must be "daily", "weekly" or "monthly"');
+    return v.fail(
+        'recurrence.type',
+        t('settings.transfer.rule.recurrenceType'),
+    );
 }
 
 // The server's wire rule: 0 (the base Someday list) up to 10000.
@@ -302,17 +316,17 @@ function isTime(value: unknown): value is string {
  * (unknown keys dropped). `index` is zero-based; messages count from 1.
  */
 export function validateTask(value: unknown, index: number): Task {
-    const label = `Task ${index + 1}`;
+    const label = taskLabel(index);
 
     if (!isObject(value)) {
-        throw new ImportError(`${label} is not an object.`);
+        throw new ImportError(t('settings.transfer.notObject', { label }));
     }
 
     const v: RowValidator = new RowValidator(value, label);
     const date = v.nullable(
         'date',
         isDateKey,
-        'must be a date like 2026-10-15 or null',
+        t('settings.transfer.rule.dateOrNull'),
     );
     const somedayColumn = v.nullable(
         'someday_column',
@@ -321,41 +335,51 @@ export function validateTask(value: unknown, index: number): Task {
     );
 
     if (date === null && somedayColumn === null) {
-        v.fail('someday_column', 'is required when "date" is null');
+        v.fail('someday_column', t('settings.transfer.rule.somedayRequired'));
     }
 
     const position = v.nonEmptyString('position');
 
     if (position.length > MAX_POSITION_LENGTH) {
-        v.fail('position', `must be at most ${MAX_POSITION_LENGTH} characters`);
+        v.fail(
+            'position',
+            t('settings.transfer.rule.positionMax', {
+                max: MAX_POSITION_LENGTH,
+            }),
+        );
     }
 
     const color = v.present('color');
 
     if (!TASK_COLORS.includes(color as TaskColor)) {
-        v.fail('color', `must be one of ${TASK_COLORS.join(', ')}`);
+        v.fail(
+            'color',
+            t('settings.transfer.rule.colorOneOf', {
+                colors: TASK_COLORS.join(t('common.listSeparator')),
+            }),
+        );
     }
 
     const recurrence = parseRecurrence(v, v.present('recurrence'));
     const seriesId = v.nullable(
         'series_id',
         (id): id is string => typeof id === 'string' && id !== '',
-        'must be a task id or null',
+        t('settings.transfer.rule.taskIdOrNull'),
     );
     const occurrenceDate = v.nullable(
         'occurrence_date',
         isDateKey,
-        'must be a date like 2026-10-15 or null',
+        t('settings.transfer.rule.dateOrNull'),
     );
     const id = v.nonEmptyString('id');
     const deletedAt = v.nullable(
         'deleted_at',
         isTimestamp,
-        'must be a timestamp or null',
+        t('settings.transfer.rule.timestampOrNull'),
     );
 
     if (seriesId === id) {
-        v.fail('series_id', 'cannot be the task itself');
+        v.fail('series_id', t('settings.transfer.rule.selfSeries'));
     }
 
     // Row kinds (plain, series, exception). Tombstones skip these checks, like
@@ -363,23 +387,26 @@ export function validateTask(value: unknown, index: number): Task {
     if (deletedAt === null) {
         if (recurrence !== null) {
             if (date === null) {
-                v.fail('date', 'is required for a recurring task');
+                v.fail('date', t('settings.transfer.rule.dateRequired'));
             }
 
             if (seriesId !== null || occurrenceDate !== null) {
                 v.fail(
                     'recurrence',
-                    'cannot be set on an exception of a series',
+                    t('settings.transfer.rule.exceptionRecurrence'),
                 );
             }
 
             if (recurrence.until && recurrence.until < date) {
-                v.fail('recurrence.until', 'cannot be before the task date');
+                v.fail(
+                    'recurrence.until',
+                    t('settings.transfer.rule.untilBefore'),
+                );
             }
         } else if ((seriesId === null) !== (occurrenceDate === null)) {
             v.fail(
                 seriesId === null ? 'series_id' : 'occurrence_date',
-                'is required on an exception of a series',
+                t('settings.transfer.rule.exceptionRequired'),
             );
         }
     }
@@ -394,10 +421,14 @@ export function validateTask(value: unknown, index: number): Task {
         done_at: v.nullable(
             'done_at',
             isTimestamp,
-            'must be a timestamp or null',
+            t('settings.transfer.rule.timestampOrNull'),
         ),
         color: color as TaskColor,
-        time: v.nullable('time', isTime, 'must be a time like 09:30 or null'),
+        time: v.nullable(
+            'time',
+            isTime,
+            t('settings.transfer.rule.timeOrNull'),
+        ),
         notes: v.string('notes'),
         subtasks: parseSubtasks(v, v.present('subtasks')),
         created_at: v.timestamp('created_at'),
