@@ -23,9 +23,11 @@ import type {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { createContext, use, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { EdgeZone } from '@/components/planner/edge-zone';
 import { TaskLabel } from '@/components/planner/task-row';
+import { moveListTo } from '@/lib/db/lists';
 import { moveTask } from '@/lib/db/tasks';
 import type { MoveTaskInput } from '@/lib/db/tasks';
 import {
@@ -33,11 +35,14 @@ import {
     placementKey,
     placementLabel,
     resolveDrop,
+    resolveListReorder,
 } from '@/lib/planner/drop';
 import type {
+    ColumnDropData,
     DropData,
     DropResult,
     DropTarget,
+    ListDragData,
     TaskDragData,
     WeekDirection,
 } from '@/lib/planner/drop';
@@ -71,6 +76,26 @@ export function listDroppableId(listKey: string): string {
     return `list:${listKey}`;
 }
 
+/** The dnd-kit id of a named list's column droppable (F5). */
+export function columnDroppableId(listId: string): string {
+    return `column:${listId}`;
+}
+
+/** The dnd-kit id of a named list's draggable header (F5). */
+export function listDraggableId(listId: string): string {
+    return `list-drag:${listId}`;
+}
+
+/** A measured droppable rectangle (the values of `droppableRects`). */
+type Rect = {
+    top: number;
+    left: number;
+    bottom: number;
+    right: number;
+    width: number;
+    height: number;
+};
+
 const PRIORITY: Record<DropData['type'], number> = {
     edge: 0,
     task: 1,
@@ -78,9 +103,21 @@ const PRIORITY: Record<DropData['type'], number> = {
 };
 
 function dropDataOf(collision: Collision): DropData | undefined {
-    return collision.data?.droppableContainer?.data.current as
+    const data = collision.data?.droppableContainer?.data.current as
         | DropData
+        | ColumnDropData
         | undefined;
+
+    // A named list's column takes list drags only; for task drags it is not
+    // a drop target.
+    return data?.type === 'column' ? undefined : data;
+}
+
+/** A named list's column data on a collision, or `undefined`. */
+function columnDataOf(data: unknown): ColumnDropData | undefined {
+    const column = data as ColumnDropData | undefined;
+
+    return column?.type === 'column' ? column : undefined;
 }
 
 /** Edge zones win over task rows, which win over the list they sit in. */
@@ -125,6 +162,16 @@ function isBelow(collision: Collision): boolean {
  * sortable list); in another list it lands above it.
  */
 const collisionDetection: CollisionDetection = (args) => {
+    const activeData = args.active.data.current as
+        | TaskDragData
+        | ListDragData
+        | undefined;
+
+    // A list drag only ever lands on a named list's column (F5).
+    if (activeData?.type === 'listDrag') {
+        return listCollision(args, activeData);
+    }
+
     const pointer = args.pointerCoordinates;
     let collisions = byPriority(
         withinOwnList(pointer ? pointerWithin(args) : rectIntersection(args)),
@@ -164,6 +211,159 @@ const collisionDetection: CollisionDetection = (args) => {
     return [{ ...first, data: { ...first.data, below } }];
 };
 
+/** Which side of a hit column a list drag points at (F5). */
+type ListEdge = 'start' | 'top' | 'end' | 'bottom';
+
+/**
+ * A list drop: the column it is over, the edge of it where the insertion
+ * line is drawn, and the index for `moveListTo` (`null` where the drop
+ * would leave the list where it is).
+ */
+type ListDrop = {
+    hit: ColumnDropData;
+    /** The line is drawn before (false: after) the hit column's list. */
+    before: boolean;
+    edge: ListEdge;
+    toIndex: number | null;
+};
+
+/**
+ * Which edge of a hit column a list drag points at: the pointer's half of
+ * the column wins. When a neighbour column shares the hit's row the axis is
+ * horizontal (desktop, columns side by side: the line runs vertically
+ * between them); otherwise vertical (phones, lists stacked: between rows).
+ * The keyboard sensor steps the cursor with no pointer: the drop lands in
+ * the hit's slot, before it.
+ */
+function listDropEdge(
+    columns: { data: ColumnDropData; rect: Rect }[],
+    hitIndex: number,
+    pointer: { x: number; y: number } | null,
+): { before: boolean; edge: ListEdge } {
+    const { rect } = columns[hitIndex];
+    const prev = columns[hitIndex - 1];
+    const next = columns[hitIndex + 1];
+    const sameRow = (a: Rect, b: Rect) => Math.abs(a.top - b.top) < 4;
+    const horizontal =
+        (prev !== undefined && sameRow(rect, prev.rect)) ||
+        (next !== undefined && sameRow(rect, next.rect));
+
+    let before: boolean;
+
+    if (!pointer) {
+        before = true;
+    } else if (horizontal) {
+        const rtl =
+            getComputedStyle(document.documentElement).direction === 'rtl';
+        const x = rtl
+            ? rect.left + rect.width - pointer.x
+            : pointer.x - rect.left;
+        before = x < rect.width / 2;
+    } else {
+        before = pointer.y - rect.top < (rect.bottom - rect.top) / 2;
+    }
+
+    return {
+        before,
+        edge: horizontal
+            ? before
+                ? 'start'
+                : 'end'
+            : before
+              ? 'top'
+              : 'bottom',
+    };
+}
+
+/**
+ * The named list's column a list drag is over (F5): a single collision
+ * carrying `before`, `edge` and `toIndex`. Empty over no column — including
+ * the dragged list's own column, where the insertion line hides.
+ */
+function listCollision(
+    args: Parameters<CollisionDetection>[0],
+    dragged: ListDragData,
+): Collision[] {
+    const columns: { data: ColumnDropData; rect: Rect }[] = [];
+
+    for (const container of args.droppableContainers) {
+        const data = columnDataOf(container.data.current);
+        const rect = args.droppableRects.get(container.id);
+
+        if (data !== undefined && rect !== undefined) {
+            columns.push({ data, rect });
+        }
+    }
+
+    if (columns.length === 0) {
+        return [];
+    }
+
+    columns.sort((a, b) => a.data.index - b.data.index);
+
+    const pointer = args.pointerCoordinates;
+    const hit = (pointer ? pointerWithin(args) : rectIntersection(args)).find(
+        (collision) =>
+            columnDataOf(collision.data?.droppableContainer?.data.current) !==
+            undefined,
+    );
+
+    if (!hit) {
+        return [];
+    }
+
+    const hitData = columnDataOf(hit.data?.droppableContainer?.data.current)!;
+
+    if (hitData.listId === dragged.listId) {
+        return [];
+    }
+
+    const hitIndex = columns.findIndex(
+        (column) => column.data.listId === hitData.listId,
+    );
+    const { before, edge } = listDropEdge(columns, hitIndex, pointer);
+    const toIndex =
+        resolveListReorder(
+            columns.map((column) => column.data),
+            dragged.listId,
+            hitData.listId,
+            before,
+        )?.toIndex ?? null;
+
+    return [{ ...hit, data: { ...hit.data, before, edge, toIndex } }];
+}
+
+/** The list drop carried on a collision, or `null` (over no column). */
+function listDropOf(
+    collision: Collision | undefined,
+    dragged: ListDragData,
+): ListDrop | null {
+    if (!collision) {
+        return null;
+    }
+
+    const hit = columnDataOf(collision.data?.droppableContainer?.data.current);
+    const extra = collision.data as
+        | { before?: boolean; edge?: ListEdge; toIndex?: number | null }
+        | undefined;
+
+    if (
+        hit === undefined ||
+        hit.listId === dragged.listId ||
+        extra?.before === undefined ||
+        extra.edge === undefined
+    ) {
+        return null;
+    }
+
+    return {
+        hit,
+        before: extra.before,
+        edge: extra.edge,
+        toIndex: extra.toIndex ?? null,
+    };
+}
+
 function dropTargetOf(collision: Collision | undefined): DropTarget | null {
     const data = collision && dropDataOf(collision);
 
@@ -193,10 +393,14 @@ const screenReaderInstructions = (): ScreenReaderInstructions => ({
 });
 
 function overLabel(data: unknown): string | null {
-    const over = data as DropData | undefined;
+    const over = data as DropData | ListDragData | undefined;
 
     if (over === undefined) {
         return null;
+    }
+
+    if (over.type === 'listDrag') {
+        return over.name;
     }
 
     if (over.type === 'edge') {
@@ -213,11 +417,17 @@ type PlannerDndState = {
     activeId: string | null;
     /** Where the insertion line is drawn, if anywhere. */
     indicator: DropResult['indicator'];
+    /** The named list being dragged (F5), dimmed while it moves. */
+    activeListId: string | null;
+    /** Where the list insertion line is drawn, if anywhere (F5). */
+    listIndicator: ListDrop | null;
 };
 
 const PlannerDndStateContext = createContext<PlannerDndState>({
     activeId: null,
     indicator: null,
+    activeListId: null,
+    listIndicator: null,
 });
 
 /** The drag state the task lists draw from (dimmed row, insertion line). */
@@ -296,30 +506,62 @@ export function PlannerDnd({
     );
     // The drag data is kept in state: the source row unmounts when hovering
     // an edge zone changes the shown week, and the drag goes on.
-    const [dragged, setDragged] = useState<TaskDragData | null>(null);
+    const [dragged, setDragged] = useState<TaskDragData | ListDragData | null>(
+        null,
+    );
     const [result, setResult] = useState<DropResult | null>(null);
     // A dropped task stays dimmed until its write lands, so the row does not
     // flash back in its old place for a frame.
     const [settlingId, setSettlingId] = useState<string | null>(null);
+    // The named list being dragged (F5), dimmed while it moves and while its
+    // write lands.
+    const [activeListId, setActiveListId] = useState<string | null>(null);
+    // The line where a dragged list would land (F5), if anywhere.
+    const [listIndicator, setListIndicator] = useState<ListDrop | null>(null);
     // A touch drag is "held" until the finger moves: picked up, but it
     // points nowhere yet and releasing it moves nothing.
     const [held, setHeld] = useState(false);
-    const lastResult = useRef<DropResult | null>(null);
+    const lastResult = useRef<DropResult | ListDrop | null>(null);
     const draggedText = useRef('');
 
     const resolve = (target: DropTarget | null) =>
-        dragged && target ? resolveDrop(dragged.task, target, weekStart) : null;
+        dragged?.type === 'task' && target
+            ? resolveDrop(dragged.task, target, weekStart)
+            : null;
 
     const handleDragStart = ({ active, activatorEvent }: DragStartEvent) => {
-        setDragged((active.data.current as TaskDragData | undefined) ?? null);
+        const data = active.data.current as
+            | TaskDragData
+            | ListDragData
+            | undefined;
+
+        setDragged(data ?? null);
         setResult(null);
         lastResult.current = null;
         setHeld(isTouchDrag(activatorEvent));
+
+        if (data?.type === 'listDrag') {
+            setActiveListId(data.listId);
+        }
     };
 
     const handleDragMove = ({ collisions, delta }: DragMoveEvent) => {
         if (held && Math.hypot(delta.x, delta.y) > TOUCH_HOLD_TOLERANCE_PX) {
             setHeld(false);
+        }
+
+        if (dragged?.type === 'listDrag') {
+            const next = held ? null : listDropOf(collisions?.[0], dragged);
+            lastResult.current = next;
+
+            if (
+                next?.hit.listId !== listIndicator?.hit.listId ||
+                next?.edge !== listIndicator?.edge
+            ) {
+                setListIndicator(next);
+            }
+
+            return;
         }
 
         const next = resolve(dropTargetOf(collisions?.[0]));
@@ -342,6 +584,7 @@ export function PlannerDnd({
 
         setDragged(null);
         setResult(null);
+        setListIndicator(null);
     };
 
     const write = (id: string, move: MoveTaskInput) => {
@@ -361,29 +604,59 @@ export function PlannerDnd({
             );
     };
 
+    const writeList = (listId: string, toIndex: number) => {
+        setActiveListId(listId);
+
+        return moveListTo(listId, toIndex)
+            .catch((error: unknown) => {
+                toast.error(t('planner.listMoveFailed'));
+                throw error;
+            })
+            .finally(() =>
+                requestAnimationFrame(() =>
+                    setActiveListId((current) =>
+                        current === listId ? null : current,
+                    ),
+                ),
+            );
+    };
+
     const handleDragEnd = ({ collisions, activatorEvent }: DragEndEvent) => {
-        // Released outside every list and edge zone, or a touch released
-        // before it moved: nothing moves.
-        const drop = held ? null : resolve(dropTargetOf(collisions?.[0]));
-        lastResult.current = drop;
+        if (dragged?.type === 'listDrag') {
+            // Released outside every column, or a touch released before it
+            // moved: nothing moves.
+            const drop = held ? null : listDropOf(collisions?.[0], dragged);
+            lastResult.current = drop;
 
-        if (dragged && drop) {
-            const { task } = dragged;
-            const undo = originalSpot(task, dragged);
+            if (drop && drop.toIndex !== null) {
+                void writeList(dragged.listId, drop.toIndex);
+            } else {
+                setActiveListId(null);
+            }
+        } else {
+            // Released outside every list and edge zone, or a touch released
+            // before it moved: nothing moves.
+            const drop = held ? null : resolve(dropTargetOf(collisions?.[0]));
+            lastResult.current = drop;
 
-            write(task.id, drop.move)
-                .then(() => {
-                    // The task left the screen: say where it went.
-                    if (drop.indicator === null) {
-                        toastWithUndo(
-                            t('planner.movedTo', {
-                                place: placementLabel(drop.move, drop.name),
-                            }),
-                            () => void write(task.id, undo),
-                        );
-                    }
-                })
-                .catch(() => {});
+            if (dragged && drop) {
+                const { task } = dragged;
+                const undo = originalSpot(task, dragged);
+
+                write(task.id, drop.move)
+                    .then(() => {
+                        // The task left the screen: say where it went.
+                        if (drop.indicator === null) {
+                            toastWithUndo(
+                                t('planner.movedTo', {
+                                    place: placementLabel(drop.move, drop.name),
+                                }),
+                                () => void write(task.id, undo),
+                            );
+                        }
+                    })
+                    .catch(() => {});
+            }
         }
 
         finish(activatorEvent);
@@ -404,7 +677,17 @@ export function PlannerDnd({
     // Announcements read the drag data from the event, which loses it when the
     // source row unmounts mid-drag; keep the text from the start.
     const textOf = (data: unknown) => {
-        const text = (data as Partial<TaskDragData> | undefined)?.task?.text;
+        const activeData = data as
+            | Partial<TaskDragData>
+            | Partial<ListDragData>
+            | undefined;
+
+        if (activeData?.type === 'listDrag') {
+            return activeData.name ?? '';
+        }
+
+        const text = (activeData as Partial<TaskDragData> | undefined)?.task
+            ?.text;
 
         if (text !== undefined) {
             draggedText.current = text;
@@ -413,10 +696,25 @@ export function PlannerDnd({
         return draggedText.current;
     };
 
+    const isListDrag = (data: unknown) =>
+        (data as Partial<ListDragData> | undefined)?.type === 'listDrag';
+
     const announcements: Announcements = {
         onDragStart: ({ active }) =>
-            t('planner.pickedUp', { text: textOf(active.data.current) }),
-        onDragOver: ({ over }) => {
+            isListDrag(active.data.current)
+                ? t('planner.listPickedUp', {
+                      text: textOf(active.data.current),
+                  })
+                : t('planner.pickedUp', { text: textOf(active.data.current) }),
+        onDragOver: ({ active, over }) => {
+            if (isListDrag(active.data.current)) {
+                const column = columnDataOf(over?.data.current);
+
+                return column
+                    ? t('planner.listOver', { place: column.name })
+                    : t('planner.notOverList');
+            }
+
             const label = overLabel(over?.data.current);
 
             return label
@@ -427,11 +725,31 @@ export function PlannerDnd({
             const drop = lastResult.current;
             const text = textOf(active.data.current);
 
-            return drop
-                ? t('planner.droppedAt', {
-                      text,
-                      place: placementLabel(drop.move, drop.name),
-                  })
+            if (drop !== null && 'move' in drop) {
+                return t('planner.droppedAt', {
+                    text,
+                    place: placementLabel(drop.move, drop.name),
+                });
+            }
+
+            if (drop !== null && 'hit' in drop) {
+                if (drop.toIndex === null) {
+                    return t('planner.listNotMoved', { text });
+                }
+
+                return drop.before
+                    ? t('planner.listMovedBefore', {
+                          text,
+                          place: drop.hit.name,
+                      })
+                    : t('planner.listMovedAfter', {
+                          text,
+                          place: drop.hit.name,
+                      });
+            }
+
+            return isListDrag(active.data.current)
+                ? t('planner.listNotMoved', { text })
                 : t('planner.notMoved', { text });
         },
         onDragCancel: ({ active }) =>
@@ -458,8 +776,14 @@ export function PlannerDnd({
         >
             <PlannerDndStateContext
                 value={{
-                    activeId: dragged?.task.id ?? settlingId,
-                    indicator: held ? null : (result?.indicator ?? null),
+                    activeId:
+                        dragged?.type === 'task' ? dragged.task.id : settlingId,
+                    indicator:
+                        held || dragged?.type !== 'task'
+                            ? null
+                            : (result?.indicator ?? null),
+                    activeListId,
+                    listIndicator: held ? null : listIndicator,
                 }}
             >
                 {children}
@@ -476,12 +800,23 @@ export function PlannerDnd({
               task being dragged.
             */}
             <DragOverlay dropAnimation={null} zIndex={10}>
-                {dragged && (
+                {dragged?.type === 'task' && (
                     <div
                         data-drag-overlay
                         className="flex h-full min-h-row cursor-grabbing items-start rounded-md bg-background py-2 text-sm shadow-lg ring-1 ring-border max-lg:text-base"
                     >
                         <TaskLabel task={dragged.task} />
+                    </div>
+                )}
+                {dragged?.type === 'listDrag' && (
+                    <div
+                        data-list-drag-overlay
+                        className="flex h-full min-h-row cursor-grabbing items-center gap-2 rounded-md bg-background px-3 text-sm shadow-lg ring-1 ring-border max-lg:text-base"
+                    >
+                        <GripVertical className="size-4 shrink-0 opacity-50" />
+                        <span className="truncate font-medium">
+                            {dragged.name}
+                        </span>
                     </div>
                 )}
             </DragOverlay>

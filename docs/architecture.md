@@ -97,7 +97,7 @@ is list number `0`, always shown, named "Someday", and it cannot be renamed or d
 | `id`                                       | string (UUID v7, lowercase) | Generated on the client                                                                                         |
 | `name`                                     | string (1–60 chars)         |                                                                                                                 |
 | `column`                                   | `integer ≥ 3`               | The `someday_column` of the tasks in the list; `0`–`2` are reserved (base list + legacy)                        |
-| `position`                                 | string                      | Fractional index key; lists display in `position` order (no reordering in this build)                           |
+| `position`                                 | string                      | Fractional index key; lists display in `position` order; a menu move or a drag reassigns it                     |
 | `created_at` / `updated_at` / `deleted_at` | ISO-8601 string \| `null`   | Same format and source as tasks; `updated_at` drives last-write-wins, `deleted_at` is the soft-delete tombstone |
 
 Server-only column: `user_id` (foreign key, cascades on user delete).
@@ -634,14 +634,15 @@ forward, like a paper planner rewritten each morning.
 ### Drag and drop
 
 Built on `@dnd-kit/core` + `@dnd-kit/sortable` (shadcn has no DnD primitive). Like every other action, a drop only
-writes the local database (`moveTask`); sync follows in the background.
+writes the local database (`moveTask`, or `moveListTo` for a list); sync follows in the background.
 
-| Piece                                               | Role                                                                                                                                |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `PlannerDnd` (`components/planner/planner-dnd.tsx`) | The `DndContext` around the week and Someday: sensors, collision detection, edge zones, drag overlay, announcements, the drop write |
-| `TaskList`                                          | A droppable per list (`list:<date>` / `list:someday`) carrying its `placement` and tasks, and a `SortableContext` of its rows       |
-| `TaskRow`                                           | A sortable item carrying its task, `placement` and list; dims while dragged                                                         |
-| `lib/planner/drop.ts`                               | Pure functions: drop target → `moveTask` input and the insertion line (`resolveDrop`), edge-zone dates (`edgeDropDate`)             |
+| Piece                                               | Role                                                                                                                                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PlannerDnd` (`components/planner/planner-dnd.tsx`) | The `DndContext` around the week and Someday: sensors, collision detection, edge zones, drag overlay, announcements, the drop write                                            |
+| `TaskList`                                          | A droppable per list (`list:<date>` / `list:someday`) carrying its `placement` and tasks, and a `SortableContext` of its rows                                                  |
+| `TaskRow`                                           | A sortable item carrying its task, `placement` and list; dims while dragged                                                                                                    |
+| `SomedaySection`                                    | A named list's column: a droppable (`column:<list>`) for list drags, its header the list's drag handle (the base column has neither)                                           |
+| `lib/planner/drop.ts`                               | Pure functions: drop target → `moveTask` input and the insertion line (`resolveDrop`), edge-zone dates (`edgeDropDate`), list drop → `moveListTo` index (`resolveListReorder`) |
 
 - Sensors: mouse after 5 px of movement (so a click still opens the task; the right button never drags), touch with a
   press that holds 250 ms, which picks the task up, and then moves (a swipe scrolls; a long press never opens the
@@ -667,6 +668,13 @@ writes the local database (`moveTask`); sync follows in the background.
   appended, and a toast says where it went ("Moved to Wed 21 Oct.") with an Undo that puts it back. The dragged task is
   kept in state, so the drag survives its source row unmounting on a week change.
 - A dropped task stays dimmed until its write has committed, so its row does not flash back in its old place.
+- A drag started on a named list's header is a list drag (a drag on a task row in that list is still a task drag):
+  the sensors, touch hold, click swallow, keyboard drag and announcements are the task ones. Collision detection
+  hit-tests only the named lists' columns — the dragged list's own column is a miss, as are the base Someday column
+  (which stays first) and the gutters — and the pointer's side of the hit column (left/right on desktop,
+  top/bottom on phones, RTL-mirrored) chooses the edge. The insertion line shows between list columns, and a drop
+  resolves through `resolveListReorder` to a `moveListTo` index: the same `position` reassignment and outbox
+  write as a menu move, a no-op when the list would land where it already is.
 
 ### Keyboard shortcuts
 

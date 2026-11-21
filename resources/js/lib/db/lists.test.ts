@@ -6,6 +6,7 @@ import {
     deleteList,
     LIST_NAME_MAX,
     moveList,
+    moveListTo,
     queryLists,
     renameList,
 } from './lists';
@@ -151,6 +152,74 @@ describe('list repository', () => {
         const lists = await queryLists();
         expect(lists.map((list) => list.name)).toEqual(['A', 'C', 'B']);
         expect(new Set(lists.map((list) => list.position)).size).toBe(3);
+    });
+
+    it('moves a list before the given slot (drag reorder), queueing the lists that moved', async () => {
+        const a = await createList('A');
+        const b = await createList('B');
+        const c = await createList('C');
+        await db.list_outbox.clear();
+
+        // A before C: A and B change slots, C keeps its own.
+        await moveListTo(a.id, 2);
+        expect((await queryLists()).map((list) => list.name)).toEqual([
+            'B',
+            'A',
+            'C',
+        ]);
+        let queued = (await db.list_outbox.toArray()).map((e) => e.list_id);
+        expect(queued).not.toContain(c.id);
+        expect(queued.sort()).toEqual([a.id, b.id].sort());
+        await db.list_outbox.clear();
+
+        // A after the last (`live.length`): A and C change slots.
+        await moveListTo(a.id, 3);
+        expect((await queryLists()).map((list) => list.name)).toEqual([
+            'B',
+            'C',
+            'A',
+        ]);
+        queued = (await db.list_outbox.toArray()).map((e) => e.list_id);
+        expect(queued).not.toContain(b.id);
+        expect(queued.sort()).toEqual([a.id, c.id].sort());
+        await db.list_outbox.clear();
+
+        // C to the front: B and C change slots, A keeps its own.
+        await moveListTo(c.id, 0);
+        expect((await queryLists()).map((list) => list.name)).toEqual([
+            'C',
+            'B',
+            'A',
+        ]);
+        queued = (await db.list_outbox.toArray()).map((e) => e.list_id);
+        expect(queued).not.toContain(a.id);
+        expect(queued.sort()).toEqual([b.id, c.id].sort());
+    });
+
+    it("is a no-op at the list's own slot or the one after it", async () => {
+        const a = await createList('A');
+        const b = await createList('B');
+        await db.list_outbox.clear();
+
+        expect(await moveListTo(b.id, 1)).toMatchObject({ id: b.id });
+        expect(await moveListTo(a.id, 1)).toMatchObject({ id: a.id });
+        expect((await queryLists()).map((list) => list.name)).toEqual([
+            'A',
+            'B',
+        ]);
+        expect(await db.list_outbox.toArray()).toEqual([]);
+    });
+
+    it('returns null out of range, for a missing or deleted list', async () => {
+        const a = await createList('A');
+        const b = await createList('B');
+
+        expect(await moveListTo(a.id, -1)).toBeNull();
+        expect(await moveListTo(a.id, 3)).toBeNull();
+        expect(await moveListTo('missing', 0)).toBeNull();
+        await deleteList(b.id);
+        expect(await moveListTo(b.id, 0)).toBeNull();
+        expect((await queryLists()).map((list) => list.name)).toEqual(['A']);
     });
 
     it('lists live lists in position order, without tombstones', async () => {

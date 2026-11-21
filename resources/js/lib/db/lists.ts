@@ -133,11 +133,31 @@ export async function renameList(
 }
 
 /**
+ * Evenly-spaced positions for the given order (lists made before ordering
+ * existed all share one position); only the lists whose position actually
+ * changed are returned, ready to be written.
+ */
+function reassignPositions(order: SomedayList[]): SomedayList[] {
+    const now = nextTimestamp();
+    const rows: SomedayList[] = [];
+    let position: string | null = null;
+
+    for (const list of order) {
+        position = positionBetween(position, null);
+
+        if (list.position !== position) {
+            rows.push({ ...list, position, updated_at: now });
+        }
+    }
+
+    return rows;
+}
+
+/**
  * Moves a list one place earlier (`-1`) or later (`1`) among the live lists.
- * The lists are given fresh, evenly spread positions in their new order
- * (lists made before ordering existed all share one position), and only the
- * ones whose position changed are written and pushed. `null` when the list
- * does not exist, was deleted, or is already at that end.
+ * The lists are given fresh, evenly spread positions in their new order, and
+ * only the ones whose position changed are written and pushed. `null` when
+ * the list does not exist, was deleted, or is already at that end.
  */
 export async function moveList(
     id: string,
@@ -156,18 +176,45 @@ export async function moveList(
 
         const order = [...live];
         [order[from], order[to]] = [order[to], order[from]];
+        const rows = reassignPositions(order);
 
-        const now = nextTimestamp();
-        const rows: SomedayList[] = [];
-        let position: string | null = null;
+        return {
+            rows,
+            result: rows.find((list) => list.id === id) ?? live[from],
+        };
+    });
+}
 
-        for (const list of order) {
-            position = positionBetween(position, null);
+/**
+ * Moves a list so that it comes before the list at index `to` of the live
+ * order (`0` is before the first, `live.length` is after the last). Same
+ * write as `moveList`. `null` when the list does not exist, was deleted, or
+ * the index is out of range; the list itself, unchanged, when it already
+ * sits there (nothing is written).
+ */
+export async function moveListTo(
+    id: string,
+    to: number,
+): Promise<SomedayList | null> {
+    return writeLists(async () => {
+        const live = (await db.someday_lists.toArray())
+            .filter((list) => list.deleted_at === null)
+            .sort(compareListOrder);
+        const from = live.findIndex((list) => list.id === id);
 
-            if (list.position !== position) {
-                rows.push({ ...list, position, updated_at: now });
-            }
+        if (from === -1 || to < 0 || to > live.length) {
+            return { rows: [], result: null };
         }
+
+        const order = [...live];
+        const [moved] = order.splice(from, 1);
+        order.splice(to > from ? to - 1 : to, 0, moved);
+
+        if (order.every((list, index) => list.id === live[index].id)) {
+            return { rows: [], result: live[from] };
+        }
+
+        const rows = reassignPositions(order);
 
         return {
             rows,
