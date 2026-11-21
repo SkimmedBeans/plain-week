@@ -8,6 +8,7 @@ import {
     placementLabel,
     resolveDrop,
     resolveListDrop,
+    resolveListReorder,
 } from './drop';
 
 const MONDAY = '2026-10-12';
@@ -335,5 +336,37 @@ describe('originalSpot', () => {
                 tasks: [timed, a, b],
             }),
         ).toEqual({ date: MONDAY, afterId: undefined, beforeId: 'b' });
+    });
+});
+
+describe('resolveListReorder', () => {
+    const lists = [{ listId: 'a' }, { listId: 'b' }, { listId: 'c' }];
+
+    it("maps a column hit to the dragged list's target index", () => {
+        // A to after C: lands last (index 2 of 3).
+        expect(resolveListReorder(lists, 'a', 'c', false)).toEqual({
+            toIndex: 3,
+        });
+        // C to before A: lands first.
+        expect(resolveListReorder(lists, 'c', 'a', true)).toEqual({
+            toIndex: 0,
+        });
+        // A to before C: lands in the middle.
+        expect(resolveListReorder(lists, 'a', 'c', true)).toEqual({
+            toIndex: 2,
+        });
+    });
+
+    it('is a no-op when the list would land where it already is', () => {
+        // B is already after A and already before C.
+        expect(resolveListReorder(lists, 'b', 'a', false)).toBeNull();
+        expect(resolveListReorder(lists, 'b', 'c', true)).toBeNull();
+        // A is already before B.
+        expect(resolveListReorder(lists, 'a', 'b', true)).toBeNull();
+    });
+
+    it('returns null for a missing dragged or hit list', () => {
+        expect(resolveListReorder(lists, 'missing', 'a', true)).toBeNull();
+        expect(resolveListReorder(lists, 'a', 'missing', true)).toBeNull();
     });
 });

@@ -467,6 +467,21 @@ and run its actions while focus is not in a text field, and their tooltips show 
 calendars open with focus on the task's day (else today), so the arrow keys move through the days and Enter picks one. Reminders,
 rich-text notes and attachments are not part of Plain Week yet.
 
+## List card
+
+Opened by clicking a named Someday list's name (or Enter / Space on it); built in
+`resources/js/components/planner/list-dialog.tsx` and mounted by each named `SomedaySection` with the open list's
+id. It follows the task card: the same `bg-secondary` surface, and every edit is written to the local database as it
+happens (no save button, nothing waits on the network); Esc or a click outside closes it and focus returns to the
+list's name button in the header. The base Someday column has no card.
+
+| Part   | Components                       | Behaviour                                                                                                                                                                                                                                                       |
+| ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name   | `Input`                          | `text-2xl` on a 1px `border-foreground/30` underline, like the task's title; renames the list through `renameList` as you type (the ⋮ menu's rename dialog works in parallel); an emptied name is put back to the saved one on blur, a list always keeps a name |
+| Delete | `Button` (trash) + `AlertDialog` | The same confirm as the list menu ("Delete “{name}”?", "Its tasks will move to Someday."); deleting moves the list's tasks to Someday in one write and closes the card                                                                                          |
+
+If the list is deleted while the card is open (here or on another device, through sync), the card closes.
+
 ## Task context menu
 
 Built in `resources/js/components/planner/task-context-menu.tsx` (shadcn `ContextMenu`) and wrapped around every task

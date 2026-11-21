@@ -130,6 +130,27 @@ describe('SomedaySection', () => {
         expect(await queryLists()).toEqual([]);
     });
 
+    it('offers a keyboard move handle on named lists, and none on the base list', async () => {
+        const list = await createList('Ideas');
+        render(<Section list={sectionProps(list)} />);
+
+        const handle = screen.getByRole('button', {
+            name: 'Move the Ideas list',
+        });
+        expect(handle.className).toContain('sr-only');
+        const described = handle.getAttribute('aria-describedby');
+        expect(described).toBeTruthy();
+        expect(document.getElementById(described!)?.textContent).toContain(
+            'press Space or Enter on its move button',
+        );
+
+        cleanup();
+        render(<Section list={BASE} />);
+        expect(
+            screen.queryByRole('button', { name: /Move the .* list/ }),
+        ).toBeNull();
+    });
+
     it('moves a list right from its menu, and not left from the first place', async () => {
         const first = await createList('Shed');
         await createList('Homelab');
@@ -249,5 +270,33 @@ describe('SomedaySection', () => {
         );
         const [kept] = await queryLists();
         expect(kept?.id).toBe(list.id);
+    });
+
+    it('opens the list card from the named list’s name, by click and keyboard', async () => {
+        const list = await createList('Ideas');
+        const user = userEvent.setup();
+        render(<Section list={sectionProps(list)} />);
+
+        await user.click(screen.getByRole('button', { name: 'Ideas' }));
+        const card = await screen.findByRole('dialog', { name: 'Edit list' });
+        expect(
+            (within(card).getByLabelText('List name') as HTMLInputElement)
+                .value,
+        ).toBe('Ideas');
+
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+        // Keyboard: the name is a button, so Enter opens the card too.
+        screen.getByRole('button', { name: 'Ideas' }).focus();
+        await user.keyboard('{Enter}');
+        await screen.findByRole('dialog', { name: 'Edit list' });
+    });
+
+    it('keeps the base list’s name plain, with no card to open', () => {
+        render(<Section list={BASE} />);
+
+        expect(screen.getByText('Someday')).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'Someday' })).toBeNull();
     });
 });
