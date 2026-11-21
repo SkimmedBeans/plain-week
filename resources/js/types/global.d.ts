@@ -2,9 +2,13 @@ import type {
     Account,
     Auth,
     Integrations,
+    Mcp,
     Notifications,
+    Oidc,
     Saas,
 } from '@/types/auth';
+
+import type { I18nProps } from '@/lib/i18n';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -17,13 +21,17 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            /** Sign-up is open (REGISTRATION_ENABLED, or an instance with no users yet). */
+            canRegister: boolean;
             saas: Saas;
+            oidc: Oidc;
             /** "Send feedback" target: a mailto: in SaaS mode, GitHub Discussions otherwise. */
             feedbackUrl: string;
             integrations: Integrations;
             notifications: Notifications;
+            mcp: Mcp;
             account: Account | null;
-            sidebarOpen: boolean;
+            i18n: I18nProps;
             [key: string]: unknown;
         };
     }

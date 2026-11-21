@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import { t } from '@/lib/i18n';
 
 /**
  * The toasts that offer "Undo" (a move, a delete), and the `u` shortcut that
@@ -35,7 +36,7 @@ export function toastWithUndo(
         }
     };
     const toastId = toast(message, {
-        action: { label: 'Undo', onClick: run },
+        action: { label: t('planner.undo'), onClick: run },
         onDismiss: () => forget(entry),
         onAutoClose: () => forget(entry),
     });

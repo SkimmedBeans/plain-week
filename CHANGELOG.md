@@ -29,14 +29,106 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Named lists in export and import.** The export file now carries the named lists, and import accepts them:
   lists keep their names, get fresh ids and columns on this device, and a task whose list is missing from the
   file lands in Someday. Import files without lists still import.
+- **Log in with your identity provider (OIDC).** Self-hosted instances can let users log in with an existing account at
+  an OpenID Connect IdP (Pocket ID, Authentik, Keycloak...) by setting `OIDC_ISSUER`, `OIDC_CLIENT_ID` and
+  `OIDC_CLIENT_SECRET` (redirect URI `APP_URL/auth/oidc/callback`); `OIDC_LABEL` sets the button text. Existing accounts
+  are linked by email only when the IdP has verified it, new accounts are created while sign-up is open, and two-factor
+  still applies. Accounts created this way have no password: they confirm sensitive settings by logging in at the IdP
+  again, and can set a password in Settings › Security. `OIDC_ONLY=true` makes the IdP the only way in, and
+  `OIDC_ENABLED=false` turns it off (off by default in SaaS mode). See docs/self-hosting.md.
 
 ### Changed
 
 - **Weekday first in day headers.** Each day's header shows the weekday in bold at the start and the date, muted, at
   the end.
+- **Someday as wide as a day.** In every desktop window shape the Someday column is now exactly one track wide, the
+  same as a day's column (it spanned up to three tracks before). The shapes re-derived around it: wide windows keep
+  Monday to Friday on top with Saturday, Sunday and Someday below, near square ones the 4x2 grid, tall ones a 2x4
+  grid.
 - **New-task row above the Completed section.** In every list, the empty new-task row now sits between the open and
   done tasks, just above the "Completed (n)" label, so a new task is always added to the open group; the keyboard
   cursor stops there between the open and done tasks.
+
+## [0.4.2] - 2026-11-20
+
+### Added
+
+- **Today button.** When the planner shows another week, a "Today" pill next to the week number brings you back to the
+  current week (same as pressing `t`). On phones, opening the planner (or going back to the current week) scrolls
+  straight to today instead of starting on Monday.
+
+## [0.4.1] - 2026-11-20
+
+### Added
+
+- **Translations.** Every text of the app can now be translated. Plain Week still ships in English, and self-hosted
+  instances can add languages or reword English by dropping one JSON file per language into
+  `/app/storage/translations` (`TRANSLATIONS_PATH`); the server's messages, emails and push notifications use the same
+  files. The app follows the browser's language, and when the instance offers more than English, **Settings ›
+  Preferences** has a Language picker that applies to all your devices. Translations keep working offline.
+  `APP_LOCALE` sets the language for browsers that ask for none the instance offers.
+- **Close sign-up on private instances.** `REGISTRATION_ENABLED=false` turns off sign-up: the sign-up page answers `404`,
+  the login page has no "Sign up" link and the planner's "Sync your week" leads to the login page. Existing users log in
+  and reset their password as before. A fresh instance with no users stays open until its first account is created.
+- **A ⋮ button on task rows on touch screens.** It opens the task menu (colors, Tomorrow, Next week, Someday,
+  Duplicate, Delete) that a right click opens on desktop.
+
+### Changed
+
+- **Moving tasks on a phone is easier** ([#85](https://github.com/victor-falcon/plain-week/issues/85)). Press and
+  hold a task and it lifts at once; then move it, however long you held it. A long press no longer opens the task
+  menu instead, and a little jitter while holding no longer turns the press into a scroll.
+
+- **"Install mobile app" moved to the account menu.** It now sits right below "Send feedback" in the account menu
+  (signed in or not) instead of in the planner header, which keeps the header for the week. It still shows the QR code
+  of your Plain Week, and is left out on touch screens and on `localhost`.
+
+## [0.4.0] - 2026-11-20
+
+### Added
+
+- **MCP connector: let AI agents manage your planner.** Plain Week is now an MCP server at `/mcp`, so an AI agent such
+  as Claude can read and manage your planner. Agents can do what you do in the planner: read a range of days, Someday,
+  one task or a search; create tasks in batches, edit, check off, change subtasks, move, duplicate, repeat, delete and
+  restore them, move unfinished tasks to today, and export or import a backup. Their changes are made on the server
+  and reach your browsers on their next sync.
+- **Settings › Agents & apps.** The new settings page walks you through each client: add Plain Week to claude.ai or
+  Claude Desktop as a custom connector and approve it on a Plain Week page (OAuth), or create a personal token for
+  Claude Code and other headless agents; an "Apps" tab has the API URL, the Bearer header and the OAuth metadata. It
+  lists your tokens and the agents and apps you connected, with when each was last used, so you can revoke them, and the
+  agent activity log: what agents changed in your planner, newest first, with the agent, the time and a short summary
+  such as "Created 3 tasks on Mon 23 Nov". Entries are kept for 90 days.
+- **API for native apps.** `GET /api/v1/me` (the account and its plan, so an app can show the paywall) and
+  `POST /api/v1/sync/push` + `GET /api/v1/sync/pull`, the exact web sync contract (`X-Sync-Format` and `X-Timezone`
+  included) for Bearer tokens; in SaaS mode a planless account gets `402`. Apps use the same tokens as agents: they
+  sign in with OAuth 2.1 and PKCE (redirecting to a loopback address or a `plainweek://` URL), or you paste a personal
+  token. There is no email-and-password login for apps. Groundwork for the desktop and mobile apps (#98); the rate
+  limits, the raw sync strings and the API tests build on #99 by @tuuuniSnowfield.
+- **AI agents, announced.** The landing page shows what an AI agent can do with your planner, with an FAQ item, and
+  signed-in users see a one-time "New" card that leads to Settings › Agents & apps (or to the plans without one).
+- **Availability.** On plainweek.eu the connector and the app API need a paid plan. Self-hosted they are on by default,
+  and the Docker image creates the key pair that signs tokens in its storage volume. `MCP_ENABLED=false` removes only
+  `/mcp`: OAuth (`/oauth/*`, the `.well-known/oauth-*` metadata and client registration), the app API and Settings ›
+  Agents & apps (without its MCP part) stay.
+
+### Changed
+
+- **Settings is a plain full-screen page.** The collapsible sidebar and the header bar around Settings are gone. A
+  "Back to planner" button sits at the top and another at the end of the page, the sections are a column on desktop
+  and a row that scrolls sideways on phones, and Send feedback, Repository, Documentation and Log out moved to the
+  footer.
+
+### Fixed
+
+- **Rate-limited sync.** `/sync/push` and `/sync/pull` (and the API's) allow 120 requests a minute per account
+  instead of being unlimited.
+
+## [0.3.19] - 2026-11-19
+
+### Security
+
+- **PHP 8.5.13.** The Docker image pins FrankenPHP to the exact `php8.5.13` release, the 19 November PHP security
+  release that fixes several critical bugs, among them a PHP-FPM request smuggling flaw (CVE-2026-129289).
 
 ## [0.3.18] - 2026-11-17
 
@@ -485,7 +577,11 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/victor-falcon/plain-week/compare/v0.3.18...HEAD
+[Unreleased]: https://github.com/victor-falcon/plain-week/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/victor-falcon/plain-week/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/victor-falcon/plain-week/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/victor-falcon/plain-week/compare/v0.3.19...v0.4.0
+[0.3.19]: https://github.com/victor-falcon/plain-week/compare/v0.3.18...v0.3.19
 [0.3.18]: https://github.com/victor-falcon/plain-week/compare/v0.3.17...v0.3.18
 [0.3.17]: https://github.com/victor-falcon/plain-week/compare/v0.3.16...v0.3.17
 [0.3.16]: https://github.com/victor-falcon/plain-week/compare/v0.3.15...v0.3.16

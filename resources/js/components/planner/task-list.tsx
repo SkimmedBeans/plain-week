@@ -24,6 +24,7 @@ import { formatShortDate, formatWeekday } from '@/lib/planner/format';
 import { rowKey } from '@/lib/planner/repeat';
 import type { ListDropData } from '@/lib/planner/drop';
 import { parseNewTaskInput } from '@/lib/planner/smart-input';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -136,11 +137,14 @@ export function TaskList({
             .then(() => {
                 if (leavesList) {
                     toast(
-                        `Added to ${formatWeekday(date)} ${formatShortDate(date)}`,
+                        t('planner.addedTo', {
+                            weekday: formatWeekday(date),
+                            date: formatShortDate(date),
+                        }),
                     );
                 }
             })
-            .catch(() => toast.error(`Could not save "${input}".`));
+            .catch(() => toast.error(t('planner.saveFailed', { text: input })));
     };
 
     // Esc leaves the list and puts the keyboard cursor on its new-task row.
@@ -148,7 +152,7 @@ export function TaskList({
 
     const handleToggleDone = (taskId: string) => {
         toggleDone(taskId).catch(() =>
-            toast.error('Could not update the task.'),
+            toast.error(t('planner.updateTaskFailed')),
         );
     };
 

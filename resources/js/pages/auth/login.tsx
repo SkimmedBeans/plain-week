@@ -8,7 +8,9 @@ import {
     authInputClass,
     closeToPlanner,
 } from '@/components/auth/auth-form';
+import OidcButton, { oidcErrorMessage } from '@/components/auth/oidc-button';
 import { FloatingCard } from '@/components/floating-card';
+import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -18,106 +20,157 @@ import { Label } from '@/components/ui/label';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
+import { t } from '@/lib/i18n';
+import { tRich } from '@/lib/i18n/rich';
 
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    /** Why a login through the IdP was turned down (`App\Auth\Oidc\OidcLoginRefused`). */
+    oidcError?: string | null;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
-    const saasEnabled = usePage().props.saas?.enabled ?? false;
+export default function Login({ status, canResetPassword, oidcError }: Props) {
+    const { saas, canRegister, oidc } = usePage().props;
+    const saasEnabled = saas?.enabled ?? false;
+    const oidcEnabled = oidc?.enabled ?? false;
+    const oidcOnly = oidcEnabled && (oidc?.only ?? false);
+    const oidcMessage = oidcErrorMessage(oidcError);
 
     return (
         <>
-            <Head title="Log in" />
+            <Head title={t('auth.logIn')} />
 
             <FloatingCard
-                title="Welcome back"
-                description="Log in to sync your week."
+                title={t('auth.welcomeBack')}
+                description={
+                    oidcOnly
+                        ? t('auth.logInWithSsoDescription')
+                        : t('auth.logInDescription')
+                }
                 onClose={closeToPlanner}
                 toolbar={<AppLogoIcon className="size-9" aria-hidden />}
             >
                 {status && <AuthStatus>{status}</AuthStatus>}
 
-                <PasskeyVerify />
+                {oidcMessage && (
+                    <InputError
+                        message={oidcMessage}
+                        role="alert"
+                        className="text-center"
+                    />
+                )}
 
-                <Form
-                    {...store.form()}
-                    resetOnSuccess={['password']}
-                    className="flex flex-col gap-5"
-                >
-                    {({ processing, errors }) => (
-                        <>
-                            <AuthField
-                                id="email"
-                                label="Email"
-                                error={errors.email}
-                            >
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    required
-                                    autoFocus
-                                    autoComplete="email"
-                                    placeholder="you@example.com"
-                                    aria-invalid={!!errors.email}
-                                    className={authInputClass}
-                                />
-                            </AuthField>
+                {oidcOnly ? (
+                    <OidcButton primary />
+                ) : (
+                    <>
+                        {oidcEnabled && <OidcButton />}
 
-                            <AuthField
-                                id="password"
-                                label="Password"
-                                error={errors.password}
-                                aside={
-                                    canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="text-sm text-muted-foreground"
-                                        >
-                                            Forgot it?
-                                        </TextLink>
-                                    )
-                                }
-                            >
-                                <PasswordInput
-                                    id="password"
-                                    name="password"
-                                    required
-                                    autoComplete="current-password"
-                                    placeholder="Your password"
-                                    aria-invalid={!!errors.password}
-                                    className={authInputClass}
-                                />
-                            </AuthField>
+                        <PasskeyVerify
+                            separator={
+                                oidcEnabled
+                                    ? t('auth.orLogInWithEmail')
+                                    : undefined
+                            }
+                        />
 
-                            <div className="flex items-center gap-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    defaultChecked
-                                />
-                                <Label htmlFor="remember">Remember me</Label>
-                            </div>
+                        <LoginForm canResetPassword={canResetPassword} />
+                    </>
+                )}
 
-                            <AuthSubmit
-                                processing={processing}
-                                data-test="login-button"
-                            >
-                                Log in
-                            </AuthSubmit>
-                        </>
-                    )}
-                </Form>
-
-                <AuthFootnote>
-                    No account yet?{' '}
-                    <TextLink href={register()}>
-                        {saasEnabled ? 'Sync your week' : 'Sign up'}
-                    </TextLink>
-                </AuthFootnote>
+                {canRegister && (
+                    <AuthFootnote>
+                        {tRich(
+                            saasEnabled
+                                ? 'auth.noAccountSyncWeek'
+                                : 'auth.noAccountSignUp',
+                            {
+                                link: (text) => (
+                                    <TextLink href={register()}>
+                                        {text}
+                                    </TextLink>
+                                ),
+                            },
+                        )}
+                    </AuthFootnote>
+                )}
             </FloatingCard>
         </>
+    );
+}
+
+/** Email and password (hidden with `OIDC_ONLY`). */
+function LoginForm({ canResetPassword }: { canResetPassword: boolean }) {
+    return (
+        <Form
+            {...store.form()}
+            resetOnSuccess={['password']}
+            className="flex flex-col gap-5"
+        >
+            {({ processing, errors }) => (
+                <>
+                    <AuthField
+                        id="email"
+                        label={t('auth.email')}
+                        error={errors.email}
+                    >
+                        <Input
+                            id="email"
+                            type="email"
+                            name="email"
+                            required
+                            autoFocus
+                            autoComplete="email"
+                            placeholder={t('auth.emailPlaceholder')}
+                            aria-invalid={!!errors.email}
+                            className={authInputClass}
+                        />
+                    </AuthField>
+
+                    <AuthField
+                        id="password"
+                        label={t('auth.password')}
+                        error={errors.password}
+                        aside={
+                            canResetPassword && (
+                                <TextLink
+                                    href={request()}
+                                    className="text-sm text-muted-foreground"
+                                >
+                                    {t('auth.forgotIt')}
+                                </TextLink>
+                            )
+                        }
+                    >
+                        <PasswordInput
+                            id="password"
+                            name="password"
+                            required
+                            autoComplete="current-password"
+                            placeholder={t('auth.passwordPlaceholder')}
+                            aria-invalid={!!errors.password}
+                            className={authInputClass}
+                        />
+                    </AuthField>
+
+                    <div className="flex items-center gap-3">
+                        <Checkbox
+                            id="remember"
+                            name="remember"
+                            defaultChecked
+                        />
+                        <Label htmlFor="remember">{t('auth.rememberMe')}</Label>
+                    </div>
+
+                    <AuthSubmit
+                        processing={processing}
+                        data-test="login-button"
+                    >
+                        {t('auth.logIn')}
+                    </AuthSubmit>
+                </>
+            )}
+        </Form>
     );
 }
