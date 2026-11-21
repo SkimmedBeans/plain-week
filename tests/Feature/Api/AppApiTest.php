@@ -125,11 +125,11 @@ test('push and pull work with a token, unchanged from the web sync', function (s
 
     $this->postJson(route('api.sync.push'), ['tasks' => [$task]], apiAuth($token))
         ->assertOk()
-        ->assertExactJson(['applied' => [$task['id']], 'rejected' => [], 'cursor' => 1]);
+        ->assertExactJson(['applied' => [$task['id']], 'rejected' => [], 'cursor' => 1, 'lists_applied' => [], 'lists_rejected' => []]);
 
     $this->getJson(route('api.sync.pull'), apiAuth($token))
         ->assertOk()
-        ->assertExactJson(['tasks' => [$task], 'cursor' => 1, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [$task], 'lists' => [], 'cursor' => 1, 'has_more' => false]);
 
     expect(Task::find($task['id'])->user_id)->toBe($user->id);
 })->with('tokens');
@@ -165,10 +165,10 @@ test('the API sync is isolated per token owner', function () {
     $this->postJson(route('api.sync.push'), ['tasks' => [$task]], apiAuth($ada))->assertOk();
 
     $this->getJson(route('api.sync.pull'), apiAuth($bob))
-        ->assertExactJson(['tasks' => [], 'cursor' => 0, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [], 'lists' => [], 'cursor' => 0, 'has_more' => false]);
 
     $this->postJson(route('api.sync.push'), ['tasks' => [[...$task, 'text' => 'Hijacked']]], apiAuth($bob))
-        ->assertExactJson(['applied' => [], 'rejected' => [$task['id']], 'cursor' => 0]);
+        ->assertExactJson(['applied' => [], 'rejected' => [$task['id']], 'cursor' => 0, 'lists_applied' => [], 'lists_rejected' => []]);
 
     expect(Task::find($task['id'])->text)->toBe('Buy milk');
 });
