@@ -13,6 +13,16 @@ The image is `ghcr.io/victor-falcon/plain-week`, built for `linux/amd64` and `li
 | `edge`         | The latest commit on `main`                     |
 | `sha-<short>`  | A specific commit on `main`                     |
 
+### Watching the fork with WUD
+
+For the SkimmedBeans fork, use a full release tag such as `ghcr.io/skimmedbeans/plain-week:0.4.3` in the running
+Compose service once that tag is published. Add the label `wud.tag.include: '^[0-9]+\.[0-9]+\.[0-9]+$$'` to
+the service to restrict WUD to full release tags. Apply the Compose change once to switch from `edge` to numbered
+updates. Each subsequent update needs a new patch release tag on the merged commit.
+
+To keep following every merge on `edge`, set `wud.watch.digest: 'true'` on the service. WUD then looks for a
+changed image digest and continues to display `edge` as the tag.
+
 ## One-click deployment
 
 ### Coolify
