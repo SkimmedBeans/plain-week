@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-11-22
+
+### Removed
+
+- Removed the inline delete X from completed tasks in day and Someday lists, including list cards. The task
+  menu still offers Delete, and Someday lists still offer Clear completed.
+
 ## [0.4.4] - 2026-11-22
 
 ### Added
@@ -597,7 +604,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/SkimmedBeans/plain-week/compare/victor-falcon:plain-week:v0.4.2...SkimmedBeans:plain-week:v0.4.3
 [0.4.2]: https://github.com/victor-falcon/plain-week/compare/v0.4.1...v0.4.2
