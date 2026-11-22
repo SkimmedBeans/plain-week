@@ -16,7 +16,12 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { queryTask } from '@/lib/db/queries';
-import { createTask, listTasksIn, setRecurrence } from '@/lib/db/tasks';
+import {
+    createTask,
+    listTasksIn,
+    setRecurrence,
+    toggleDone,
+} from '@/lib/db/tasks';
 import { occurrenceId } from '@/lib/recurrence/expand';
 import { toastAction } from '@/test/toasts';
 
@@ -79,6 +84,50 @@ afterEach(() => {
 });
 
 describe('Recurring task rows', () => {
+    it('swipes only the completed occurrence and offers Undo', async () => {
+        const { button, id, seriesId, user } = await setup();
+        const touch = { pointerType: 'touch', pointerId: 1, isPrimary: true };
+        const swipe = (target: HTMLElement, endX: number, endY: number) => {
+            fireEvent.pointerDown(target, {
+                ...touch,
+                clientX: 160,
+                clientY: 20,
+            });
+            fireEvent.pointerMove(target, {
+                ...touch,
+                clientX: endX,
+                clientY: endY,
+            });
+            fireEvent.pointerUp(target, {
+                ...touch,
+                clientX: endX,
+                clientY: endY,
+            });
+        };
+
+        swipe(button, 60, 20);
+        expect(await queryTask(id)).not.toBeNull();
+
+        await toggleDone(id);
+        const done = await screen.findByRole('button', {
+            name: 'Gym (repeats) (done)',
+        });
+        swipe(done, 155, 120);
+        expect(await queryTask(id)).not.toBeNull();
+        swipe(done, 110, 20);
+        expect(await queryTask(id)).not.toBeNull();
+
+        swipe(done, 60, 20);
+        await waitFor(async () => expect(await queryTask(id)).toBeNull());
+        expect(
+            await queryTask(occurrenceId(seriesId, '2026-10-16')),
+        ).not.toBeNull();
+        expect(screen.queryByRole('alertdialog')).toBeNull();
+
+        await user.click(await toastAction('Task deleted.'));
+        await screen.findByRole('button', { name: 'Gym (repeats) (done)' });
+    });
+
     it('show a repeat icon, keyed by the occurrence id', async () => {
         const { button, id } = await setup();
 

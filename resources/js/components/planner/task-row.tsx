@@ -6,7 +6,11 @@ import {
     useCursorFocus,
     useKeyboardCursor,
 } from '@/components/planner/keyboard-cursor';
-import { usePlannerDnd } from '@/components/planner/planner-dnd';
+import {
+    TOUCH_DRAG_DELAY_MS,
+    TOUCH_DRAG_TOLERANCE_PX,
+    usePlannerDnd,
+} from '@/components/planner/planner-dnd';
 import { useScopedAction } from '@/components/planner/scope-prompt';
 import { ShortcutHint } from '@/components/planner/shortcut-hint';
 import {
@@ -60,6 +64,17 @@ type TaskRepeat = {
     repeats: boolean;
     /** "Every Mon, Wed"; `null` until the series has loaded. */
     summary: string | null;
+};
+
+const DELETE_SWIPE_DISTANCE_PX = 72;
+
+type DeleteSwipe = {
+    pointerId: number;
+    x: number;
+    y: number;
+    startedAt: number;
+    direction: -1 | 1;
+    engaged: boolean;
 };
 
 /**
@@ -205,6 +220,8 @@ export function TaskRow({
     // A finger is pressing the row: a long press must not open the
     // context menu (it is a drag), however the browser or Radix sends it.
     const touchPressed = useRef(false);
+    const deleteSwipe = useRef<DeleteSwipe | null>(null);
+    const swallowSwipeClick = useRef(false);
     const actions: TaskContextMenuActions = {
         onColorChange: (color) => {
             if (color !== task.color) {
@@ -236,6 +253,27 @@ export function TaskRow({
                     }
 
                     touchPressed.current = event.pointerType === 'touch';
+                    swallowSwipeClick.current = false;
+                    const target = event.target as Element;
+                    deleteSwipe.current =
+                        task.done &&
+                        touchPressed.current &&
+                        event.isPrimary &&
+                        target.closest('[data-task-open]') &&
+                        !target.closest('[data-link]')
+                            ? {
+                                  pointerId: event.pointerId,
+                                  x: event.clientX,
+                                  y: event.clientY,
+                                  startedAt: event.timeStamp,
+                                  direction:
+                                      getComputedStyle(event.currentTarget)
+                                          .direction === 'rtl'
+                                          ? 1
+                                          : -1,
+                                  engaged: false,
+                              }
+                            : null;
 
                     // Skips Radix's own 700 ms touch long press, which would
                     // open the menu under a held drag. Click and focus are
@@ -244,11 +282,62 @@ export function TaskRow({
                         event.preventDefault();
                     }
                 }}
-                onPointerUp={() => {
+                onPointerMove={(event) => {
+                    const swipe = deleteSwipe.current;
+                    if (
+                        !swipe ||
+                        swipe.engaged ||
+                        swipe.pointerId !== event.pointerId
+                    ) {
+                        return;
+                    }
+
+                    const x = (event.clientX - swipe.x) * swipe.direction;
+                    const y = Math.abs(event.clientY - swipe.y);
+                    if (Math.hypot(x, y) <= TOUCH_DRAG_TOLERANCE_PX) {
+                        return;
+                    }
+
+                    if (
+                        event.timeStamp - swipe.startedAt >=
+                            TOUCH_DRAG_DELAY_MS ||
+                        x <= 2 * y
+                    ) {
+                        deleteSwipe.current = null;
+                    } else {
+                        swipe.engaged = true;
+                    }
+                }}
+                onPointerUp={(event) => {
                     touchPressed.current = false;
+                    const swipe = deleteSwipe.current;
+                    deleteSwipe.current = null;
+                    if (
+                        !task.done ||
+                        isDragging ||
+                        !swipe?.engaged ||
+                        swipe.pointerId !== event.pointerId
+                    ) {
+                        return;
+                    }
+
+                    const x = (event.clientX - swipe.x) * swipe.direction;
+                    const y = Math.abs(event.clientY - swipe.y);
+                    swallowSwipeClick.current = true;
+                    if (x >= DELETE_SWIPE_DISTANCE_PX && x > 2 * y) {
+                        void deleteWithUndo(task.id, 'this');
+                    }
                 }}
                 onPointerCancel={() => {
                     touchPressed.current = false;
+                    deleteSwipe.current = null;
+                }}
+                onClickCapture={(event) => {
+                    if (swallowSwipeClick.current && event.detail > 0) {
+                        swallowSwipeClick.current = false;
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
                 }}
                 onContextMenu={(event) => {
                     // No menu from a long press (the browser sends one on
@@ -279,7 +368,10 @@ export function TaskRow({
                     onClick={() => onOpen(task.id)}
                     // Focus shows on the row as the cursor's look
                     // (`CURSOR_ROW_CLASS`), not as a ring on the button.
-                    className="h-auto min-w-0 flex-1 items-start justify-start gap-0 self-stretch rounded-none border-0 px-0 py-2 text-start text-base font-normal whitespace-normal text-inherit hover:bg-transparent hover:text-inherit focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 lg:text-sm dark:hover:bg-transparent"
+                    className={cn(
+                        'h-auto min-w-0 flex-1 items-start justify-start gap-0 self-stretch rounded-none border-0 px-0 py-2 text-start text-base font-normal whitespace-normal text-inherit hover:bg-transparent hover:text-inherit focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 lg:text-sm dark:hover:bg-transparent',
+                        task.done && 'touch-pan-y touch-pinch-zoom',
+                    )}
                 >
                     <TaskLabelView task={task} repeat={repeat} />
                     {/* Grows in on hover: it takes no room until then, and
