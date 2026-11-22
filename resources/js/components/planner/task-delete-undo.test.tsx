@@ -17,7 +17,9 @@ import { TaskList } from '@/components/planner/task-list';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
+import { createList } from '@/lib/db/lists';
 import { createTask, listTasksIn, updateTask } from '@/lib/db/tasks';
+import type { TaskPlacement } from '@/lib/db/tasks';
 import { deleteWithUndo } from '@/lib/planner/task-actions';
 import {
     DELETE_HISTORY_LIMIT,
@@ -32,8 +34,10 @@ vi.mock('@/components/planner/account-button', () => ({
 
 const DAY = '2026-10-12';
 
-function Day() {
-    const tasks = useLiveQuery(() => listTasksIn({ date: DAY }), []);
+const DAY_PLACEMENT = { date: DAY };
+
+function Day({ placement = DAY_PLACEMENT }: { placement?: TaskPlacement }) {
+    const tasks = useLiveQuery(() => listTasksIn(placement), [placement]);
 
     return (
         <TooltipProvider>
@@ -46,7 +50,7 @@ function Day() {
                     onToday={() => {}}
                 />
                 <TaskList
-                    placement={{ date: DAY }}
+                    placement={placement}
                     tasks={tasks}
                     newTaskLabel="New task"
                     onOpenTask={() => {}}
@@ -72,36 +76,29 @@ afterEach(() => {
 });
 
 describe('delete button on a task row', () => {
-    it('is only shown once the task is done', async () => {
-        const gym = await createTask({ text: 'Gym', date: DAY });
-        render(<Day />);
+    it.each(['day', 'Someday', 'named list'] as const)(
+        'leaves only the completion toggle for a done task in a %s',
+        async (kind) => {
+            const placement: TaskPlacement =
+                kind === 'day'
+                    ? DAY_PLACEMENT
+                    : {
+                          date: null,
+                          list:
+                              kind === 'Someday'
+                                  ? 0
+                                  : (await createList('Errands')).column,
+                      };
+            const gym = await createTask({ text: 'Gym', ...placement });
+            await updateTask(gym.id, { done: true });
+            render(<Day placement={placement} />);
 
-        await screen.findByRole('button', { name: 'Gym' });
-        expect(screen.queryByRole('button', { name: 'Delete Gym' })).toBeNull();
-
-        await updateTask(gym.id, { done: true });
-
-        expect(
-            await screen.findByRole('button', { name: 'Delete Gym' }),
-        ).toBeTruthy();
-    });
-
-    it('deletes a done task with an Undo toast, without opening it', async () => {
-        const user = userEvent.setup();
-        const gym = await createTask({ text: 'Gym', date: DAY });
-        await updateTask(gym.id, { done: true });
-        render(<Day />);
-
-        await user.click(
-            await screen.findByRole('button', { name: 'Delete Gym' }),
-        );
-
-        await waitFor(async () => expect(await liveTexts()).toEqual([]));
-        expect(
-            (await screen.findAllByText('Task deleted.')).length,
-        ).toBeGreaterThan(0);
-        expect(screen.queryByRole('dialog')).toBeNull();
-    });
+            await screen.findByRole('button', { name: 'Mark as not done' });
+            expect(
+                screen.queryByRole('button', { name: 'Delete Gym' }),
+            ).toBeNull();
+        },
+    );
 });
 
 describe('header undo for deletes', () => {
