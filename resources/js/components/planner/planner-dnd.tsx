@@ -823,3 +823,208 @@ export function PlannerDnd({
         </DndContext>
     );
 }
+
+type ListCardDndProps = {
+    /** Monday of the shown week (drop resolution uses it). */
+    weekStart: Date;
+    children: ReactNode;
+};
+
+/**
+ * Drag and drop for the list card (F11): a nested `DndContext` that reorders a
+ * single list's tasks in place. It is separate from the grid's context because
+ * dnd-kit ids are unique per context — the grid already registers the same
+ * `list:<placementKey>` droppable and the same sortable task ids, and a second
+ * `TaskList` mounted in the grid's context would break it. The card's drag
+ * state (dimmed row, insertion line) and `DragOverlay` come from this context,
+ * so a drag in the card never dims or draws over the grid's rows.
+ *
+ * Drops are written with `moveTask` (local only) through the same pure
+ * functions the grid uses (`resolveDrop`): days reorder untimed tasks
+ * positionally and keep timed tasks in their time slot, Someday and named
+ * lists are positional throughout. There are no edge zones (the card is one
+ * list) and no list drag (F5 stays a page action).
+ */
+export function ListCardDnd({ weekStart, children }: ListCardDndProps) {
+    const sensors = useSensors(
+        useSensor(MouseSensor, {
+            activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: TOUCH_DRAG_DELAY_MS,
+                tolerance: TOUCH_DRAG_TOLERANCE_PX,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        }),
+    );
+    const [dragged, setDragged] = useState<TaskDragData | null>(null);
+    const [result, setResult] = useState<DropResult | null>(null);
+    const [settlingId, setSettlingId] = useState<string | null>(null);
+    const [held, setHeld] = useState(false);
+    const lastResult = useRef<DropResult | null>(null);
+    const draggedText = useRef('');
+
+    const resolve = (target: DropTarget | null) =>
+        dragged !== null && target
+            ? resolveDrop(dragged.task, target, weekStart)
+            : null;
+
+    const handleDragStart = ({ active, activatorEvent }: DragStartEvent) => {
+        const data = active.data.current as TaskDragData | undefined;
+
+        setDragged(data ?? null);
+        setResult(null);
+        lastResult.current = null;
+        setHeld(isTouchDrag(activatorEvent));
+    };
+
+    const handleDragMove = ({ collisions, delta }: DragMoveEvent) => {
+        if (held && Math.hypot(delta.x, delta.y) > TOUCH_HOLD_TOLERANCE_PX) {
+            setHeld(false);
+        }
+
+        const next = resolve(dropTargetOf(collisions?.[0]));
+        lastResult.current = next;
+
+        if (
+            next?.indicator?.listKey !== result?.indicator?.listKey ||
+            next?.indicator?.beforeTaskId !== result?.indicator?.beforeTaskId
+        ) {
+            setResult(next);
+        }
+    };
+
+    const finish = (activatorEvent: Event) => {
+        setHeld(false);
+
+        if (!(activatorEvent instanceof KeyboardEvent)) {
+            swallowNextClick();
+        }
+
+        setDragged(null);
+        setResult(null);
+    };
+
+    const write = (id: string, move: MoveTaskInput) => {
+        setSettlingId(id);
+
+        return moveTask(id, move)
+            .catch((error: unknown) => {
+                toast.error(t('planner.moveTaskFailed'));
+                throw error;
+            })
+            .finally(() =>
+                requestAnimationFrame(() =>
+                    setSettlingId((current) =>
+                        current === id ? null : current,
+                    ),
+                ),
+            );
+    };
+
+    const handleDragEnd = ({ collisions, activatorEvent }: DragEndEvent) => {
+        const drop = held ? null : resolve(dropTargetOf(collisions?.[0]));
+        lastResult.current = drop;
+
+        if (dragged !== null && drop !== null) {
+            const { task } = dragged;
+
+            write(task.id, drop.move).catch(() => {});
+        }
+
+        finish(activatorEvent);
+    };
+
+    const handleDragCancel = ({
+        activatorEvent,
+    }: {
+        activatorEvent: Event;
+    }) => {
+        lastResult.current = null;
+        finish(activatorEvent);
+    };
+
+    // Announcements read the drag data from the event, which loses it when the
+    // source row unmounts mid-drag; keep the text from the start.
+    const textOf = (data: unknown) => {
+        const text = (data as Partial<TaskDragData> | undefined)?.task?.text;
+
+        if (text !== undefined) {
+            draggedText.current = text;
+        }
+
+        return draggedText.current;
+    };
+
+    const announcements: Announcements = {
+        onDragStart: ({ active }) =>
+            t('planner.pickedUp', { text: textOf(active.data.current) }),
+        onDragOver: ({ over }) => {
+            const label = overLabel(over?.data.current);
+
+            return label
+                ? t('planner.over', { place: label })
+                : t('planner.notOverList');
+        },
+        onDragEnd: ({ active }) => {
+            const drop = lastResult.current;
+            const text = textOf(active.data.current);
+
+            return drop !== null
+                ? t('planner.droppedAt', {
+                      text,
+                      place: placementLabel(drop.move, drop.name),
+                  })
+                : t('planner.notMoved', { text });
+        },
+        onDragCancel: ({ active }) =>
+            t('planner.dragCancelled', { text: textOf(active.data.current) }),
+    };
+
+    return (
+        <DndContext
+            sensors={sensors}
+            // A held touch must not scroll the card under the finger.
+            autoScroll={!held}
+            collisionDetection={collisionDetection}
+            measuring={{
+                droppable: { strategy: MeasuringStrategy.Always },
+            }}
+            accessibility={{
+                announcements,
+                screenReaderInstructions: screenReaderInstructions(),
+            }}
+            onDragStart={handleDragStart}
+            onDragMove={handleDragMove}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+        >
+            <PlannerDndStateContext
+                value={{
+                    activeId: dragged?.task.id ?? settlingId,
+                    indicator:
+                        held || dragged === null
+                            ? null
+                            : (result?.indicator ?? null),
+                    activeListId: null,
+                    listIndicator: null,
+                }}
+            >
+                {children}
+            </PlannerDndStateContext>
+            <DragOverlay dropAnimation={null} zIndex={10}>
+                {dragged !== null && (
+                    <div
+                        data-drag-overlay
+                        className="flex h-full min-h-row cursor-grabbing items-start rounded-md bg-background py-2 text-sm shadow-lg ring-1 ring-border max-lg:text-base"
+                    >
+                        <TaskLabel task={dragged.task} />
+                    </div>
+                )}
+            </DragOverlay>
+        </DndContext>
+    );
+}

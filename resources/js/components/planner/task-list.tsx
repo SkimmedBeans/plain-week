@@ -41,7 +41,7 @@ type Props = {
 };
 
 /** The insertion line shown while a dragged task is over this spot. */
-function DropIndicator() {
+export function DropIndicator() {
     return (
         <div data-drop-indicator className="relative h-0">
             <div className="absolute inset-x-0 -top-px z-[11] h-0.5 rounded-full bg-primary" />
