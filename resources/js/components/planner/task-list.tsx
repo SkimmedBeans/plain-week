@@ -5,6 +5,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Fragment, useLayoutEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
+import { CompletedHeading } from '@/components/planner/completed-heading';
 import {
     useKeyboardCursor,
     useKeyboardCursorApi,
@@ -185,12 +186,10 @@ export function TaskList({
                                     onSubmit={handleSubmit}
                                     onCancel={handleCancel}
                                 />
-                                <div
-                                    data-completed-label
-                                    className="flex items-end border-b border-border px-1.5 pt-3 pb-1 text-xs font-medium text-muted-foreground"
-                                >
-                                    Completed ({doneCount})
-                                </div>
+                                <CompletedHeading
+                                    placement={placement}
+                                    tasks={listTasks.slice(-doneCount)}
+                                />
                             </>
                         )}
                         {indicatorBefore === task.id && <DropIndicator />}

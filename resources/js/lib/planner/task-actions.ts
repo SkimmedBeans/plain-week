@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { toDateKey } from '@/lib/db/dates';
 import { getSeries } from '@/lib/db/queries';
 import {
+    clearCompletedSomeday,
     createUndoLog,
     deleteTask,
     duplicateTask,
@@ -107,6 +108,26 @@ export function duplicateWithToast(id: string): Promise<Task | undefined> {
             return copy;
         }),
         t('planner.duplicateTaskFailed'),
+    );
+}
+
+export function clearCompletedWithUndo(
+    list: number,
+    taskIds: string[],
+): Promise<void | undefined> {
+    const undo = createUndoLog();
+
+    return settle(
+        clearCompletedSomeday(list, taskIds, { undo }).then((count) => {
+            if (count > 0) {
+                toastWithUndo(t('planner.completedCleared'), () =>
+                    saveLocally(undoChanges(undo), {
+                        error: t('planner.restoreCompletedFailed'),
+                    }),
+                );
+            }
+        }),
+        t('planner.clearCompletedFailed'),
     );
 }
 
