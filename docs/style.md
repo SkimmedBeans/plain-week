@@ -575,7 +575,9 @@ A press on a task row is interpreted by its timing and direction. The gesture va
 | Swipe the completed task's text at least 72 px toward the row start | Deletes that task or recurring occurrence on release, with Undo        |
 
 Start the swipe before the long-press drag activates. Swipe left in LTR and right in RTL. The gesture also works
-in list cards. Use the task menu to delete with a mouse or keyboard.
+in list cards. The row follows the finger and reveals a tinted strip. A short or cancelled swipe slides the row
+back. A committed swipe slides the row out before removing it. Reduced motion skips the release animations.
+Use the task menu to delete with a mouse or keyboard.
 
 After 250 ms the dnd-kit touch sensor activates: the task lifts at once (dragged pill, dimmed row, edge zones), so the
 finger knows it can move, and the page no longer scrolls under it. Until the finger has moved more than 8 px

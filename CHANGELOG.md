@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-11-22
+
+### Changed
+
+- Completed task rows now follow your finger during a swipe, slide away when deleted, and slide back when the
+  swipe is cancelled.
+
 ## [0.4.6] - 2026-11-22
 
 ### Added
@@ -611,7 +618,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.3...v0.4.4
