@@ -37,11 +37,7 @@ import { Input } from '@/components/ui/input';
 import { useSomedayLists } from '@/hooks/use-tasks';
 import { toDateKey } from '@/lib/db/dates';
 import { deleteList, renameList, LIST_NAME_MAX } from '@/lib/db/lists';
-import {
-    createTask,
-    toggleDone,
-    type TaskPlacement,
-} from '@/lib/db/tasks';
+import { createTask, toggleDone, type TaskPlacement } from '@/lib/db/tasks';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 import { t } from '@/lib/i18n';
 import { placementKey, type ListDropData } from '@/lib/planner/drop';
@@ -239,11 +235,13 @@ function ListDialogSession({
                                     // A list always has a name: only write real
                                     // ones (an empty field reverts on blur).
                                     if (value.trim() !== '') {
-                                        void renameList(identity.id, value).catch(
-                                            () =>
-                                                toast.error(
-                                                    t('planner.renameFailed'),
-                                                ),
+                                        void renameList(
+                                            identity.id,
+                                            value,
+                                        ).catch(() =>
+                                            toast.error(
+                                                t('planner.renameFailed'),
+                                            ),
                                         );
                                     }
                                 }}

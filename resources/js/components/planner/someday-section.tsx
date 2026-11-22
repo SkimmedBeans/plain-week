@@ -3,7 +3,10 @@ import { GripVertical, MoreHorizontal, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { TaskList } from '@/components/planner/task-list';
-import { ListDialog, type ListCardIdentity } from '@/components/planner/list-dialog';
+import {
+    ListDialog,
+    type ListCardIdentity,
+} from '@/components/planner/list-dialog';
 import {
     columnDroppableId,
     listDraggableId,
@@ -151,8 +154,9 @@ export function SomedaySection({
     const [renameName, setRenameName] = useState('');
     const [deleteOpen, setDeleteOpen] = useState(false);
     // The list card (F11): which list it is open on, null when closed.
-    const [cardIdentity, setCardIdentity] =
-        useState<ListCardIdentity | null>(null);
+    const [cardIdentity, setCardIdentity] = useState<ListCardIdentity | null>(
+        null,
+    );
 
     const submitCreate = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();

@@ -21,7 +21,9 @@ const Card = ({ list }: { list: { id: string; column: number } | null }) => (
             identity={list ? { kind: 'named', id: list.id } : null}
             weekStart={new Date('2026-10-12')}
             placement={
-                list ? { date: null, list: list.column } : { date: null, list: 0 }
+                list
+                    ? { date: null, list: list.column }
+                    : { date: null, list: 0 }
             }
             tasks={undefined}
             newTaskLabel="New task"

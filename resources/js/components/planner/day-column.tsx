@@ -42,8 +42,9 @@ export function DayColumn({
     const dayLabel = formatDay(date);
     const weekday = formatWeekday(date);
     const isWeekend = weekdayIndex(parseDateKey(date)) >= 5;
-    const [cardIdentity, setCardIdentity] =
-        useState<ListCardIdentity | null>(null);
+    const [cardIdentity, setCardIdentity] = useState<ListCardIdentity | null>(
+        null,
+    );
 
     const newTaskLabel = t('planner.newTaskForDay', {
         weekday,
@@ -71,7 +72,7 @@ export function DayColumn({
                     isToday
                         ? 'border-planner-accent text-planner-accent'
                         : isWeekend &&
-                          'border-muted-foreground/25 text-muted-foreground/70',
+                              'border-muted-foreground/25 text-muted-foreground/70',
                 )}
             >
                 <Button
@@ -81,9 +82,7 @@ export function DayColumn({
                     className="h-7 flex-1 items-baseline justify-between gap-2 self-stretch rounded-none border-0 px-0 py-0 text-inherit hover:bg-transparent hover:text-inherit dark:hover:bg-transparent"
                     onClick={() => setCardIdentity({ kind: 'day', date })}
                 >
-                    <span className="font-bold tracking-tight">
-                        {weekday}
-                    </span>
+                    <span className="font-bold tracking-tight">{weekday}</span>
                     <span
                         className={cn(
                             'text-muted-foreground/70',
