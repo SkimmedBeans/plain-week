@@ -149,6 +149,8 @@ export const planner = {
     'planner.moveList': 'Move the {text} list',
     'planner.listCardTitle': 'Edit list',
     'planner.listName': 'List name',
+    'planner.listTitleColor': 'Title color',
+    'planner.listColorFailed': 'Could not change the list title color.',
     'planner.renameFailed': 'Could not rename the list.',
     'planner.deleteListTitle': 'Delete “{name}”?',
     'planner.deleteListDescription': 'Its tasks will move to Someday.',

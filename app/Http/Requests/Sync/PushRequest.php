@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Sync;
 
 use App\Casts\UtcMillisDateTime;
+use App\Enums\TaskColor;
 use App\Tasks\TaskRecordRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class PushRequest extends FormRequest
@@ -36,6 +38,7 @@ class PushRequest extends FormRequest
             'lists.*' => ['required', 'array'],
             'lists.*.id' => ['required', 'string', 'uuid', 'lowercase'],
             'lists.*.name' => ['required', 'string', 'min:1', 'max:60'],
+            'lists.*.color' => ['sometimes', 'required', Rule::enum(TaskColor::class)],
             'lists.*.column' => ['required', 'integer', 'min:3'],
             'lists.*.position' => ['required', 'string', 'max:255'],
             'lists.*.created_at' => ['required', $timestamp],

@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-11-22
+
+### Added
+
+- **Someday list title colors.** Choose a task palette color for each named Someday list from its overflow menu.
+  The color appears in the planner and list card, syncs across devices, and is kept in exports.
+
 ## [0.4.7] - 2026-11-22
 
 ### Changed
@@ -618,7 +625,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.4...v0.4.5

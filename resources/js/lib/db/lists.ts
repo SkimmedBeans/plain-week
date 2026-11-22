@@ -3,7 +3,7 @@ import { notifyLocalChange } from './changes';
 import { db } from './database';
 import { nextTimestamp } from './dates';
 import { compareListOrder, positionBetween } from './position';
-import type { SomedayList } from './types';
+import type { SomedayList, TaskColor } from './types';
 
 /** The maximum length of a list name (the server enforces the same). */
 export const LIST_NAME_MAX = 60;
@@ -113,8 +113,20 @@ export async function renameList(
     id: string,
     name: string,
 ): Promise<SomedayList | null> {
-    const trimmed = normaliseName(name);
+    return updateList(id, { name: normaliseName(name) });
+}
 
+export function setListColor(
+    id: string,
+    color: TaskColor,
+): Promise<SomedayList | null> {
+    return updateList(id, { color });
+}
+
+function updateList(
+    id: string,
+    patch: Pick<Partial<SomedayList>, 'name' | 'color'>,
+): Promise<SomedayList | null> {
     return writeLists(async () => {
         const list = await db.someday_lists.get(id);
 
@@ -124,8 +136,8 @@ export async function renameList(
 
         const updated: SomedayList = {
             ...list,
-            name: trimmed,
-            updated_at: nextTimestamp(),
+            ...patch,
+            updated_at: nextTimestamp(list.updated_at),
         };
 
         return { rows: [updated], result: updated };

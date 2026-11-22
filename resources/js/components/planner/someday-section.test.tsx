@@ -7,6 +7,7 @@ import {
     within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { SomedaySection } from '@/components/planner/someday-section';
@@ -63,6 +64,48 @@ afterEach(() => {
 });
 
 describe('SomedaySection', () => {
+    it('sets and clears the named list title color from its menu', async () => {
+        const list = await createList('Ideas');
+        const user = userEvent.setup();
+        function LiveSection() {
+            const lists = useLiveQuery(queryLists);
+            return <Section list={lists?.[0] ?? list} />;
+        }
+        render(<LiveSection />);
+
+        const chooseColor = async (label: string) => {
+            await user.click(menuButton('Ideas'));
+            const trigger = await screen.findByRole('menuitem', {
+                name: 'Title color',
+            });
+            trigger.focus();
+            await user.keyboard('{ArrowRight}');
+            await user.click(
+                await screen.findByRole('menuitemradio', { name: label }),
+            );
+        };
+        await chooseColor('Pink');
+        await waitFor(() =>
+            expect(
+                screen.getByText('Ideas').classList.contains('bg-task-pink'),
+            ).toBe(true),
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Ideas' }));
+        const field = await screen.findByRole('textbox', { name: 'List name' });
+        expect(field.classList.contains('bg-task-pink')).toBe(true);
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+        await chooseColor('No color');
+        await waitFor(() =>
+            expect(
+                screen.getByText('Ideas').classList.contains('bg-task-pink'),
+            ).toBe(false),
+        );
+        expect((await queryLists())[0].color).toBe('none');
+    });
+
     it('heads the base column with Someday and offers New list', () => {
         render(<Section list={BASE} />);
 

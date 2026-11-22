@@ -49,6 +49,8 @@ import {
 } from '@/lib/planner/format';
 import { rowKey } from '@/lib/planner/repeat';
 import { parseNewTaskInput } from '@/lib/planner/smart-input';
+import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
+import { cn } from '@/lib/utils';
 
 /**
  * What the list card shows (F11): a named list (F6), the base Someday column,
@@ -125,6 +127,7 @@ function ListDialogSession({
     // missing row mean the list went away.
     const lists = useSomedayLists();
     const list = isNamed ? lists?.find((l) => l.id === identity.id) : undefined;
+    const color = list?.color ?? 'none';
     const known = lists !== undefined;
     const open = !isNamed || (known && list !== undefined);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -254,7 +257,13 @@ function ListDialogSession({
                                         event.target.value = list.name;
                                     }
                                 }}
-                                className="min-h-0 min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-2xl leading-snug font-medium shadow-none focus-visible:ring-0 dark:bg-transparent"
+                                className={cn(
+                                    'min-h-0 min-w-0 flex-1 border-0 p-0 text-2xl leading-snug font-medium shadow-none focus-visible:ring-0',
+                                    color === 'none'
+                                        ? 'rounded-none bg-transparent dark:bg-transparent'
+                                        : 'rounded-full px-2.5',
+                                    TASK_COLOR_STYLES[color].pill,
+                                )}
                             />
                             <Button
                                 type="button"

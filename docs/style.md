@@ -472,6 +472,9 @@ Open a list card by activating a day, Someday or named list header. It uses the 
 and writes edits to the local database as they happen. Esc or a click outside closes it and returns focus to the
 list header. Rename and delete are available for named Someday lists.
 
+A named Someday list's overflow menu offers **Title color** using the task swatches. The selected color is shown
+on the column title and in the list card. **No color** restores the default style.
+
 The Completed section in a Someday column or card has a ghost `Button` labelled "Clear completed". It removes the
 completed tasks shown in that list and offers one Undo for the whole clear.
 

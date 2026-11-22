@@ -2,6 +2,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { GripVertical, MoreHorizontal, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
+import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
 import { TaskList } from '@/components/planner/task-list';
 import {
     ListDialog,
@@ -25,7 +26,13 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuPortal,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -45,9 +52,12 @@ import {
     deleteList,
     moveList,
     renameList,
+    setListColor,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
+import { TASK_COLORS, type TaskColor } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
+import { isTaskColor, TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -56,7 +66,7 @@ type Props = {
      * The list this column shows: Someday (column 0, no `id`) or a named
      * list (a row of the lists table).
      */
-    list: { column: number; name: string; id?: string };
+    list: { column: number; name: string; id?: string; color?: TaskColor };
     /** Monday of the shown week (the Someday tasks shown depend on it). */
     weekStart: Date;
     /** 'YYYY-MM-DD' of today. */
@@ -120,6 +130,7 @@ export function SomedaySection({
     const isNamed = list.id !== undefined;
     // Narrowed once: property narrowing does not survive into closures.
     const namedListId = list.id;
+    const color = list.color ?? 'none';
 
     // A named list's header is the drag handle and its whole column the drop
     // target while a list is dragged; the base list never moves.
@@ -232,7 +243,14 @@ export function SomedaySection({
                         }
                         className="h-auto min-w-0 flex-1 justify-start gap-0 self-stretch rounded-none border-0 px-0 py-0 text-lg leading-7 font-bold tracking-tight text-inherit hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0 lg:text-xl dark:hover:bg-transparent"
                     >
-                        <span id={titleId} className="min-w-0 truncate">
+                        <span
+                            id={titleId}
+                            className={cn(
+                                'min-w-0 truncate',
+                                color !== 'none' && 'rounded-full px-2.5',
+                                TASK_COLOR_STYLES[color].pill,
+                            )}
+                        >
                             {list.name}
                         </span>
                     </Button>
@@ -299,6 +317,69 @@ export function SomedaySection({
                                     >
                                         Rename
                                     </DropdownMenuItem>
+                                    {namedListId !== undefined && (
+                                        <DropdownMenuSub>
+                                            <DropdownMenuSubTrigger>
+                                                {t('planner.listTitleColor')}
+                                            </DropdownMenuSubTrigger>
+                                            <DropdownMenuPortal>
+                                                <DropdownMenuSubContent>
+                                                    <DropdownMenuRadioGroup
+                                                        aria-label={t(
+                                                            'planner.listTitleColor',
+                                                        )}
+                                                        value={color}
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
+                                                            if (
+                                                                isTaskColor(
+                                                                    value,
+                                                                ) &&
+                                                                value !== color
+                                                            ) {
+                                                                void setListColor(
+                                                                    namedListId,
+                                                                    value,
+                                                                ).catch(() =>
+                                                                    toast.error(
+                                                                        t(
+                                                                            'planner.listColorFailed',
+                                                                        ),
+                                                                    ),
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        {TASK_COLORS.map(
+                                                            (option) => (
+                                                                <DropdownMenuRadioItem
+                                                                    key={option}
+                                                                    value={
+                                                                        option
+                                                                    }
+                                                                >
+                                                                    <TaskColorSwatch
+                                                                        color={
+                                                                            option
+                                                                        }
+                                                                        checked={
+                                                                            false
+                                                                        }
+                                                                    />
+                                                                    {
+                                                                        TASK_COLOR_STYLES[
+                                                                            option
+                                                                        ].label
+                                                                    }
+                                                                </DropdownMenuRadioItem>
+                                                            ),
+                                                        )}
+                                                    </DropdownMenuRadioGroup>
+                                                </DropdownMenuSubContent>
+                                            </DropdownMenuPortal>
+                                        </DropdownMenuSub>
+                                    )}
                                     {/* Lists run left to right on desktop and top
                                     to bottom on phones. */}
                                     <DropdownMenuItem
