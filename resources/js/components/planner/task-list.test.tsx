@@ -20,7 +20,8 @@ import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { TaskList } from '@/components/planner/task-list';
 import { Toaster } from '@/components/ui/sonner';
 import { wipeLocalDatabase } from '@/lib/db/database';
-import { createTask, listTasksIn } from '@/lib/db/tasks';
+import { createList } from '@/lib/db/lists';
+import { createTask, listTasksIn, toggleDone } from '@/lib/db/tasks';
 
 const DAY = '2026-10-12';
 const LABEL = 'New task for Mon 12 Oct';
@@ -312,6 +313,40 @@ function Someday() {
 describe('TaskList with tasks', () => {
     const list = () =>
         document.querySelector<HTMLElement>('[data-list="someday"]')!;
+
+    it('clears this Someday list’s completed tasks and restores them together', async () => {
+        const user = userEvent.setup();
+        const otherList = await createList('Other list');
+        await createTask({ text: 'Open', date: null, list: 0 });
+        for (const [text, column] of [
+            ['First', 0],
+            ['Second', 0],
+            ['Other', otherList.column],
+        ] as const) {
+            const task = await createTask({ text, date: null, list: column });
+            await toggleDone(task.id);
+        }
+        render(<Someday />);
+
+        await user.click(
+            await screen.findByRole('button', { name: 'Clear completed' }),
+        );
+        await waitFor(() => {
+            expect(screen.queryByText('First')).toBeNull();
+            expect(screen.queryByText('Second')).toBeNull();
+            expect(
+                screen.queryByRole('button', { name: 'Clear completed' }),
+            ).toBeNull();
+        });
+        expect(screen.getByRole('button', { name: 'Open' })).toBeDefined();
+        expect(
+            await listTasksIn({ date: null, list: otherList.column }),
+        ).toMatchObject([{ text: 'Other', done: true }]);
+
+        await user.click(await screen.findByRole('button', { name: 'Undo' }));
+        await screen.findByRole('button', { name: 'First (done)' });
+        await screen.findByRole('button', { name: 'Second (done)' });
+    });
 
     it('keeps one empty row after the last task', async () => {
         render(<Someday />);

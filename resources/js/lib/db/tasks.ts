@@ -606,6 +606,31 @@ export function deleteTask(
 }
 
 /**
+ * Clears the selected completed items that are still in this Someday list.
+ * Read and write together so a stale screen cannot delete a moved or reopened task.
+ */
+export function clearCompletedSomeday(
+    list: number,
+    taskIds: string[],
+    options: MutationOptions = {},
+): Promise<number> {
+    const selected = new Set(taskIds);
+
+    return write(
+        async () => {
+            const items = await queryListTasks({ date: null, list });
+            const rows = items
+                .filter((item) => item.done && selected.has(item.id))
+                .map(tombstone);
+
+            return { rows, result: rows.length };
+        },
+        options,
+        { mode: 'keep' },
+    );
+}
+
+/**
  * Brings back a soft-deleted task (undo of a single `deleteTask`). With an
  * occurrence id it restores that occurrence's exception. The restore is a
  * newer change, so it also wins over the tombstone on other devices. To undo

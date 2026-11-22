@@ -469,11 +469,12 @@ rich-text notes and attachments are not part of Plain Week yet.
 
 ## List card
 
-Opened by clicking a named Someday list's name (or Enter / Space on it); built in
-`resources/js/components/planner/list-dialog.tsx` and mounted by each named `SomedaySection` with the open list's
-id. It follows the task card: the same `bg-secondary` surface, and every edit is written to the local database as it
-happens (no save button, nothing waits on the network); Esc or a click outside closes it and focus returns to the
-list's name button in the header. The base Someday column has no card.
+Open a list card by activating a day, Someday or named list header. It uses the task card's `bg-secondary` surface
+and writes edits to the local database as they happen. Esc or a click outside closes it and returns focus to the
+list header. Rename and delete are available for named Someday lists.
+
+The Completed section in a Someday column or card has a ghost `Button` labelled "Clear completed". It removes the
+completed tasks shown in that list and offers one Undo for the whole clear.
 
 | Part   | Components                       | Behaviour                                                                                                                                                                                                                                                       |
 | ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

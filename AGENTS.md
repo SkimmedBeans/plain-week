@@ -36,7 +36,15 @@ current with what you change. Never commit anything under `docs/research/`.
 
 ## Releases
 
-Cut a **patch** release (`x.y.Z`) by default: bump `package.json`, move the `Unreleased` CHANGELOG entries under the
-new version and update the compare links. Once that is merged, tag the merge commit `vX.Y.Z` and push the tag: CI
-publishes the Docker image and the GitHub release (notes taken from the CHANGELOG). Only bump the minor or major
-version when the owner explicitly asks for it.
+Publish completed changes by default in interactive, backlog and scheduled work. The owner authorizes the agent to
+push the branch, open the GitHub PR, merge it after CI passes and publish the release without asking again. Follow
+an explicit request to keep a change local or defer publishing.
+
+Cut a **patch** release (`x.y.Z`) by default. Bump `package.json`, move the `Unreleased` CHANGELOG entries under the
+new version and update the compare links. After CI passes and the PR merges into the fork's `main`, tag its merge
+commit `vX.Y.Z` and push the tag. Verify the GitHub release is live and the `docker` publish job for that tag and
+commit succeeded. Confirm GHCR serves the corresponding `X.Y.Z` image before calling the change published. The
+separate `edge` build from `main` does not satisfy this check.
+
+Only bump the minor or major version when the owner explicitly asks for it. The owner applies container updates
+on Cove through WUD.
