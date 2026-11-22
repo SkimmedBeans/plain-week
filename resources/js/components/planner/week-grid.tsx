@@ -82,11 +82,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
             {namedLists?.map((list, index) => (
                 <SomedaySection
                     key={list.id}
-                    list={{
-                        column: list.column,
-                        name: list.name,
-                        id: list.id,
-                    }}
+                    list={list}
                     weekStart={weekStart}
                     today={today}
                     onOpenTask={onOpenTask}

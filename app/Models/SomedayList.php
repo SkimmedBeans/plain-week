@@ -17,13 +17,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $id
  * @property int $user_id
  * @property string $name
+ * @property string $color
  * @property int $column
  * @property string $position
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  * @property CarbonImmutable|null $deleted_at
  */
-#[Fillable(['id', 'name', 'column', 'position', 'created_at', 'updated_at', 'deleted_at'])]
+#[Fillable(['id', 'name', 'color', 'column', 'position', 'created_at', 'updated_at', 'deleted_at'])]
 class SomedayList extends Model
 {
     /** @use HasFactory<SomedayListFactory> */

@@ -96,11 +96,13 @@ is list number `0`, always shown, named "Someday", and it cannot be renamed or d
 | ------------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `id`                                       | string (UUID v7, lowercase) | Generated on the client                                                                                         |
 | `name`                                     | string (1–60 chars)         |                                                                                                                 |
+| `color`                                    | task color                  | Title palette; defaults to `none` for missing local data or newly synced lists                                  |
 | `column`                                   | `integer ≥ 3`               | The `someday_column` of the tasks in the list; `0`–`2` are reserved (base list + legacy)                        |
 | `position`                                 | string                      | Fractional index key; lists display in `position` order; a menu move or a drag reassigns it                     |
 | `created_at` / `updated_at` / `deleted_at` | ISO-8601 string \| `null`   | Same format and source as tasks; `updated_at` drives last-write-wins, `deleted_at` is the soft-delete tombstone |
 
 Server-only column: `user_id` (foreign key, cascades on user delete).
+List pushes may omit `color` for older clients. An omitted field preserves the stored color. Pulls always include it.
 
 A task's list is its existing `someday_column`: a Someday task (`date` is `null`) with `someday_column` `N` belongs to
 the list whose `column` is `N`. A new list takes `max(column of all lists, deleted included), 2) + 1`. **Orphan rule:**
@@ -235,7 +237,7 @@ beats the version it replaces. After commit the mutation schedules a sync.
 
 **Someday lists** (`lib/db/lists.ts`): `queryLists()` — the live named lists in `position` order (base list excluded);
 `createList(name)` — new list at column `max(column of all lists, tombstones included, 2) + 1`, name trimmed, 1–60 chars
-(`LIST_NAME_MAX`); `renameList(id, name)`; `deleteList(id)` — soft-deletes the list and moves its tasks to the end of the
+(`LIST_NAME_MAX`); `renameList(id, name)`; `setListColor(id, color)`; `deleteList(id)` — soft-deletes the list and moves its tasks to the end of the
 base list (column 0) in one transaction, keeping their relative order, each moved task getting its own outbox entry.
 Every list mutation writes the row plus a `list_outbox` entry in one transaction, like task mutations do.
 

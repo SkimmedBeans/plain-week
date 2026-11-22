@@ -2,7 +2,7 @@ import { generateNKeysBetween } from 'fractional-indexing';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { queryTask, queryWeekTasks, querySomedayTasks } from '@/lib/db/queries';
-import { createList } from '@/lib/db/lists';
+import { createList, setListColor } from '@/lib/db/lists';
 import {
     createTask,
     deleteTask,
@@ -301,7 +301,8 @@ describe('round trip', () => {
     });
 
     it('round-trips named lists with their tasks', async () => {
-        await createList('Books');
+        const books = await createList('Books');
+        await setListColor(books.id, 'lilac');
         await createTask({ text: 'Read Dune', date: null, list: 3 });
         await createTask({ text: 'Base idea', date: null, list: 0 });
 
@@ -314,6 +315,7 @@ describe('round trip', () => {
         // idea stays in the base Someday list.
         const [list] = await db.someday_lists.toArray();
         expect(list.name).toBe('Books');
+        expect(list.color).toBe('lilac');
         expect(
             (await querySomedayTasks(MON, list.column)).map(
                 (item) => item.text,

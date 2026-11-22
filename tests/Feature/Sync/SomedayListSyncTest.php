@@ -25,6 +25,7 @@ function wireList(array $overrides = []): array
     return array_merge([
         'id' => (string) Str::uuid7(),
         'name' => 'Errands',
+        'color' => 'none',
         'column' => 3,
         'position' => 'a0',
         'created_at' => '2026-11-15T08:35:00.123Z',
@@ -45,7 +46,7 @@ function pushLists(array $lists, array $tasks = []): TestResponse
 }
 
 test('push creates a list and pull returns it unchanged', function () {
-    $list = wireList();
+    $list = wireList(['color' => 'pink']);
 
     pushLists([$list])
         ->assertOk()
@@ -58,6 +59,20 @@ test('push creates a list and pull returns it unchanged', function () {
         ->assertJsonPath('lists', [$list]);
 
     expect(SomedayList::find($list['id']))->user_id->toBe($this->user->id);
+});
+
+test('older clients can create and rename lists without sending a color', function () {
+    $list = wireList();
+    unset($list['color']);
+    pushLists([$list])->assertOk();
+    $this->getJson(route('sync.pull'))->assertJsonPath('lists.0.color', 'none');
+
+    pushLists([[...$list, 'color' => 'green', 'updated_at' => '2026-11-15T09:00:00.000Z']])->assertOk();
+    pushLists([[...$list, 'name' => 'Groceries', 'updated_at' => '2026-11-15T10:00:00.000Z']])->assertOk();
+
+    $this->getJson(route('sync.pull'))
+        ->assertJsonPath('lists.0.name', 'Groceries')
+        ->assertJsonPath('lists.0.color', 'green');
 });
 
 test('a newer update wins and an older one is silently ignored', function () {
@@ -132,5 +147,6 @@ test('invalid list records are rejected', function (array $list) {
     'invalid uuid' => [wireList(['id' => 'nope'])],
     'empty name' => [wireList(['name' => ''])],
     'name too long' => [wireList(['name' => str_repeat('a', 61)])],
+    'invalid color' => [wireList(['color' => 'orange'])],
     'column below the someday area' => [wireList(['column' => 2])],
 ]);

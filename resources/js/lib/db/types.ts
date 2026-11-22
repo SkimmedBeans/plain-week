@@ -98,6 +98,8 @@ export type OutboxEntry = {
  * row here. Rows are local-first; the server mirrors them (stage 3).
  */
 export type SomedayList = {
+    /** Omitted by older clients and exports. */
+    color?: TaskColor;
     id: string;
     name: string;
     /**

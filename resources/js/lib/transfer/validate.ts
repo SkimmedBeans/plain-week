@@ -1,5 +1,6 @@
 import { MAX_EVERY_DAYS, TASK_COLORS } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
+import { isTaskColor } from '@/lib/planner/task-colors';
 import { isValidEvery } from '@/lib/recurrence/expand';
 import type {
     IsoWeekday,
@@ -485,10 +486,16 @@ export function validateList(value: unknown, index: number): SomedayList {
     }
 
     const id = v.nonEmptyString('id');
+    const color = value.color;
+    const hasColor = typeof color === 'string' && isTaskColor(color);
+    if (color !== undefined && !hasColor) {
+        v.fail('color', 'must be a task color');
+    }
 
     return {
         id,
         name,
+        ...(hasColor ? { color } : {}),
         column: column as number,
         position,
         created_at: v.timestamp('created_at'),
