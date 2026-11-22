@@ -67,6 +67,29 @@ type TaskRepeat = {
 };
 
 const DELETE_SWIPE_DISTANCE_PX = 72;
+const SWIPE_SETTLE_MS = 170;
+
+function slideTo(row: HTMLDivElement, offset: string): Animation | undefined {
+    const from = row.style.translate || '0px';
+    row.style.translate = offset;
+
+    if (
+        from !== offset &&
+        typeof row.animate === 'function' &&
+        !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+        const animation = row.animate(
+            [{ translate: from }, { translate: offset }],
+            {
+                duration: SWIPE_SETTLE_MS,
+                easing: 'ease-out',
+            },
+        );
+        // Another press can interrupt the slide back to rest.
+        void animation.finished.catch(() => {});
+        return animation;
+    }
+}
 
 type DeleteSwipe = {
     pointerId: number;
@@ -222,6 +245,9 @@ export function TaskRow({
     const touchPressed = useRef(false);
     const deleteSwipe = useRef<DeleteSwipe | null>(null);
     const swallowSwipeClick = useRef(false);
+    const swipeSurface = useRef<HTMLDivElement>(null);
+    const swipeAnimation = useRef<Animation | undefined>(undefined);
+    const deletingBySwipe = useRef(false);
     const actions: TaskContextMenuActions = {
         onColorChange: (color) => {
             if (color !== task.color) {
@@ -238,6 +264,31 @@ export function TaskRow({
             void scoped('delete', (scope) => deleteWithUndo(task.id, scope)),
     };
 
+    const settleSwipe = async (swipe: DeleteSwipe, remove: boolean) => {
+        const row = swipeSurface.current;
+        if (!row) {
+            return;
+        }
+
+        deletingBySwipe.current = remove;
+        const animation = slideTo(
+            row,
+            remove ? `${swipe.direction * 100}%` : '0px',
+        );
+        swipeAnimation.current = animation;
+        if (!remove) {
+            return;
+        }
+
+        // Keep the row in IndexedDB until its exit finishes so the live query
+        // cannot remove it halfway through the slide.
+        await animation?.finished.catch(() => {});
+        if (!(await deleteWithUndo(task.id, 'this'))) {
+            swipeAnimation.current = slideTo(row, '0px');
+            deletingBySwipe.current = false;
+        }
+    };
+
     return (
         <TaskContextMenu task={task} {...actions}>
             <div
@@ -252,6 +303,11 @@ export function TaskRow({
                         return;
                     }
 
+                    if (deletingBySwipe.current) {
+                        event.preventDefault();
+                        return;
+                    }
+                    swipeAnimation.current?.cancel();
                     touchPressed.current = event.pointerType === 'touch';
                     swallowSwipeClick.current = false;
                     const target = event.target as Element;
@@ -284,28 +340,30 @@ export function TaskRow({
                 }}
                 onPointerMove={(event) => {
                     const swipe = deleteSwipe.current;
-                    if (
-                        !swipe ||
-                        swipe.engaged ||
-                        swipe.pointerId !== event.pointerId
-                    ) {
+                    if (!swipe || swipe.pointerId !== event.pointerId) {
                         return;
                     }
 
                     const x = (event.clientX - swipe.x) * swipe.direction;
                     const y = Math.abs(event.clientY - swipe.y);
-                    if (Math.hypot(x, y) <= TOUCH_DRAG_TOLERANCE_PX) {
-                        return;
+                    if (!swipe.engaged) {
+                        if (Math.hypot(x, y) <= TOUCH_DRAG_TOLERANCE_PX) {
+                            return;
+                        }
+                        if (
+                            event.timeStamp - swipe.startedAt >=
+                                TOUCH_DRAG_DELAY_MS ||
+                            x <= 2 * y
+                        ) {
+                            deleteSwipe.current = null;
+                            return;
+                        }
+                        swipe.engaged = true;
                     }
 
-                    if (
-                        event.timeStamp - swipe.startedAt >=
-                            TOUCH_DRAG_DELAY_MS ||
-                        x <= 2 * y
-                    ) {
-                        deleteSwipe.current = null;
-                    } else {
-                        swipe.engaged = true;
+                    const row = swipeSurface.current;
+                    if (row) {
+                        row.style.translate = `${Math.max(0, x) * swipe.direction}px`;
                     }
                 }}
                 onPointerUp={(event) => {
@@ -313,8 +371,6 @@ export function TaskRow({
                     const swipe = deleteSwipe.current;
                     deleteSwipe.current = null;
                     if (
-                        !task.done ||
-                        isDragging ||
                         !swipe?.engaged ||
                         swipe.pointerId !== event.pointerId
                     ) {
@@ -324,13 +380,21 @@ export function TaskRow({
                     const x = (event.clientX - swipe.x) * swipe.direction;
                     const y = Math.abs(event.clientY - swipe.y);
                     swallowSwipeClick.current = true;
-                    if (x >= DELETE_SWIPE_DISTANCE_PX && x > 2 * y) {
-                        void deleteWithUndo(task.id, 'this');
-                    }
+                    void settleSwipe(
+                        swipe,
+                        task.done &&
+                            !isDragging &&
+                            x >= DELETE_SWIPE_DISTANCE_PX &&
+                            x > 2 * y,
+                    );
                 }}
                 onPointerCancel={() => {
                     touchPressed.current = false;
+                    const swipe = deleteSwipe.current;
                     deleteSwipe.current = null;
+                    if (swipe?.engaged) {
+                        void settleSwipe(swipe, false);
+                    }
                 }}
                 onClickCapture={(event) => {
                     if (swallowSwipeClick.current && event.detail > 0) {
@@ -349,7 +413,7 @@ export function TaskRow({
                 className={cn(
                     // At least one ruled row tall (42px), growing as the text
                     // wraps; controls sit on the first line.
-                    'group/task relative flex min-h-row items-start gap-1 border-b border-border select-none [-webkit-touch-callout:none]',
+                    'group/task relative flex min-h-row overflow-x-clip border-b border-border select-none [-webkit-touch-callout:none]',
                     task.done && 'text-muted-foreground',
                     isDragging && 'opacity-40',
                     // The keyboard cursor, or keyboard focus on the text
@@ -359,71 +423,77 @@ export function TaskRow({
                     className,
                 )}
             >
-                <Button
-                    ref={openRef}
-                    type="button"
-                    variant="ghost"
-                    data-task-open
-                    aria-label={label}
-                    onClick={() => onOpen(task.id)}
-                    // Focus shows on the row as the cursor's look
-                    // (`CURSOR_ROW_CLASS`), not as a ring on the button.
-                    className={cn(
-                        'h-auto min-w-0 flex-1 items-start justify-start gap-0 self-stretch rounded-none border-0 px-0 py-2 text-start text-base font-normal whitespace-normal text-inherit hover:bg-transparent hover:text-inherit focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 lg:text-sm dark:hover:bg-transparent',
-                        task.done && 'touch-pan-y touch-pinch-zoom',
-                    )}
+                <div
+                    ref={swipeSurface}
+                    data-task-swipe-surface
+                    className="relative flex min-w-0 flex-1 items-start gap-1 after:pointer-events-none after:absolute after:inset-y-0 after:start-full after:w-full after:bg-destructive/15"
                 >
-                    <TaskLabelView task={task} repeat={repeat} />
-                    {/* Grows in on hover: it takes no room until then, and
+                    <Button
+                        ref={openRef}
+                        type="button"
+                        variant="ghost"
+                        data-task-open
+                        aria-label={label}
+                        onClick={() => onOpen(task.id)}
+                        // Focus shows on the row as the cursor's look
+                        // (`CURSOR_ROW_CLASS`), not as a ring on the button.
+                        className={cn(
+                            'h-auto min-w-0 flex-1 items-start justify-start gap-0 self-stretch rounded-none border-0 px-0 py-2 text-start text-base font-normal whitespace-normal text-inherit hover:bg-transparent hover:text-inherit focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 lg:text-sm dark:hover:bg-transparent',
+                            task.done && 'touch-pan-y touch-pinch-zoom',
+                        )}
+                    >
+                        <TaskLabelView task={task} repeat={repeat} />
+                        {/* Grows in on hover: it takes no room until then, and
                         a long text gives way to it instead of being covered. */}
-                    <ShortcutHint
-                        action="task.open"
-                        size="row"
+                        <ShortcutHint
+                            action="task.open"
+                            size="row"
+                            className={cn(
+                                'ms-auto mt-0.5 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-data-cursor/task:max-w-8 group-data-cursor/task:opacity-100',
+                                !cursorShown &&
+                                    'group-hover/task:max-w-8 group-hover/task:opacity-100',
+                            )}
+                        />
+                    </Button>
+                    <Button
+                        ref={setActivatorNodeRef}
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        {...attributes}
+                        aria-label={t('planner.moveTask', { text: task.text })}
+                        className="sr-only mt-1 shrink-0 rounded-full hover:bg-transparent focus-visible:not-sr-only"
+                    >
+                        <GripVertical className="size-5" />
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={
+                            task.done
+                                ? t('planner.markNotDone')
+                                : t('planner.markDone')
+                        }
+                        aria-pressed={task.done}
+                        onClick={() => onToggleDone(task.id)}
                         className={cn(
-                            'ms-auto mt-0.5 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-data-cursor/task:max-w-8 group-data-cursor/task:opacity-100',
-                            !cursorShown &&
-                                'group-hover/task:max-w-8 group-hover/task:opacity-100',
+                            // Hidden until hover only for mouse users on desktop; touch
+                            // screens of any size always show it.
+                            'mt-1 shrink-0 rounded-full hover:bg-transparent lg:pointer-fine:opacity-0 lg:pointer-fine:group-hover/task:opacity-100 lg:pointer-fine:focus-visible:opacity-100',
+                            task.done && 'lg:pointer-fine:opacity-100',
                         )}
-                    />
-                </Button>
-                <Button
-                    ref={setActivatorNodeRef}
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    {...attributes}
-                    aria-label={t('planner.moveTask', { text: task.text })}
-                    className="sr-only mt-1 shrink-0 rounded-full hover:bg-transparent focus-visible:not-sr-only"
-                >
-                    <GripVertical className="size-5" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={
-                        task.done
-                            ? t('planner.markNotDone')
-                            : t('planner.markDone')
-                    }
-                    aria-pressed={task.done}
-                    onClick={() => onToggleDone(task.id)}
-                    className={cn(
-                        // Hidden until hover only for mouse users on desktop; touch
-                        // screens of any size always show it.
-                        'mt-1 shrink-0 rounded-full hover:bg-transparent lg:pointer-fine:opacity-0 lg:pointer-fine:group-hover/task:opacity-100 lg:pointer-fine:focus-visible:opacity-100',
-                        task.done && 'lg:pointer-fine:opacity-100',
-                    )}
-                >
-                    <CircleCheck
-                        className={cn(
-                            'size-5',
-                            task.done &&
-                                'fill-muted-foreground text-background',
-                        )}
-                    />
-                </Button>
-                <TaskMenuButton task={task} {...actions} />
+                    >
+                        <CircleCheck
+                            className={cn(
+                                'size-5',
+                                task.done &&
+                                    'fill-muted-foreground text-background',
+                            )}
+                        />
+                    </Button>
+                    <TaskMenuButton task={task} {...actions} />
+                </div>
             </div>
         </TaskContextMenu>
     );
