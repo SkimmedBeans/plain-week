@@ -56,7 +56,8 @@ const MOUSE_DRAG_DISTANCE_PX = 5;
  * Touch gestures on a task row (documented in docs/style.md):
  *
  * - Moving more than TOUCH_DRAG_TOLERANCE_PX within the first
- *   TOUCH_DRAG_DELAY_MS scrolls the page; nothing is picked up.
+ *   TOUCH_DRAG_DELAY_MS cancels drag activation and leaves scrolling or
+ *   the completed task's horizontal swipe available.
  * - After TOUCH_DRAG_DELAY_MS the sensor activates and the task is picked up
  *   where it is (dragged pill, dimmed row, edge zones), however long the
  *   finger then stays still; the page no longer scrolls under it.
@@ -66,10 +67,10 @@ const MOUSE_DRAG_DISTANCE_PX = 5;
  * A long press never opens the context menu (see `TaskRow`): the row's "more"
  * button does.
  */
-const TOUCH_DRAG_DELAY_MS = 250;
+export const TOUCH_DRAG_DELAY_MS = 250;
 // Both about a finger's jitter: the first before the task is picked up, the
 // second after.
-const TOUCH_DRAG_TOLERANCE_PX = 8;
+export const TOUCH_DRAG_TOLERANCE_PX = 8;
 const TOUCH_HOLD_TOLERANCE_PX = 8;
 
 export function listDroppableId(listKey: string): string {

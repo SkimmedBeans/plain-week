@@ -564,14 +564,18 @@ the last loaded item while the next id loads, so it never closes or flashes in b
 
 ### Touch gestures on a task row
 
-A press on a task row means three things on a touch screen, told apart by time and movement. The values live in
-`planner-dnd.tsx`:
+A press on a task row is interpreted by its timing and direction. The gesture values live in
+`planner-dnd.tsx` and `task-row.tsx`.
 
-| Gesture                                                               | Result                                                                 |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Tap                                                                   | Opens the task dialog                                                  |
-| Moving more than 8 px (`TOUCH_DRAG_TOLERANCE_PX`) in the first 250 ms | Scrolls the page; nothing is picked up                                 |
-| Holding 250 ms (`TOUCH_DRAG_DELAY_MS`)                                | Picks the task up where it is; moving it then drags, however long held |
+| Gesture                                                             | Result                                                                 |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Tap                                                                 | Opens the task dialog                                                  |
+| Vertical movement in the first 250 ms                               | Scrolls the page                                                       |
+| Holding 250 ms (`TOUCH_DRAG_DELAY_MS`)                              | Picks the task up where it is; moving it then drags, however long held |
+| Swipe the completed task's text at least 72 px toward the row start | Deletes that task or recurring occurrence on release, with Undo        |
+
+Start the swipe before the long-press drag activates. Swipe left in LTR and right in RTL. The gesture also works
+in list cards. Use the task menu to delete with a mouse or keyboard.
 
 After 250 ms the dnd-kit touch sensor activates: the task lifts at once (dragged pill, dimmed row, edge zones), so the
 finger knows it can move, and the page no longer scrolls under it. Until the finger has moved more than 8 px
