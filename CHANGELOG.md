@@ -40,10 +40,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   up/down on phones) to move it among the named lists; the base Someday column stays first and is not draggable.
   Keyboard and screen-reader users drag it the same way as a task row, and the order persists and syncs like the
   menu moves.
-- **List card.** Clicking a named Someday list's name opens a card in the task card's style: rename the list as
-  you type, or delete it (the same confirm as the list menu, its tasks move to Someday). The ⋮ menu keeps working
-  in parallel; closing the card returns focus to the list's name, and a list deleted while the card is open closes
-  it.
+- **List card for every list.** Clicking a day's, Someday's or a named list's header opens a card with the list's
+  full task list — add, complete, delete and reorder tasks in the card, exactly as on the page. The card scrolls for
+  long lists, and closing it returns focus to the opened header (the day and Someday headers are now buttons). A named
+  list's card keeps the rename and delete on top (the same confirm as the list menu, its tasks move to Someday); the
+  ⋮ menu keeps working in parallel, and a list deleted while the card is open closes it.
 
 ### Changed
 

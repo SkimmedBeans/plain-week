@@ -69,6 +69,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     date={date}
                     tasks={tasks?.[date]}
                     isToday={date === today}
+                    weekStart={weekStart}
                     onOpenTask={onOpenTask}
                 />
             ))}

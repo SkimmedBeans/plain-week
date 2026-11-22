@@ -11,6 +11,7 @@ function renderDay(isToday: boolean, date = '2026-10-12') {
                 date={date}
                 tasks={[]}
                 isToday={isToday}
+                weekStart={new Date('2026-10-12')}
                 onOpenTask={() => {}}
             />
         </ScopePromptProvider>,

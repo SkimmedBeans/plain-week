@@ -293,10 +293,24 @@ describe('SomedaySection', () => {
         await screen.findByRole('dialog', { name: 'Edit list' });
     });
 
-    it('keeps the base list’s name plain, with no card to open', () => {
+    it('opens the base Someday card from its name, by click and keyboard', async () => {
+        const user = userEvent.setup();
         render(<Section list={BASE} />);
 
-        expect(screen.getByText('Someday')).toBeTruthy();
-        expect(screen.queryByRole('button', { name: 'Someday' })).toBeNull();
+        // F11: the base Someday name is a button that opens the card.
+        const somedayButton = screen.getByRole('button', { name: 'Someday' });
+        expect(somedayButton).toBeTruthy();
+
+        await user.click(somedayButton);
+        // The card opens (a dialog appears).
+        await screen.findByRole('dialog');
+
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+        // Keyboard: Enter opens the card too.
+        somedayButton.focus();
+        await user.keyboard('{Enter}');
+        await screen.findByRole('dialog');
     });
 });

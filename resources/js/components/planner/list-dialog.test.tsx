@@ -15,9 +15,19 @@ import { wipeLocalDatabase } from '@/lib/db/database';
 import { createList, deleteList, queryLists } from '@/lib/db/lists';
 import { createTask, listTasksIn } from '@/lib/db/tasks';
 
-const Card = ({ listId }: { listId: string | null }) => (
+const Card = ({ list }: { list: { id: string; column: number } | null }) => (
     <ScopePromptProvider>
-        <ListDialog listId={listId} onClose={() => {}} />
+        <ListDialog
+            identity={list ? { kind: 'named', id: list.id } : null}
+            weekStart={new Date('2026-10-12')}
+            placement={
+                list ? { date: null, list: list.column } : { date: null, list: 0 }
+            }
+            tasks={undefined}
+            newTaskLabel="New task"
+            onOpenTask={() => {}}
+            onClose={() => {}}
+        />
         <Toaster />
     </ScopePromptProvider>
 );
@@ -37,17 +47,17 @@ describe('ListDialog', () => {
         const list = await createList('Ideas');
         await deleteList(list.id);
 
-        render(<Card listId={null} />);
+        render(<Card list={null} />);
         expect(screen.queryByRole('dialog')).toBeNull();
 
         cleanup();
-        render(<Card listId={list.id} />);
+        render(<Card list={list} />);
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
     it('shows the list name and a delete button', async () => {
         const list = await createList('Ideas');
-        render(<Card listId={list.id} />);
+        render(<Card list={list} />);
 
         const dialog = await cardDialog();
         const input = within(dialog).getByLabelText(
@@ -62,7 +72,7 @@ describe('ListDialog', () => {
     it('renames the list as you type', async () => {
         const list = await createList('Ideas');
         const user = userEvent.setup();
-        render(<Card listId={list.id} />);
+        render(<Card list={list} />);
 
         const dialog = await cardDialog();
         const input = within(dialog).getByLabelText(
@@ -80,7 +90,7 @@ describe('ListDialog', () => {
     it('reverts an emptied name to the saved one on blur', async () => {
         const list = await createList('Ideas');
         const user = userEvent.setup();
-        render(<Card listId={list.id} />);
+        render(<Card list={list} />);
 
         const dialog = await cardDialog();
         const input = within(dialog).getByLabelText(
@@ -102,7 +112,7 @@ describe('ListDialog', () => {
             list: list.column,
         });
         const user = userEvent.setup();
-        render(<Card listId={list.id} />);
+        render(<Card list={list} />);
 
         const dialog = await cardDialog();
         await user.click(
@@ -131,7 +141,7 @@ describe('ListDialog', () => {
     it('keeps the list when the delete is cancelled', async () => {
         const list = await createList('Ideas');
         const user = userEvent.setup();
-        render(<Card listId={list.id} />);
+        render(<Card list={list} />);
 
         const dialog = await cardDialog();
         await user.click(
@@ -151,7 +161,7 @@ describe('ListDialog', () => {
 
     it('closes when the list is deleted elsewhere', async () => {
         const list = await createList('Ideas');
-        render(<Card listId={list.id} />);
+        render(<Card list={list} />);
         await cardDialog();
 
         await deleteList(list.id);
