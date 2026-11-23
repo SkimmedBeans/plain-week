@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-11-23
+
+### Fixed
+
+- Someday list title colors stay visible after sync and appear on other signed-in devices.
+
 ## [0.4.8] - 2026-11-22
 
 ### Added
@@ -625,7 +631,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.8...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.9...HEAD
+[0.4.9]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.5...v0.4.6
