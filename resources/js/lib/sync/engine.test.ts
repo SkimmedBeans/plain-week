@@ -9,7 +9,13 @@ import {
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { demoIds } from '@/lib/db/demo';
 import { seedDemoTasks } from '@/lib/db/demo-tasks';
-import { createList, deleteList, queryLists, renameList } from '@/lib/db/lists';
+import {
+    createList,
+    deleteList,
+    queryLists,
+    renameList,
+    setListColor,
+} from '@/lib/db/lists';
 import { queryWeekTasks } from '@/lib/db/queries';
 import {
     createTask,
@@ -466,14 +472,24 @@ describe('lists', () => {
         expect((await db.someday_lists.get(list.id))?.name).toBe('remote');
     });
 
-    it('applies a remote list on pull', async () => {
-        const remote = makeList({ name: 'Remote list' });
+    it('keeps a title color after pushing and pulling the same list', async () => {
+        const list = await createList('Ideas');
+        await setListColor(list.id, 'lilac');
+        await startAndSync();
+
+        expect(server.lists.get(list.id)?.color).toBe('lilac');
+        expect((await db.someday_lists.get(list.id))?.color).toBe('lilac');
+        expect(await db.list_outbox.count()).toBe(0);
+    });
+
+    it('applies a remote list with its title color on pull', async () => {
+        const remote = makeList({ name: 'Remote list', color: 'green' });
 
         server.seedList(remote);
         await startAndSync();
 
-        expect((await queryLists()).map((list) => list.id)).toContain(
-            remote.id,
+        expect(await queryLists()).toContainEqual(
+            expect.objectContaining({ id: remote.id, color: 'green' }),
         );
     });
 
