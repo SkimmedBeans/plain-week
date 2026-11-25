@@ -260,7 +260,7 @@ describe('TaskList', () => {
         await user.click(
             await screen.findByRole('button', { name: 'Buy milk' }),
         );
-        const field = screen.getByRole('textbox', {
+        const field = screen.getByRole<HTMLTextAreaElement>('textbox', {
             name: 'Edit the text of Buy milk',
         });
         expect(document.activeElement).toBe(field);
@@ -295,8 +295,10 @@ describe('TaskList', () => {
         await user.click(
             await screen.findByRole('button', { name: 'Keep me' }),
         );
-        field = screen.getByRole('textbox', { name: /Edit the text/ });
-        field.select();
+        field = screen.getByRole<HTMLTextAreaElement>('textbox', {
+            name: /Edit the text/,
+        });
+        (field as HTMLTextAreaElement).select();
         await user.keyboard('{Backspace}{Enter}');
         expect((await listTasksIn({ date: DAY }))[0].text).toBe('Keep me');
     });
