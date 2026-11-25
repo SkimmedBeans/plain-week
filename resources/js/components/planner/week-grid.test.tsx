@@ -6,14 +6,19 @@ import {
     waitFor,
     within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { WeekGrid } from '@/components/planner/week-grid';
 import { wipeLocalDatabase } from '@/lib/db/database';
 import { createList } from '@/lib/db/lists';
+import { createTask } from '@/lib/db/tasks';
 
 describe('WeekGrid', () => {
-    beforeEach(() => wipeLocalDatabase());
+    beforeEach(async () => {
+        localStorage.clear();
+        await wipeLocalDatabase();
+    });
     afterEach(cleanup);
 
     it('lists the days in reading order, then Someday, on every window shape', async () => {
@@ -81,9 +86,69 @@ describe('WeekGrid', () => {
             .slice(7)
             .map(
                 (section) =>
-                    within(section).getByRole('heading', { level: 2 })
-                        .textContent,
+                    within(section)
+                        .getByRole('heading', { level: 2 })
+                        .querySelector('[id]')?.textContent,
             );
         expect(tail).toEqual(['Someday', 'Ideas', 'Health']);
+    });
+
+    it('collapses a list into a chip with its open count, and expands it again', async () => {
+        const list = await createList('Shed');
+        await createTask({ text: 'Paint', date: null, list: list.column });
+        await createTask({ text: 'Fix door', date: null, list: list.column });
+        const user = userEvent.setup();
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        await user.click(
+            await screen.findByRole('button', {
+                name: 'Collapse the Shed list',
+            }),
+        );
+
+        // The column leaves the grid; a chip says what is inside.
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(8),
+        );
+        const chip = await screen.findByRole('button', {
+            name: 'Shed, 2 open',
+        });
+        expect(chip.closest('[data-collapsed-lists]')).not.toBeNull();
+        expect(localStorage.getItem('plain-week.collapsed-lists')).toBe(
+            JSON.stringify([list.id]),
+        );
+
+        await user.click(
+            screen.getByRole('button', { name: 'Expand the Shed list' }),
+        );
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(9),
+        );
+        expect(document.querySelector('[data-collapsed-lists]')).toBeNull();
+    });
+
+    it('marks the grid compact when the setting is on', async () => {
+        localStorage.setItem('plain-week.compact', 'on');
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        const sections = await screen.findAllByRole('region');
+        expect(sections[0].parentElement?.dataset.density).toBe('compact');
     });
 });

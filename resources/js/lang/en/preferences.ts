@@ -6,6 +6,9 @@ export const preferences = {
     'preferences.carryOverLabel': 'Move unfinished tasks to today',
     'preferences.carryOverDescription':
         'When the planner opens and when the day changes, tasks from earlier days that are not done move to the end of today. Recurring and Someday tasks stay where they are. Applies to this device only.',
+    'preferences.compactLabel': 'Compact rows',
+    'preferences.compactDescription':
+        'Shorter task rows, and tasks in Someday and your lists show at most two lines. Applies to this device only.',
     'preferences.languageHeading': 'Language',
     'preferences.languageDescription':
         'The language of the app and of the emails and notifications you get. Applies to all your devices.',

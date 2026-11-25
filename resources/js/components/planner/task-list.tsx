@@ -3,7 +3,15 @@ import {
     SortableContext,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Fragment, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+    Fragment,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { toast } from 'sonner';
 import { CompletedHeading } from '@/components/planner/completed-heading';
 import {
@@ -69,6 +77,11 @@ export function TaskList({
     className,
 }: Props) {
     const newTaskInput = useRef<HTMLInputElement>(null);
+    // A day before today shows its done tasks folded (F29) until unfolded.
+    const isPastDay =
+        placement.date !== null && placement.date < toDateKey(new Date());
+    const [unfolded, setUnfolded] = useState(false);
+    const folded = isPastDay && !unfolded;
     // Done tasks are shown below the open ones (and below the empty row),
     // under "Completed"; each group keeps its stored order, so an unticked
     // task returns to its place. The drag-and-drop data and the keyboard
@@ -81,18 +94,54 @@ export function TaskList({
             ...all.filter((task) => task.done),
         ];
     }, [tasks]);
-    const shownTasks = tasks === undefined ? undefined : listTasks;
-    const doneCount = listTasks.filter((task) => task.done).length;
-    const firstDoneId =
-        doneCount > 0 ? listTasks[listTasks.length - doneCount].id : null;
-    const taskCount = listTasks.length;
+    const allDone = listTasks.filter((task) => task.done);
+    // Folded done tasks are not rendered: drops and the keyboard cursor only
+    // see the shown rows.
+    const visibleTasks = useMemo(
+        () => (folded ? listTasks.filter((task) => !task.done) : listTasks),
+        [folded, listTasks],
+    );
+    const shownTasks = tasks === undefined ? undefined : visibleTasks;
+    const doneCount = allDone.length;
+    const firstDoneId = doneCount > 0 ? allDone[0].id : null;
+    const taskCount = visibleTasks.length;
+    const openTotal = listTasks.length - doneCount;
+    const scroller = useRef<HTMLDivElement | null>(null);
+    const [overflow, setOverflow] = useState({ top: false, bottom: false });
+    const measure = useCallback(() => {
+        const element = scroller.current;
+        if (!element) {
+            return;
+        }
+        const top = element.scrollTop > 1;
+        const bottom =
+            element.scrollHeight - element.clientHeight - element.scrollTop > 1;
+        setOverflow((current) =>
+            current.top === top && current.bottom === bottom
+                ? current
+                : { top, bottom },
+        );
+    }, []);
+
+    useEffect(() => {
+        const element = scroller.current;
+        if (!element || typeof ResizeObserver === 'undefined') {
+            return;
+        }
+        const observer = new ResizeObserver(measure);
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [measure]);
+
+    useLayoutEffect(measure, [measure, taskCount]);
     const listKey = placementKey(placement);
     const { setNodeRef } = useDroppable({
         id: listDroppableId(listKey),
         data: {
             type: 'list',
             placement,
-            tasks: listTasks,
+            tasks: visibleTasks,
             name,
         } satisfies ListDropData,
     });
@@ -110,10 +159,10 @@ export function TaskList({
             return registerList(listKey, {
                 placement,
                 tasks: shownTasks,
-                openCount: taskCount - doneCount,
+                openCount: openTotal,
             });
         }
-    }, [registerList, listKey, placement, shownTasks, taskCount, doneCount]);
+    }, [registerList, listKey, placement, shownTasks, openTotal]);
 
     // A new task pushes the empty row down: keep it in view while typing in
     // it, in a list that scrolls inside its cell (desktop).
@@ -162,18 +211,37 @@ export function TaskList({
         // height); its 8px side padding leaves room for the lifted look of
         // the row being typed in.
         <div
-            ref={setNodeRef}
+            ref={(element) => {
+                setNodeRef(element);
+                scroller.current = element;
+            }}
             data-list={listKey}
+            data-overflow-top={overflow.top || undefined}
+            data-overflow-bottom={overflow.bottom || undefined}
+            onScroll={measure}
+            // A soft fade where the list runs past its cell (F28). A mask
+            // only paints: taps and drops still reach the rows under it.
+            style={
+                overflow.top || overflow.bottom
+                    ? {
+                          maskImage: `linear-gradient(to bottom, ${
+                              overflow.top ? 'transparent' : 'black'
+                          }, black 2rem, black calc(100% - 2rem), ${
+                              overflow.bottom ? 'transparent' : 'black'
+                          })`,
+                      }
+                    : undefined
+            }
             className={cn(
                 'flex flex-col *:shrink-0 lg:-mx-2 lg:min-h-0 lg:flex-1 lg:[scrollbar-width:thin] lg:overflow-y-auto lg:px-2',
                 className,
             )}
         >
             <SortableContext
-                items={listTasks.map((task) => task.id)}
+                items={visibleTasks.map((task) => task.id)}
                 strategy={verticalListSortingStrategy}
             >
-                {listTasks.map((task, index) => (
+                {visibleTasks.map((task, index) => (
                     <Fragment key={rowKey(task)}>
                         {task.id === firstDoneId && (
                             <>
@@ -188,7 +256,13 @@ export function TaskList({
                                 />
                                 <CompletedHeading
                                     placement={placement}
-                                    tasks={listTasks.slice(-doneCount)}
+                                    tasks={allDone}
+                                    folded={folded}
+                                    onToggle={
+                                        isPastDay
+                                            ? () => setUnfolded(folded)
+                                            : undefined
+                                    }
                                 />
                             </>
                         )}
@@ -197,7 +271,7 @@ export function TaskList({
                             task={task}
                             isCursor={cursor?.taskId === task.id}
                             placement={placement}
-                            tasks={listTasks}
+                            tasks={visibleTasks}
                             name={name}
                             onOpen={onOpenTask}
                             onToggleDone={handleToggleDone}
@@ -207,6 +281,26 @@ export function TaskList({
                     </Fragment>
                 ))}
             </SortableContext>
+            {folded && doneCount > 0 && (
+                <>
+                    {indicatorBefore === null && taskCount === 0 && (
+                        <DropIndicator />
+                    )}
+                    <NewTaskRow
+                        ref={newTaskInput}
+                        label={newTaskLabel}
+                        isCursor={cursorOnNewRow}
+                        onSubmit={handleSubmit}
+                        onCancel={handleCancel}
+                    />
+                    <CompletedHeading
+                        placement={placement}
+                        tasks={allDone}
+                        folded
+                        onToggle={() => setUnfolded(true)}
+                    />
+                </>
+            )}
             {doneCount === 0 && (
                 <>
                     {indicatorBefore === null && taskCount === 0 && (

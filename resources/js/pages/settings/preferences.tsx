@@ -3,8 +3,12 @@ import Heading from '@/components/heading';
 import { LanguageSelect } from '@/components/language-select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useCarryOverSetting } from '@/hooks/use-carry-over-setting';
+import {
+    useCarryOverSetting,
+    useCompactDensity,
+} from '@/hooks/use-carry-over-setting';
 import { availableLocales, t } from '@/lib/i18n';
+import { compactDensity } from '@/lib/planner/device-settings';
 import { carryOverSetting } from '@/lib/planner/preferences';
 
 /**
@@ -16,6 +20,7 @@ import { carryOverSetting } from '@/lib/planner/preferences';
  */
 export default function Preferences() {
     const carryOver = useCarryOverSetting();
+    const compact = useCompactDensity();
 
     return (
         <>
@@ -43,6 +48,22 @@ export default function Preferences() {
                         checked={carryOver}
                         onCheckedChange={carryOverSetting.setEnabled}
                         data-test="carry-over-switch"
+                    />
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                        <Label htmlFor="compact-rows">
+                            {t('preferences.compactLabel')}
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                            {t('preferences.compactDescription')}
+                        </p>
+                    </div>
+                    <Switch
+                        id="compact-rows"
+                        checked={compact}
+                        onCheckedChange={compactDensity.set}
+                        data-test="compact-switch"
                     />
                 </div>
             </div>

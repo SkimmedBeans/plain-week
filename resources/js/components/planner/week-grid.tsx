@@ -1,9 +1,18 @@
 import { useRef } from 'react';
+import {
+    CollapsedLists,
+    type CollapsibleList,
+} from '@/components/planner/collapsed-lists';
 import { DayColumn } from '@/components/planner/day-column';
 import { SomedaySection } from '@/components/planner/someday-section';
+import {
+    useCollapsedLists,
+    useCompactDensity,
+} from '@/hooks/use-carry-over-setting';
 import { useScrollToToday } from '@/hooks/use-scroll-to-today';
 import { useSomedayLists, useWeekTasks } from '@/hooks/use-tasks';
 import { weekDateKeys } from '@/lib/db/dates';
+import { collapseKey } from '@/lib/planner/device-settings';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -34,6 +43,8 @@ type Props = {
  *
  * Named Someday lists follow Someday, one track each, in extra rows that share
  * the window's height with the week (`auto-rows-*`), so they stay on screen.
+ * A collapsed list (F26, per device) leaves the grid and shows as a chip in
+ * the row after it. Compact density (F32) is set here for the whole grid.
  */
 export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     const tasks = useWeekTasks(weekStart);
@@ -52,45 +63,63 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     // Named lists come in their display order (`position`, see `queryLists`);
     // the keyboard cursor walks the same order.
     const namedLists = lists;
+    const collapsed = useCollapsedLists();
+    const compact = useCompactDensity();
+    const someday: CollapsibleList = { column: 0, name: 'Someday' };
+    const isCollapsed = (list: CollapsibleList) =>
+        collapsed.includes(collapseKey(list));
 
     return (
-        <div
-            ref={grid}
-            className={cn(
-                'grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:gap-y-8',
-                'lg:week-wide:auto-rows-[minmax(10rem,2fr)] lg:week-wide:grid-cols-5 lg:week-wide:grid-rows-[minmax(14rem,3fr)_minmax(10rem,2fr)]',
-                'lg:week-square:auto-rows-[minmax(12rem,1fr)] lg:week-square:grid-cols-4 lg:week-square:grid-rows-[repeat(2,minmax(12rem,1fr))]',
-                'lg:week-tall:auto-rows-[minmax(12rem,1fr)] lg:week-tall:grid-cols-2 lg:week-tall:grid-rows-[repeat(4,minmax(12rem,1fr))]',
-            )}
-        >
-            {days.map((date) => (
-                <DayColumn
-                    key={date}
-                    date={date}
-                    tasks={tasks?.[date]}
-                    isToday={date === today}
-                    weekStart={weekStart}
-                    onOpenTask={onOpenTask}
-                />
-            ))}
-            <SomedaySection
-                list={{ column: 0, name: 'Someday' }}
+        <>
+            <div
+                ref={grid}
+                data-density={compact ? 'compact' : undefined}
+                className={cn(
+                    'grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:gap-y-8',
+                    'lg:week-wide:auto-rows-[minmax(10rem,2fr)] lg:week-wide:grid-cols-5 lg:week-wide:grid-rows-[minmax(14rem,3fr)_minmax(10rem,2fr)]',
+                    'lg:week-square:auto-rows-[minmax(12rem,1fr)] lg:week-square:grid-cols-4 lg:week-square:grid-rows-[repeat(2,minmax(12rem,1fr))]',
+                    'lg:week-tall:auto-rows-[minmax(12rem,1fr)] lg:week-tall:grid-cols-2 lg:week-tall:grid-rows-[repeat(4,minmax(12rem,1fr))]',
+                )}
+            >
+                {days.map((date) => (
+                    <DayColumn
+                        key={date}
+                        date={date}
+                        tasks={tasks?.[date]}
+                        isToday={date === today}
+                        weekStart={weekStart}
+                        onOpenTask={onOpenTask}
+                    />
+                ))}
+                {!isCollapsed(someday) && (
+                    <SomedaySection
+                        list={someday}
+                        weekStart={weekStart}
+                        today={today}
+                        onOpenTask={onOpenTask}
+                    />
+                )}
+                {namedLists?.map((list, index) =>
+                    isCollapsed(list) ? null : (
+                        <SomedaySection
+                            key={list.id}
+                            list={list}
+                            weekStart={weekStart}
+                            today={today}
+                            onOpenTask={onOpenTask}
+                            index={index}
+                            canMoveEarlier={index > 0}
+                            canMoveLater={index < namedLists.length - 1}
+                        />
+                    ),
+                )}
+            </div>
+            <CollapsedLists
+                lists={[someday, ...(namedLists ?? [])].filter(isCollapsed)}
                 weekStart={weekStart}
                 today={today}
                 onOpenTask={onOpenTask}
             />
-            {namedLists?.map((list, index) => (
-                <SomedaySection
-                    key={list.id}
-                    list={list}
-                    weekStart={weekStart}
-                    today={today}
-                    onOpenTask={onOpenTask}
-                    index={index}
-                    canMoveEarlier={index > 0}
-                    canMoveLater={index < namedLists.length - 1}
-                />
-            ))}
-        </div>
+        </>
     );
 }

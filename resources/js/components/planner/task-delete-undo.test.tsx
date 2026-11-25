@@ -65,12 +65,18 @@ async function liveTexts() {
     return (await listTasksIn({ date: DAY })).map((task) => task.text);
 }
 
+// The test week is current: its days are not folded as past (F29).
 beforeEach(async () => {
+    vi.useFakeTimers({
+        toFake: ['Date'],
+        now: new Date('2026-10-12T08:00:00'),
+    });
     await wipeLocalDatabase();
     clearDeleteHistory();
 });
 
 afterEach(() => {
+    vi.useRealTimers();
     toast.dismiss();
     cleanup();
 });

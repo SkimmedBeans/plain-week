@@ -1,6 +1,6 @@
 import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { GripVertical, MoreHorizontal, Plus } from 'lucide-react';
+import { ChevronUp, GripVertical, MoreHorizontal, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
@@ -57,6 +57,7 @@ import {
 import { TASK_COLORS, type TaskColor } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
 import { copyListTasks } from '@/lib/planner/clipboard';
+import { collapseKey, setListCollapsed } from '@/lib/planner/device-settings';
 import { isTaskColor, TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -131,6 +132,18 @@ export function SomedaySection({
     // Narrowed once: property narrowing does not survive into closures.
     const namedListId = list.id;
     const color = list.color ?? 'none';
+    const openCount = tasks?.filter((task) => !task.done).length;
+    // The open-task count after the name (F28), as on a collapsed chip.
+    const countBadge =
+        openCount === undefined ? null : (
+            <span
+                data-open-count
+                aria-hidden
+                className="ms-2 shrink-0 text-base font-normal text-muted-foreground tabular-nums"
+            >
+                {openCount}
+            </span>
+        );
 
     // A named list's header is the drag handle and its whole column the drop
     // target while a list is dragged; the base list never moves.
@@ -220,6 +233,7 @@ export function SomedaySection({
         <section
             ref={isNamed ? setColumnRef : undefined}
             aria-labelledby={titleId}
+            data-someday-list
             className={cn(
                 'relative flex min-h-0 min-w-0 flex-col',
                 activeListId === list.id && 'opacity-60',
@@ -253,6 +267,7 @@ export function SomedaySection({
                         >
                             {list.name}
                         </span>
+                        {countBadge}
                     </Button>
                 ) : (
                     // The base Someday name opens its list card (F11); the
@@ -268,9 +283,24 @@ export function SomedaySection({
                         <span id={titleId} className="truncate">
                             {list.name}
                         </span>
+                        {countBadge}
                     </Button>
                 )}
                 <span className="flex shrink-0 items-center gap-1">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground"
+                        aria-label={t('planner.collapseList', {
+                            name: list.name,
+                        })}
+                        onClick={() =>
+                            setListCollapsed(collapseKey(list), true)
+                        }
+                    >
+                        <ChevronUp />
+                    </Button>
                     {list.column === 0 ? (
                         <Button
                             variant="ghost"
