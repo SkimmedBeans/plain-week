@@ -49,7 +49,8 @@ import {
 } from '@/lib/planner/format';
 import { rowKey } from '@/lib/planner/repeat';
 import { parseNewTaskInput } from '@/lib/planner/smart-input';
-import { copyListTasks } from '@/lib/planner/clipboard';
+import { ListNote } from '@/components/planner/list-note';
+import { copyListTasks, copyWithToast } from '@/lib/planner/clipboard';
 import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 
@@ -271,7 +272,14 @@ function ListDialogSession({
                                 variant="ghost"
                                 size="icon-sm"
                                 aria-label={t('planner.copyAllTasks')}
-                                onClick={() => void copyListTasks(tasks ?? [])}
+                                onClick={() =>
+                                    void (typeof list?.note === 'string'
+                                        ? copyWithToast(
+                                              list.note,
+                                              t('planner.noteCopied'),
+                                          )
+                                        : copyListTasks(tasks ?? []))
+                                }
                                 className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
                             >
                                 <ClipboardCopy className="size-5" />
@@ -303,15 +311,19 @@ function ListDialogSession({
                         </Button>
                     </h2>
                 )}
-                <ListCardDnd weekStart={weekStart}>
-                    <ListCardTaskList
-                        placement={placement}
-                        name={name}
-                        tasks={tasks}
-                        newTaskLabel={newTaskLabel}
-                        onOpenTask={handleOpenTask}
-                    />
-                </ListCardDnd>
+                {list !== undefined && typeof list.note === 'string' ? (
+                    <ListNote list={list} className="min-h-64" />
+                ) : (
+                    <ListCardDnd weekStart={weekStart}>
+                        <ListCardTaskList
+                            placement={placement}
+                            name={name}
+                            tasks={tasks}
+                            newTaskLabel={newTaskLabel}
+                            onOpenTask={handleOpenTask}
+                        />
+                    </ListCardDnd>
+                )}
             </DialogContent>
             {isNamed && list !== undefined && (
                 <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

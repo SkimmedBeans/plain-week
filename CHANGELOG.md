@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.15] - 2026-11-25
+
+### Added
+
+- **Turn a list into a note.** "Convert to note" in a named list's ⋮ menu replaces its tasks with free text you can
+  write anything in: the tasks become lines of text (sub-tasks indented, completed ones under "Completed"), and Undo
+  brings them back. "Convert to tasks" turns each line back into a task. Notes sync across devices, are kept in
+  exports, and "Copy all tasks" copies the note's text.
+
+### Upgrade notes
+
+- Adds a database column (`someday_lists.note`). The container runs the migration on start.
+
 ## [0.4.14] - 2026-11-25
 
 ### Added
@@ -695,7 +708,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.14...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.15...HEAD
+[0.4.15]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.14...v0.4.15
 [0.4.14]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.13...v0.4.14
 [0.4.13]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.11...v0.4.12

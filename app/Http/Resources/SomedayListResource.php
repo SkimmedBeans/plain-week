@@ -26,6 +26,7 @@ class SomedayListResource extends JsonResource
             'name' => $this->name,
             'color' => $this->color,
             'archived' => $this->archived,
+            'note' => $this->note,
             'column' => $this->column,
             'position' => $this->position,
             'created_at' => $this->created_at->format(UtcMillisDateTime::WIRE_FORMAT),
