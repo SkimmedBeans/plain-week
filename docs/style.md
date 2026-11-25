@@ -360,6 +360,19 @@ Row behaviour:
   the text button, and "Add sub-tasks" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
   presses and keys to itself, so selecting text never drags the task or opens the task menu. A web link in the text is
   underlined and a click on it opens the link in a new tab instead, since a button cannot hold an anchor.
+- Someday and named list headers show the open-task count after the name (`[data-open-count]`, F28) and a chevron
+  that collapses the list (F26). Collapsed lists (per device, `plain-week.collapsed-lists` in `localStorage`, see
+  `lib/planner/device-settings.ts`) leave the grid and show as chips after it (`collapsed-lists.tsx`): name and open
+  count in the title color, the name opening the list card, the chevron expanding it again. A collapsed list renders no
+  task list, so the keyboard cursor skips it.
+- A list that scrolls inside its desktop cell gets a 2rem `mask-image` fade at the bottom while more is below and at the
+  top once scrolled (`data-overflow-top` / `data-overflow-bottom`, F28). A mask only paints, so taps and drops reach the
+  rows under it.
+- A day before today starts with its done tasks folded (F29): "Completed (n)" becomes a toggle and folded rows are not
+  rendered, so drops and the keyboard cursor only see the open ones. The fold is component state, not remembered.
+- Compact density (F32, `plain-week.compact`, Settings › Preferences) sets `data-density="compact"` on the week grid:
+  36px rows, 6px text padding, and Someday and named-list task text clamped to two lines (`app.css`; the theme inlines
+  `--spacing-row`, so the rule sets the row heights directly).
 - A task with sub-tasks shows a small `ListChecks` icon and "done/total" after its text (F21); the row's accessible
   name ends in "1 of 2 sub-tasks done".
 - The task menu (right click or ⋮) starts with the color swatches, then "Add sub-tasks" (opens the dialog) and "Copy
