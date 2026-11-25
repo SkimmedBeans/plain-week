@@ -100,6 +100,11 @@ export type OutboxEntry = {
 export type SomedayList = {
     /** Omitted by older clients and exports. */
     color?: TaskColor;
+    /**
+     * Archived (F31): hidden from the planner, tasks kept, listed under
+     * Someday's archived lists. Omitted (false) by older clients and exports.
+     */
+    archived?: boolean;
     id: string;
     name: string;
     /**

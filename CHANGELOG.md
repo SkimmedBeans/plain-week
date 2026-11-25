@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.14] - 2026-11-25
+
+### Added
+
+- **Archive a named list.** "Archive list" in a list's ⋮ menu hides a parked list from the planner and keeps its tasks.
+  Someday's header gets an archive button while any list is archived; it shows the archived lists, opens each one's
+  card and restores them. Archiving syncs across devices and is kept in exports. Search still finds their tasks.
+
+### Upgrade notes
+
+- Adds a database column (`someday_lists.archived`). The container runs the migration on start; take the usual
+  backup first (DEPLOY.md cautious path).
+
 ## [0.4.13] - 2026-11-25
 
 ### Added
@@ -682,7 +695,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.13...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.14...HEAD
+[0.4.14]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.13...v0.4.14
 [0.4.13]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.10...v0.4.11

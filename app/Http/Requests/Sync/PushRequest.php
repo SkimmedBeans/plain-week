@@ -39,6 +39,7 @@ class PushRequest extends FormRequest
             'lists.*.id' => ['required', 'string', 'uuid', 'lowercase'],
             'lists.*.name' => ['required', 'string', 'min:1', 'max:60'],
             'lists.*.color' => ['sometimes', 'required', Rule::enum(TaskColor::class)],
+            'lists.*.archived' => ['sometimes', 'boolean'],
             'lists.*.column' => ['required', 'integer', 'min:3'],
             'lists.*.position' => ['required', 'string', 'max:255'],
             'lists.*.created_at' => ['required', $timestamp],

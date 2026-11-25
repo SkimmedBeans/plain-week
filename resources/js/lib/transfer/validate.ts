@@ -492,10 +492,16 @@ export function validateList(value: unknown, index: number): SomedayList {
         v.fail('color', 'must be a task color');
     }
 
+    const archived = value.archived;
+    if (archived !== undefined && typeof archived !== 'boolean') {
+        v.fail('archived', 'must be true or false');
+    }
+
     return {
         id,
         name,
         ...(hasColor ? { color } : {}),
+        ...(archived === true ? { archived } : {}),
         column: column as number,
         position,
         created_at: v.timestamp('created_at'),

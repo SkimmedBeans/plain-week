@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { WeekGrid } from '@/components/planner/week-grid';
 import { wipeLocalDatabase } from '@/lib/db/database';
-import { createList } from '@/lib/db/lists';
+import { createList, setListArchived } from '@/lib/db/lists';
 import { createTask } from '@/lib/db/tasks';
 
 describe('WeekGrid', () => {
@@ -150,5 +150,37 @@ describe('WeekGrid', () => {
 
         const sections = await screen.findAllByRole('region');
         expect(sections[0].parentElement?.dataset.density).toBe('compact');
+    });
+
+    it('hides archived lists and lists them from Someday', async () => {
+        const list = await createList('Old project');
+        await setListArchived(list.id, true);
+        const user = userEvent.setup();
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        await user.click(
+            await screen.findByRole('button', { name: 'Archived lists (1)' }),
+        );
+        expect(screen.getAllByRole('region', { hidden: true })).toHaveLength(8);
+
+        await user.click(
+            await screen.findByRole('button', {
+                name: 'Restore the Old project list',
+            }),
+        );
+        await waitFor(() =>
+            expect(
+                screen.getAllByRole('region', { hidden: true }),
+            ).toHaveLength(9),
+        );
     });
 });

@@ -9,6 +9,7 @@ import {
     moveListTo,
     queryLists,
     renameList,
+    setListArchived,
 } from './lists';
 import { querySomedayTasks } from './queries';
 import { createTask, listTasksIn, moveTask } from './tasks';
@@ -24,6 +25,23 @@ async function texts(list: number) {
 }
 
 describe('list repository', () => {
+    it('archives and restores a list, keeping its tasks and syncing the change', async () => {
+        const list = await createList('Shed');
+        await createTask({ text: 'Paint', date: null, list: list.column });
+        await db.list_outbox.clear();
+
+        const archived = await setListArchived(list.id, true);
+
+        expect(archived).toMatchObject({ id: list.id, archived: true });
+        expect(archived!.updated_at > list.updated_at).toBe(true);
+        expect(await db.list_outbox.get(list.id)).toBeDefined();
+        expect(await texts(list.column)).toEqual(['Paint']);
+
+        expect(await setListArchived(list.id, false)).toMatchObject({
+            archived: false,
+        });
+    });
+
     it('creates a named list in the next unused column with an outbox entry', async () => {
         const list = await createList('Ideas');
 

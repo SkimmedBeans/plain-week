@@ -136,6 +136,9 @@ function toSomedayList(remote: SomedayList): SomedayList {
         id: remote.id,
         name: remote.name ?? '',
         ...(remote.color === undefined ? {} : { color: remote.color }),
+        ...(remote.archived === undefined
+            ? {}
+            : { archived: remote.archived === true }),
         // 3 is the smallest column a named list can have (0 is Someday,
         // 1 and 2 are the built-in columns).
         column: remote.column ?? 3,

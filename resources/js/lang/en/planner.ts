@@ -156,6 +156,17 @@ export const planner = {
     'planner.deleteListDescription': 'Its tasks will move to Someday.',
     'planner.listDeleteFailed': 'Could not delete the list.',
     'planner.addSubtasks': 'Add sub-tasks',
+    'planner.archiveList': 'Archive list',
+    'planner.listArchived': 'Archived the {name} list.',
+    'planner.listArchiveFailed': 'Could not archive the list.',
+    'planner.archivedLists': 'Archived lists',
+    'planner.archivedListsCount': 'Archived lists ({count})',
+    'planner.archivedListsDescription':
+        'Archived lists are hidden from the planner. Their tasks are kept.',
+    'planner.restoreList': 'Restore',
+    'planner.restoreListLabel': 'Restore the {name} list',
+    'planner.openListLabel': 'Open the {name} list',
+    'planner.listRestored': 'Restored the {name} list.',
     'planner.search': 'Search tasks',
     'planner.searchDescription':
         'Finds tasks by their text, notes or sub-tasks in every day and list.',

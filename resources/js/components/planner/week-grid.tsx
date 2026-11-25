@@ -62,7 +62,8 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
 
     // Named lists come in their display order (`position`, see `queryLists`);
     // the keyboard cursor walks the same order.
-    const namedLists = lists;
+    // Archived lists (F31) are not shown; Someday's header lists them.
+    const namedLists = lists?.filter((list) => !list.archived);
     const collapsed = useCollapsedLists();
     const compact = useCompactDensity();
     const someday: CollapsibleList = { column: 0, name: 'Someday' };
