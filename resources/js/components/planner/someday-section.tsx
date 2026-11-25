@@ -57,6 +57,7 @@ import {
 } from '@/lib/db/lists';
 import { TASK_COLORS, type TaskColor } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
+import { copyListTasks } from '@/lib/planner/clipboard';
 import { isTaskColor, TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -380,6 +381,13 @@ export function SomedaySection({
                                             </DropdownMenuPortal>
                                         </DropdownMenuSub>
                                     )}
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            void copyListTasks(tasks ?? [])
+                                        }
+                                    >
+                                        {t('planner.copyAllTasks')}
+                                    </DropdownMenuItem>
                                     {/* Lists run left to right on desktop and top
                                     to bottom on phones. */}
                                     <DropdownMenuItem
