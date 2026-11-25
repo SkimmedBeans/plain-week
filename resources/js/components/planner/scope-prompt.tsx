@@ -1,8 +1,8 @@
+import { AlertDialog } from '@/components/back-closable-dialog';
 import { createContext, use, useCallback, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import {
-    AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,

@@ -75,6 +75,11 @@ Use `rtl:` variants (for example `rtl:rotate-180` on directional icons) when a l
 - The whole app is wrapped in `DirectionProvider` and `TooltipProvider` and renders a single `<AppToaster />`
   (`resources/js/app.tsx`; Sonner, bottom right, it also turns Laravel flash toasts into Sonner
   toasts). Don't add more providers or toasters per page.
+- Dialog, alert dialog and sheet roots come from `components/back-closable-dialog.tsx`, not `components/ui/*`: the
+  wrappers close the card on the system Back gesture (F27). While any card is open `lib/history/back-close.ts` keeps one
+  extra history entry; Back pops it and closes the top card (re-adding the entry while another card is still open), and
+  closing the last card another way removes it with `history.back()`. Those pops are stopped in the capture phase so
+  Inertia never reloads the page from history.
 - Keep app behaviour out of `resources/js/components/ui/*` so components can be re-added with the CLI; put wrappers in
   `resources/js/components/` (see `app-toaster.tsx`).
 

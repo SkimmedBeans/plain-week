@@ -1,8 +1,8 @@
+import { Dialog } from '@/components/back-closable-dialog';
 import { useSyncExternalStore } from 'react';
 import { focusCursorRow } from '@/components/planner/keyboard-cursor';
 import { ShortcutKeys } from '@/components/planner/shortcut-keys';
 import {
-    Dialog,
     DialogContent,
     DialogDescription,
     DialogHeader,

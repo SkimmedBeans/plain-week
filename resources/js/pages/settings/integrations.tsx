@@ -1,9 +1,9 @@
+import { AlertDialog } from '@/components/back-closable-dialog';
 import { Head, router } from '@inertiajs/react';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import {
-    AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,

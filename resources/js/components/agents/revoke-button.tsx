@@ -1,8 +1,8 @@
+import { AlertDialog } from '@/components/back-closable-dialog';
 import { router } from '@inertiajs/react';
 import type { RouteDefinition } from '@/wayfinder';
 import { useState } from 'react';
 import {
-    AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,

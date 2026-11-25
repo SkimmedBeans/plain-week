@@ -1,7 +1,8 @@
+import { Dialog } from '@/components/back-closable-dialog';
 import { CircleCheck, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useTaskDialogShortcuts } from '@/hooks/use-task-dialog-shortcuts';
 import { toggleDone, updateTask } from '@/lib/db/tasks';
 import { t } from '@/lib/i18n';

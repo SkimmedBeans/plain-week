@@ -1,8 +1,8 @@
+import { AlertDialog } from '@/components/back-closable-dialog';
 import { useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { toast } from 'sonner';
 import {
-    AlertDialog,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
