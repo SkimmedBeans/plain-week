@@ -1,3 +1,4 @@
+import { NOTE_MAX } from '@/lib/db/lists';
 import { MAX_EVERY_DAYS, TASK_COLORS } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
 import { isTaskColor } from '@/lib/planner/task-colors';
@@ -497,11 +498,21 @@ export function validateList(value: unknown, index: number): SomedayList {
         v.fail('archived', 'must be true or false');
     }
 
+    const note = value.note;
+    if (
+        note !== undefined &&
+        note !== null &&
+        (typeof note !== 'string' || note.length > NOTE_MAX)
+    ) {
+        v.fail('note', `must be text of at most ${NOTE_MAX} characters`);
+    }
+
     return {
         id,
         name,
         ...(hasColor ? { color } : {}),
         ...(archived === true ? { archived } : {}),
+        ...(typeof note === 'string' ? { note } : {}),
         column: column as number,
         position,
         created_at: v.timestamp('created_at'),

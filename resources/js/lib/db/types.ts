@@ -105,6 +105,11 @@ export type SomedayList = {
      * Someday's archived lists. Omitted (false) by older clients and exports.
      */
     archived?: boolean;
+    /**
+     * A list converted to a note (F24) keeps its free text here (at most
+     * `NOTE_MAX` characters); null or omitted is an ordinary task list.
+     */
+    note?: string | null;
     id: string;
     name: string;
     /**

@@ -365,6 +365,11 @@ Row behaviour:
   (case and accents ignored), across days, Someday and all named lists (collapsed and archived too). Open tasks first,
   then by date, Someday and lists last; at most 50. A series shows once and opens its next occurrence. A result, or
   Enter for the first one, opens the task dialog.
+- A named list's ⋮ menu has "Convert to note" (F24, with Undo): its tasks become the note's lines in the "Copy all
+  tasks" format and are deleted, in one write, and the column shows `list-note.tsx` (a `Textarea` saved 400 ms after
+  typing stops and on blur) instead of tasks, in the column and the list card. "Convert to tasks" turns each line back
+  into a task (`parsePlainTextList`: indented `- ` lines are sub-tasks, ` ✓` marks done, lines after `Completed` are done
+  tasks) and ends the note. A note shows a notebook icon in place of the open count.
 - A named list's ⋮ menu has "Archive list" (F31, with Undo): the list leaves the planner and its tasks stay in its
   column. While any list is archived, the base Someday header shows an archive button that opens "Archived lists"
   (`archived-lists.tsx`): each list with its open count, its name opening the list card, and Restore.

@@ -27,6 +27,7 @@ function wireList(array $overrides = []): array
         'name' => 'Errands',
         'color' => 'none',
         'archived' => false,
+        'note' => null,
         'column' => 3,
         'position' => 'a0',
         'created_at' => '2026-11-15T08:35:00.123Z',
@@ -94,6 +95,25 @@ test('a list can be archived and restored, and older clients leave it as it is',
 
     pushLists([[...$list, 'archived' => false, 'updated_at' => '2026-11-15T11:00:00.000Z']])->assertOk();
     expect(SomedayList::find($list['id']))->archived->toBeFalse();
+});
+
+test('a list can become a note and back, and older clients keep the note', function () {
+    $list = wireList();
+    pushLists([$list])->assertOk();
+
+    pushLists([[...$list, 'note' => 'Paint
+  - white', 'updated_at' => '2026-11-15T09:00:00.000Z']])->assertOk();
+    $older = $list;
+    unset($older['note']);
+    pushLists([[...$older, 'name' => 'Shed notes', 'updated_at' => '2026-11-15T10:00:00.000Z']])->assertOk();
+
+    $this->getJson(route('sync.pull'))
+        ->assertJsonPath('lists.0.name', 'Shed notes')
+        ->assertJsonPath('lists.0.note', 'Paint
+  - white');
+
+    pushLists([[...$list, 'note' => null, 'updated_at' => '2026-11-15T11:00:00.000Z']])->assertOk();
+    expect(SomedayList::find($list['id']))->note->toBeNull();
 });
 
 test('a newer update wins and an older one is silently ignored', function () {
@@ -170,5 +190,6 @@ test('invalid list records are rejected', function (array $list) {
     'name too long' => [wireList(['name' => str_repeat('a', 61)])],
     'invalid color' => [wireList(['color' => 'orange'])],
     'archived not a boolean' => [wireList(['archived' => 'yes'])],
+    'note too long' => [wireList(['note' => str_repeat('a', 20001)])],
     'column below the someday area' => [wireList(['column' => 2])],
 ]);

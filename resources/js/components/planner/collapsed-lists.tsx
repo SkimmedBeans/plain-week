@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, NotebookText } from 'lucide-react';
 import { useState } from 'react';
 import {
     ListDialog,
@@ -17,6 +17,7 @@ export type CollapsibleList = {
     name: string;
     id?: string;
     color?: TaskColor;
+    note?: string | null;
 };
 
 type Props = {
@@ -87,17 +88,25 @@ function CollapsedListChip({
                 data-list-card-target={
                     list.id === undefined ? 'someday' : `named:${list.id}`
                 }
-                aria-label={t('planner.collapsedListChip', {
-                    name: list.name,
-                    count: open,
-                })}
+                aria-label={
+                    typeof list.note === 'string'
+                        ? `${list.name}, ${t('planner.isNote')}`
+                        : t('planner.collapsedListChip', {
+                              name: list.name,
+                              count: open,
+                          })
+                }
                 onClick={() => setCard(identity)}
                 className="rounded-full pe-1 font-semibold text-inherit hover:bg-transparent hover:text-inherit dark:hover:bg-transparent"
             >
                 {list.name}
-                <span className="font-normal tabular-nums opacity-70">
-                    · {open}
-                </span>
+                {typeof list.note === 'string' ? (
+                    <NotebookText className="opacity-70" />
+                ) : (
+                    <span className="font-normal tabular-nums opacity-70">
+                        · {open}
+                    </span>
+                )}
             </Button>
             <Button
                 type="button"

@@ -4,10 +4,13 @@ import {
     Archive,
     ChevronUp,
     GripVertical,
+    NotebookText,
     MoreHorizontal,
     Plus,
 } from 'lucide-react';
 import { ArchivedListsDialog } from '@/components/planner/archived-lists';
+import { ListNote } from '@/components/planner/list-note';
+import { listToNoteWithUndo, noteToTasks } from '@/lib/planner/note-actions';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
@@ -65,7 +68,7 @@ import {
 import { toastWithUndo } from '@/lib/planner/undo';
 import { TASK_COLORS, type TaskColor } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
-import { copyListTasks } from '@/lib/planner/clipboard';
+import { copyListTasks, copyWithToast } from '@/lib/planner/clipboard';
 import { collapseKey, setListCollapsed } from '@/lib/planner/device-settings';
 import { isTaskColor, TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
@@ -141,18 +144,28 @@ export function SomedaySection({
     // Narrowed once: property narrowing does not survive into closures.
     const namedListId = list.id;
     const color = list.color ?? 'none';
+    const allLists = useSomedayLists();
+    const fullList =
+        list.id === undefined
+            ? undefined
+            : allLists?.find((item) => item.id === list.id);
+    const isNote = typeof fullList?.note === 'string';
     const openCount = tasks?.filter((task) => !task.done).length;
     // The open-task count after the name (F28), as on a collapsed chip.
-    const countBadge =
-        openCount === undefined ? null : (
-            <span
-                data-open-count
-                aria-hidden
-                className="ms-2 shrink-0 text-base font-normal text-muted-foreground tabular-nums"
-            >
-                {openCount}
-            </span>
-        );
+    const countBadge = isNote ? (
+        <NotebookText
+            aria-label={t('planner.isNote')}
+            className="ms-2 size-4 shrink-0 text-muted-foreground"
+        />
+    ) : openCount === undefined ? null : (
+        <span
+            data-open-count
+            aria-hidden
+            className="ms-2 shrink-0 text-base font-normal text-muted-foreground tabular-nums"
+        >
+            {openCount}
+        </span>
+    );
 
     // A named list's header is the drag handle and its whole column the drop
     // target while a list is dragged; the base list never moves.
@@ -187,7 +200,6 @@ export function SomedaySection({
     const [renameName, setRenameName] = useState('');
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [archivedOpen, setArchivedOpen] = useState(false);
-    const allLists = useSomedayLists();
     const archivedCount =
         list.column === 0
             ? (allLists?.filter((item) => item.archived).length ?? 0)
@@ -460,9 +472,29 @@ export function SomedaySection({
                                             </DropdownMenuPortal>
                                         </DropdownMenuSub>
                                     )}
+                                    {fullList !== undefined && (
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                void (isNote
+                                                    ? noteToTasks(fullList)
+                                                    : listToNoteWithUndo(
+                                                          fullList,
+                                                      ))
+                                            }
+                                        >
+                                            {isNote
+                                                ? t('planner.convertToTasks')
+                                                : t('planner.convertToNote')}
+                                        </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem
                                         onClick={() =>
-                                            void copyListTasks(tasks ?? [])
+                                            void (isNote && fullList
+                                                ? copyWithToast(
+                                                      fullList.note ?? '',
+                                                      t('planner.noteCopied'),
+                                                  )
+                                                : copyListTasks(tasks ?? []))
                                         }
                                     >
                                         {t('planner.copyAllTasks')}
@@ -526,13 +558,17 @@ export function SomedaySection({
                     {t('planner.listDragInstructions')}
                 </span>
             )}
-            <TaskList
-                placement={placement}
-                name={list.name}
-                tasks={tasks}
-                newTaskLabel={`New ${list.name} task`}
-                onOpenTask={onOpenTask}
-            />
+            {isNote && fullList !== undefined ? (
+                <ListNote list={fullList} />
+            ) : (
+                <TaskList
+                    placement={placement}
+                    name={list.name}
+                    tasks={tasks}
+                    newTaskLabel={`New ${list.name} task`}
+                    onOpenTask={onOpenTask}
+                />
+            )}
             {listIndicatorEdge !== null && (
                 <ListDropIndicator edge={listIndicatorEdge} />
             )}

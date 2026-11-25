@@ -9,7 +9,10 @@ import {
     moveListTo,
     queryLists,
     renameList,
+    convertListToNote,
     setListArchived,
+    setListNote,
+    undoListToNote,
 } from './lists';
 import { querySomedayTasks } from './queries';
 import { createTask, listTasksIn, moveTask } from './tasks';
@@ -25,6 +28,30 @@ async function texts(list: number) {
 }
 
 describe('list repository', () => {
+    it('converts a list to a note, deleting its tasks, and undoes it', async () => {
+        const list = await createList('Shed');
+        await createTask({ text: 'Paint', date: null, list: list.column });
+        await createTask({ text: 'Fix door', date: null, list: list.column });
+
+        const ids = await convertListToNote(list.id);
+
+        expect(ids).toHaveLength(2);
+        expect(await texts(list.column)).toEqual([]);
+        expect((await db.someday_lists.get(list.id))!.note).toBe(
+            'Paint\nFix door',
+        );
+        expect(await convertListToNote(list.id)).toBeNull();
+
+        await setListNote(list.id, 'Paint\nFix door\nOil hinges');
+        expect((await db.someday_lists.get(list.id))!.note).toBe(
+            'Paint\nFix door\nOil hinges',
+        );
+
+        await undoListToNote(list.id, ids!);
+        expect(await texts(list.column)).toEqual(['Paint', 'Fix door']);
+        expect((await db.someday_lists.get(list.id))!.note).toBeNull();
+    });
+
     it('archives and restores a list, keeping its tasks and syncing the change', async () => {
         const list = await createList('Shed');
         await createTask({ text: 'Paint', date: null, list: list.column });

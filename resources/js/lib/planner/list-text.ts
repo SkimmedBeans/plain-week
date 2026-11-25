@@ -32,3 +32,64 @@ export function listToPlainText(
         ...done,
     ].join('\n');
 }
+
+export type ParsedTask = {
+    text: string;
+    done: boolean;
+    subtasks: { text: string; done: boolean }[];
+};
+
+/**
+ * Reads note text back as tasks (F24, the reverse of `listToPlainText`):
+ * every non-empty line is a task, a line starting with "-" (or "•", "*")
+ * after one is its sub-task (" ✓" at the end marks it done), and tasks after
+ * a "Completed" line are done. Leading list markers and "[ ]" / "[x]" boxes
+ * are dropped.
+ */
+export function parsePlainTextList(
+    text: string,
+    completedLabel = 'Completed',
+): ParsedTask[] {
+    const tasks: ParsedTask[] = [];
+    let done = false;
+
+    for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trimEnd();
+        const trimmed = line.trim();
+
+        if (trimmed === '') {
+            continue;
+        }
+        if (
+            trimmed.toLocaleLowerCase() === completedLabel.toLocaleLowerCase()
+        ) {
+            done = true;
+            continue;
+        }
+
+        const indented = /^\s+[-•*]\s+/.test(line);
+        let body = trimmed.replace(/^[-•*]\s+/, '');
+        let checked = false;
+        const box = /^\[( |x|X)\]\s*/.exec(body);
+        if (box) {
+            checked = box[1] !== ' ';
+            body = body.slice(box[0].length);
+        }
+        if (body.endsWith(' ✓')) {
+            checked = true;
+            body = body.slice(0, -2).trimEnd();
+        }
+        if (body === '') {
+            continue;
+        }
+
+        const parent = tasks[tasks.length - 1];
+        if (indented && parent) {
+            parent.subtasks.push({ text: body, done: checked });
+        } else {
+            tasks.push({ text: body, done: done || checked, subtasks: [] });
+        }
+    }
+
+    return tasks;
+}

@@ -3,10 +3,14 @@ import { notifyLocalChange } from './changes';
 import { db } from './database';
 import { nextTimestamp } from './dates';
 import { compareListOrder, positionBetween } from './position';
+import { listToPlainText } from '@/lib/planner/list-text';
 import type { SomedayList, TaskColor } from './types';
 
 /** The maximum length of a list name (the server enforces the same). */
 export const LIST_NAME_MAX = 60;
+
+/** The maximum length of a note's text (F24; the server enforces the same). */
+export const NOTE_MAX = 20000;
 
 /**
  * A list name for a create or rename: trimmed, and 1–60 characters. Throws
@@ -131,9 +135,139 @@ export function setListArchived(
     return updateList(id, { archived });
 }
 
+/** Ends a note (F24): the list holds tasks again (see `noteToTasks`). */
+export function clearListNote(id: string): Promise<SomedayList | null> {
+    return updateList(id, { note: null });
+}
+
+/** Saves a note's text (F24), cut to `NOTE_MAX` characters. */
+export function setListNote(
+    id: string,
+    note: string,
+): Promise<SomedayList | null> {
+    return updateList(id, { note: note.slice(0, NOTE_MAX) });
+}
+
+/**
+ * Turns a named list into a note (F24), in one write: its tasks become the
+ * note's lines in the "Copy all tasks" format (`listToPlainText`: open tasks,
+ * sub-tasks indented, then "Completed" and the done ones) and are deleted.
+ * Returns the deleted task ids (for Undo, `undoListToNote`), or null when the
+ * list is gone or already a note.
+ */
+export async function convertListToNote(id: string): Promise<string[] | null> {
+    let written = false;
+    const result = await db.transaction(
+        'rw',
+        [db.someday_lists, db.list_outbox, db.tasks, db.outbox],
+        async () => {
+            const list = await db.someday_lists.get(id);
+
+            if (
+                !list ||
+                list.deleted_at !== null ||
+                typeof list.note === 'string'
+            ) {
+                return null;
+            }
+
+            const now = nextTimestamp(list.updated_at);
+            const rows = (
+                await db.tasks
+                    .where('someday_column')
+                    .equals(list.column)
+                    .filter(
+                        (task) =>
+                            task.date === null && task.deleted_at === null,
+                    )
+                    .toArray()
+            ).sort((a, b) =>
+                a.position === b.position
+                    ? a.id < b.id
+                        ? -1
+                        : 1
+                    : a.position < b.position
+                      ? -1
+                      : 1,
+            );
+            const note = listToPlainText(rows).slice(0, NOTE_MAX);
+
+            for (const task of rows) {
+                await db.tasks.put({
+                    ...task,
+                    deleted_at: now,
+                    updated_at: now,
+                });
+                const entry = await db.outbox.get(task.id);
+                await db.outbox.put({
+                    task_id: task.id,
+                    revision: (entry?.revision ?? 0) + 1,
+                });
+            }
+
+            await db.someday_lists.put({ ...list, note, updated_at: now });
+            await db.list_outbox.put({ list_id: id });
+            written = true;
+
+            return rows.map((task) => task.id);
+        },
+    );
+
+    if (written) {
+        notifyLocalChange();
+    }
+
+    return result;
+}
+
+/** Undoes `convertListToNote`: the tasks come back and the note goes. */
+export async function undoListToNote(
+    id: string,
+    taskIds: string[],
+): Promise<void> {
+    await db.transaction(
+        'rw',
+        [db.someday_lists, db.list_outbox, db.tasks, db.outbox],
+        async () => {
+            const list = await db.someday_lists.get(id);
+
+            if (!list) {
+                return;
+            }
+
+            const now = nextTimestamp(list.updated_at);
+
+            for (const taskId of taskIds) {
+                const task = await db.tasks.get(taskId);
+                if (!task) {
+                    continue;
+                }
+                await db.tasks.put({
+                    ...task,
+                    deleted_at: null,
+                    updated_at: now,
+                });
+                const entry = await db.outbox.get(taskId);
+                await db.outbox.put({
+                    task_id: taskId,
+                    revision: (entry?.revision ?? 0) + 1,
+                });
+            }
+
+            await db.someday_lists.put({
+                ...list,
+                note: null,
+                updated_at: now,
+            });
+            await db.list_outbox.put({ list_id: id });
+        },
+    );
+    notifyLocalChange();
+}
+
 function updateList(
     id: string,
-    patch: Pick<Partial<SomedayList>, 'name' | 'color' | 'archived'>,
+    patch: Pick<Partial<SomedayList>, 'name' | 'color' | 'archived' | 'note'>,
 ): Promise<SomedayList | null> {
     return writeLists(async () => {
         const list = await db.someday_lists.get(id);
