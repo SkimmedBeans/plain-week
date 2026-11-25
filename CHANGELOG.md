@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.11] - 2026-11-25
+
+### Fixed
+
+- **Back closes the open card.** On Android (installed app or browser) the back gesture or button, and the browser's
+  Back elsewhere, closes the open card or dialog instead of leaving the planner. Closing a card with X or Esc does not
+  leave an extra Back press behind.
+
 ## [0.4.10] - 2026-11-25
 
 ### Added
@@ -647,7 +655,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.10...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.11...HEAD
+[0.4.11]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.7...v0.4.8

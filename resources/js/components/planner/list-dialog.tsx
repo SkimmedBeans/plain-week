@@ -1,3 +1,4 @@
+import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
 import { ClipboardCopy, Trash2 } from 'lucide-react';
 import {
     Fragment,
@@ -24,7 +25,6 @@ import { TaskRow } from '@/components/planner/task-row';
 import { DropIndicator } from '@/components/planner/task-list';
 import { Button } from '@/components/ui/button';
 import {
-    AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
@@ -33,7 +33,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useSomedayLists } from '@/hooks/use-tasks';
 import { toDateKey } from '@/lib/db/dates';

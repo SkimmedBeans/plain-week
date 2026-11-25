@@ -1,8 +1,8 @@
+import { Dialog } from '@/components/back-closable-dialog';
 import { ChevronLeft, X } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
     DialogContent,
     DialogDescription,
     DialogTitle,
