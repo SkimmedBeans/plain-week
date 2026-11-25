@@ -101,16 +101,16 @@ test('a list can become a note and back, and older clients keep the note', funct
     $list = wireList();
     pushLists([$list])->assertOk();
 
-    pushLists([[...$list, 'note' => "Paint
-  - white", 'updated_at' => '2026-11-15T09:00:00.000Z']])->assertOk();
+    pushLists([[...$list, 'note' => 'Paint
+  - white', 'updated_at' => '2026-11-15T09:00:00.000Z']])->assertOk();
     $older = $list;
     unset($older['note']);
     pushLists([[...$older, 'name' => 'Shed notes', 'updated_at' => '2026-11-15T10:00:00.000Z']])->assertOk();
 
     $this->getJson(route('sync.pull'))
         ->assertJsonPath('lists.0.name', 'Shed notes')
-        ->assertJsonPath('lists.0.note', "Paint
-  - white");
+        ->assertJsonPath('lists.0.note', 'Paint
+  - white');
 
     pushLists([[...$list, 'note' => null, 'updated_at' => '2026-11-15T11:00:00.000Z']])->assertOk();
     expect(SomedayList::find($list['id']))->note->toBeNull();
