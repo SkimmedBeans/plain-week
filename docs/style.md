@@ -360,6 +360,11 @@ Row behaviour:
   the text button, and "Add sub-tasks" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
   presses and keys to itself, so selecting text never drags the task or opens the task menu. A web link in the text is
   underlined and a click on it opens the link in a new tab instead, since a button cannot hold an anchor.
+- Search (F33, `search-dialog.tsx`, `lib/planner/search.ts`): the header's search button or `/` opens a dialog whose
+  field searches the local database on every keystroke: every word must appear in the task's text, notes or sub-tasks
+  (case and accents ignored), across days, Someday and all named lists (collapsed and archived too). Open tasks first,
+  then by date, Someday and lists last; at most 50. A series shows once and opens its next occurrence. A result, or
+  Enter for the first one, opens the task dialog.
 - Someday and named list headers show the open-task count after the name (`[data-open-count]`, F28) and a chevron
   that collapses the list (F26). Collapsed lists (per device, `plain-week.collapsed-lists` in `localStorage`, see
   `lib/planner/device-settings.ts`) leave the grid and show as chips after it (`collapsed-lists.tsx`): name and open

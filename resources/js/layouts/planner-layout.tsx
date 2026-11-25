@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import { KeyboardCursorProvider } from '@/components/planner/keyboard-cursor';
+import { SearchDialog } from '@/components/planner/search-dialog';
 import { PlannerDnd } from '@/components/planner/planner-dnd';
 import { PlannerHeader } from '@/components/planner/planner-header';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
@@ -92,6 +93,7 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                     </div>
                     <TaskDialog taskId={openTaskId} onClose={closeTask} />
                     <ShortcutsDialog canOpenSettings={signedIn} />
+                    <SearchDialog onOpenTask={setOpenTaskId} />
                     <InstallAppDialog />
                     {children}
                 </KeyboardCursorProvider>
