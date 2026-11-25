@@ -71,10 +71,9 @@ describe('parsePlainTextList', () => {
 
     it('takes free text: one task per line, list markers and boxes dropped', () => {
         expect(
-            parsePlainTextList('- [ ] Call Ana
-
-* [x] Book ferry
-Just a line'),
+            parsePlainTextList(
+                '- [ ] Call Ana\n\n* [x] Book ferry\nJust a line',
+            ),
         ).toEqual([
             { text: 'Call Ana', done: false, subtasks: [] },
             { text: 'Book ferry', done: true, subtasks: [] },

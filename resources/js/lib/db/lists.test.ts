@@ -38,18 +38,13 @@ describe('list repository', () => {
         expect(ids).toHaveLength(2);
         expect(await texts(list.column)).toEqual([]);
         expect((await db.someday_lists.get(list.id))!.note).toBe(
-            'Paint
-Fix door',
+            'Paint\nFix door',
         );
         expect(await convertListToNote(list.id)).toBeNull();
 
-        await setListNote(list.id, 'Paint
-Fix door
-Oil hinges');
+        await setListNote(list.id, 'Paint\nFix door\nOil hinges');
         expect((await db.someday_lists.get(list.id))!.note).toBe(
-            'Paint
-Fix door
-Oil hinges',
+            'Paint\nFix door\nOil hinges',
         );
 
         await undoListToNote(list.id, ids!);
