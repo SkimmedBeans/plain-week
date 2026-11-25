@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { ClipboardCopy, Trash2 } from 'lucide-react';
 import {
     Fragment,
     useEffect,
@@ -49,6 +49,7 @@ import {
 } from '@/lib/planner/format';
 import { rowKey } from '@/lib/planner/repeat';
 import { parseNewTaskInput } from '@/lib/planner/smart-input';
+import { copyListTasks } from '@/lib/planner/clipboard';
 import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 
@@ -269,6 +270,16 @@ function ListDialogSession({
                                 type="button"
                                 variant="ghost"
                                 size="icon-sm"
+                                aria-label={t('planner.copyAllTasks')}
+                                onClick={() => void copyListTasks(tasks ?? [])}
+                                className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
+                            >
+                                <ClipboardCopy className="size-5" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
                                 aria-label={t('common.delete')}
                                 onClick={() => setDeleteOpen(true)}
                                 className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
@@ -278,8 +289,18 @@ function ListDialogSession({
                         </div>
                     </>
                 ) : (
-                    <h2 className="border-b-2 border-foreground pb-3 text-lg font-bold tracking-tight lg:text-xl">
-                        {dayTitle}
+                    <h2 className="flex items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg font-bold tracking-tight lg:text-xl">
+                        <span className="min-w-0 truncate">{dayTitle}</span>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={t('planner.copyAllTasks')}
+                            onClick={() => void copyListTasks(tasks ?? [])}
+                            className="shrink-0 rounded-full hover:bg-transparent"
+                        >
+                            <ClipboardCopy className="size-5" />
+                        </Button>
                     </h2>
                 )}
                 <ListCardDnd weekStart={weekStart}>

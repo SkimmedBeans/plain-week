@@ -348,9 +348,20 @@ Row behaviour:
   number and a month word ("2 may be late") is read as a date too; the task can be edited. A task dated away from the
   list it was typed in (Someday included) leaves it with an "Added to Thu 31 Dec" toast and focus stays in the row.
 - The row being typed in lifts with `shadow-md`, a background and extra horizontal padding.
-- A task row holds sibling `Button`s: the text (click, Enter or Space opens the task through `onOpen(taskId)`, the
-  seam for the task dialog; a web link in the text is underlined and a click on it opens the link in a new tab
-  instead, since a button cannot hold an anchor), the move button for keyboard drag and drop (hidden until focused) and the complete check.
+- A task row holds sibling `Button`s: the text, the move button for keyboard drag and drop (hidden until focused) and
+  the complete check. A single click or tap on the text turns it into an inline `Textarea` with the caret where it was
+  pressed (F19): Enter or leaving the field saves through `updateTask` (a recurring task asks its scope first), Esc
+  cancels, and an emptied text keeps the old one. A second press within 350 ms (`DOUBLE_TAP_MS`), Enter or Space on
+  the text button, and "Add sub-tasks" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
+  presses and keys to itself, so selecting text never drags the task or opens the task menu. A web link in the text is
+  underlined and a click on it opens the link in a new tab instead, since a button cannot hold an anchor.
+- A task with sub-tasks shows a small `ListChecks` icon and "done/total" after its text (F21); the row's accessible
+  name ends in "1 of 2 sub-tasks done".
+- The task menu (right click or ⋮) starts with the color swatches, then "Add sub-tasks" (opens the dialog) and "Copy
+  text" (F22). A named list's ⋮ menu and every list card header have "Copy all tasks to clipboard" (F23): open tasks
+  one per line, sub-tasks under them as `  - text` (a done one ends in ` ✓`), then a blank line, `Completed` and the
+  done tasks. Copying uses the Clipboard API in a secure context and falls back to `execCommand('copy')` over plain
+  HTTP (`lib/planner/clipboard.ts`).
 - The empty row keeps its element as tasks are added above it, so typing goes on without a refocus.
 - The keyboard focus ring of a task row spans the whole row (drawn by an `after:` overlay of the text button), not just
   the text.
@@ -572,7 +583,7 @@ A press on a task row is interpreted by its timing and direction. The gesture va
 
 | Gesture                                                             | Result                                                                 |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Tap                                                                 | Opens the task dialog                                                  |
+| Tap                                                                 | Edits the text in place; a double tap opens the task dialog            |
 | Vertical movement in the first 250 ms                               | Scrolls the page                                                       |
 | Holding 250 ms (`TOUCH_DRAG_DELAY_MS`)                              | Picks the task up where it is; moving it then drags, however long held |
 | Swipe the completed task's text at least 72 px toward the row start | Deletes that task or recurring occurrence on release, with Undo        |

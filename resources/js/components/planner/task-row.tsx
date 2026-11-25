@@ -1,6 +1,9 @@
 import { useSortable } from '@dnd-kit/sortable';
-import { CircleCheck, GripVertical, Repeat } from 'lucide-react';
-import { useRef } from 'react';
+import { CircleCheck, GripVertical, ListChecks, Repeat } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
+import { flushSync } from 'react-dom';
+import { toast } from 'sonner';
 import {
     CURSOR_ROW_CLASS,
     useCursorFocus,
@@ -19,14 +22,17 @@ import {
 } from '@/components/planner/task-context-menu';
 import type { TaskContextMenuActions } from '@/components/planner/task-context-menu';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSeries } from '@/hooks/use-tasks';
+import { updateTask } from '@/lib/db/tasks';
 import type { TaskPlacement } from '@/lib/db/tasks';
 import type { TaskDragData } from '@/lib/planner/drop';
+import { copyWithToast } from '@/lib/planner/clipboard';
 import { summarizeRecurrence } from '@/lib/planner/repeat';
 import {
     SOMEDAY_MOVE,
@@ -53,7 +59,11 @@ type Props = {
     name?: string;
     /** The keyboard cursor is on this task. */
     isCursor?: boolean;
-    /** Opens the task (click, Enter or Space on its text). */
+    /**
+     * Opens the task card: a double tap or double click on the text, Enter
+     * or Space on it, or "Add sub-tasks" in its menu. A single tap or click
+     * edits the text in place instead (F19).
+     */
     onOpen: (taskId: string) => void;
     onToggleDone: (taskId: string) => void;
     className?: string;
@@ -67,6 +77,8 @@ type TaskRepeat = {
 };
 
 const DELETE_SWIPE_DISTANCE_PX = 72;
+/** A second tap this soon after the first opens the card instead (F19). */
+export const DOUBLE_TAP_MS = 350;
 const SWIPE_SETTLE_MS = 170;
 
 function slideTo(row: HTMLDivElement, offset: string): Animation | undefined {
@@ -137,6 +149,159 @@ function RepeatIcon({ summary }: { summary: string | null }) {
     );
 }
 
+/**
+ * The character offset in `container`'s text at a viewport point, or null
+ * when the point is not on its text. Used to put the caret where the text was
+ * tapped when the row turns into its inline editor.
+ */
+function textOffsetAt(
+    container: HTMLElement,
+    x: number,
+    y: number,
+): number | null {
+    let node: Node | null = null;
+    let offset = 0;
+    const doc = document as Document & {
+        caretPositionFromPoint?: (
+            x: number,
+            y: number,
+        ) => { offsetNode: Node; offset: number } | null;
+        caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+
+    if (typeof doc.caretPositionFromPoint === 'function') {
+        const position = doc.caretPositionFromPoint(x, y);
+        node = position?.offsetNode ?? null;
+        offset = position?.offset ?? 0;
+    } else if (typeof doc.caretRangeFromPoint === 'function') {
+        const range = doc.caretRangeFromPoint(x, y);
+        node = range?.startContainer ?? null;
+        offset = range?.startOffset ?? 0;
+    }
+
+    if (node === null || !container.contains(node)) {
+        return null;
+    }
+
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    range.setEnd(node, offset);
+
+    return range.toString().length;
+}
+
+/** Sub-tasks done and in total, beside the text (F21). */
+function SubtaskBadge({ task }: { task: PlannerTask }) {
+    const done = task.subtasks.filter((subtask) => subtask.done).length;
+
+    return (
+        <span
+            data-testid="subtask-badge"
+            aria-hidden
+            className="ms-1.5 mt-0.5 flex shrink-0 items-center gap-0.5 text-xs leading-5 tabular-nums opacity-70"
+        >
+            <ListChecks className="size-3" />
+            {done}/{task.subtasks.length}
+        </span>
+    );
+}
+
+type InlineEditorProps = {
+    task: PlannerTask;
+    /** Where the caret starts, as a character offset in the text. */
+    caret: number;
+    /** When the editor opened (`performance.now()`). */
+    openedAt: number;
+    /** Leaves the editor; `text` is the new text, or null to keep the old. */
+    onDone: (text: string | null, how: 'enter' | 'blur' | 'escape') => void;
+    /** A second tap right after the first one: open the card instead. */
+    onDoubleTap: () => void;
+};
+
+/**
+ * The task's text as an editable field in its row (F19): Enter or leaving
+ * the field saves, Esc cancels, and an emptied text keeps the old one. It
+ * keeps presses to itself, so selecting text never drags the task or opens
+ * the task menu (the browser's own menu, with Paste, shows instead).
+ */
+function InlineTextEditor({
+    task,
+    caret,
+    openedAt,
+    onDone,
+    onDoubleTap,
+}: InlineEditorProps) {
+    const field = useRef<HTMLTextAreaElement>(null);
+    const finished = useRef(false);
+
+    useLayoutEffect(() => {
+        const element = field.current;
+        if (element) {
+            element.focus({ preventScroll: true });
+            element.setSelectionRange(caret, caret);
+        }
+        // Only when the editor opens.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const finish = (text: string | null, how: 'enter' | 'blur' | 'escape') => {
+        if (finished.current) {
+            return;
+        }
+        finished.current = true;
+        onDone(text, how);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        // Planner shortcuts and the row's drag and menu keys stay out.
+        event.stopPropagation();
+
+        if (event.nativeEvent.isComposing) {
+            return;
+        }
+
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            finish(event.currentTarget.value, 'enter');
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            finish(null, 'escape');
+        }
+    };
+
+    const stop = (event: { stopPropagation: () => void }) =>
+        event.stopPropagation();
+
+    return (
+        <Textarea
+            ref={field}
+            data-task-editor
+            defaultValue={task.text}
+            aria-label={t('planner.editTaskText', { text: task.text })}
+            enterKeyHint="done"
+            rows={1}
+            onKeyDown={handleKeyDown}
+            onBlur={(event) => finish(event.currentTarget.value, 'blur')}
+            onPointerDown={(event) => {
+                stop(event);
+                if (performance.now() - openedAt < DOUBLE_TAP_MS) {
+                    event.preventDefault();
+                    finished.current = true;
+                    onDoubleTap();
+                }
+            }}
+            onMouseDown={stop}
+            onTouchStart={stop}
+            onClick={stop}
+            onContextMenu={stop}
+            className={cn(
+                'min-h-0 flex-1 rounded-none border-0 bg-transparent px-1.5 py-2 leading-6 shadow-none select-text [-webkit-touch-callout:default] focus-visible:border-0 focus-visible:ring-0 lg:text-sm dark:bg-transparent',
+                task.done && 'line-through',
+            )}
+        />
+    );
+}
+
 function TaskLabelView({
     task,
     repeat,
@@ -166,6 +331,7 @@ function TaskLabelView({
                 capsule, while the 10px side padding keeps a wrapped block's
                 text clear of its corners. Plain text keeps its 6px inset. */}
             <span
+                data-task-text
                 className={cn(
                     'line-clamp-3 min-w-0 leading-6 wrap-anywhere whitespace-normal',
                     color.pill,
@@ -177,6 +343,7 @@ function TaskLabelView({
             >
                 <LinkedText text={task.text} inButton />
             </span>
+            {task.subtasks.length > 0 && <SubtaskBadge task={task} />}
         </>
     );
 }
@@ -221,6 +388,12 @@ export function TaskRow({
         task.time,
         task.text,
         repeat.repeats ? t('planner.taskRepeats') : null,
+        task.subtasks.length > 0
+            ? t('planner.hasSubtasks', {
+                  done: task.subtasks.filter((subtask) => subtask.done).length,
+                  total: task.subtasks.length,
+              })
+            : null,
         task.done ? t('planner.taskDone') : null,
     ]
         .filter(Boolean)
@@ -248,7 +421,57 @@ export function TaskRow({
     const swipeSurface = useRef<HTMLDivElement>(null);
     const swipeAnimation = useRef<Animation | undefined>(undefined);
     const deletingBySwipe = useRef(false);
+    // The inline editor (F19): where its caret starts and when it opened.
+    const [editing, setEditing] = useState<{
+        caret: number;
+        openedAt: number;
+    } | null>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
+    const refocusRow = useRef(false);
+
+    useLayoutEffect(() => {
+        if (editing === null && refocusRow.current) {
+            refocusRow.current = false;
+            openRef.current?.focus({ preventScroll: true });
+        }
+    }, [editing, openRef]);
+
+    const startEditing = (event: ReactMouseEvent<HTMLButtonElement>) => {
+        const span =
+            textRef.current?.querySelector<HTMLElement>('[data-task-text]') ??
+            null;
+        const offset =
+            span === null
+                ? null
+                : textOffsetAt(span, event.clientX, event.clientY);
+        // Rendered now, inside the tap, so a phone shows its keyboard.
+        flushSync(() =>
+            setEditing({
+                caret: Math.min(offset ?? task.text.length, task.text.length),
+                openedAt: performance.now(),
+            }),
+        );
+    };
+
+    const finishEditing = (
+        value: string | null,
+        how: 'enter' | 'blur' | 'escape',
+    ) => {
+        refocusRow.current = how !== 'blur';
+        setEditing(null);
+        const text = value?.replace(/\s*\n\s*/g, ' ').trim() ?? '';
+
+        if (text !== '' && text !== task.text) {
+            void scoped('edit', (scope) =>
+                updateTask(task.id, { text }, { scope }),
+            ).catch(() => toast.error(t('planner.updateTaskFailed')));
+        }
+    };
+
     const actions: TaskContextMenuActions = {
+        onOpenCard: () => onOpen(task.id),
+        onCopyText: () =>
+            void copyWithToast(task.text, t('planner.textCopied')),
         onColorChange: (color) => {
             if (color !== task.color) {
                 void scoped('edit', (scope) =>
@@ -316,6 +539,7 @@ export function TaskRow({
                         touchPressed.current &&
                         event.isPrimary &&
                         target.closest('[data-task-open]') &&
+                        !target.closest('[data-task-editor]') &&
                         !target.closest('[data-link]')
                             ? {
                                   pointerId: event.pointerId,
@@ -334,7 +558,10 @@ export function TaskRow({
                     // Skips Radix's own 700 ms touch long press, which would
                     // open the menu under a held drag. Click and focus are
                     // unaffected; only the emulated mouse events are dropped.
-                    if (touchPressed.current) {
+                    if (
+                        touchPressed.current &&
+                        !target.closest('[data-task-editor]')
+                    ) {
                         event.preventDefault();
                     }
                 }}
@@ -428,33 +655,63 @@ export function TaskRow({
                     data-task-swipe-surface
                     className="relative flex min-w-0 flex-1 items-start gap-1 after:pointer-events-none after:absolute after:inset-y-0 after:start-full after:w-full after:bg-destructive/15"
                 >
-                    <Button
-                        ref={openRef}
-                        type="button"
-                        variant="ghost"
-                        data-task-open
-                        aria-label={label}
-                        onClick={() => onOpen(task.id)}
-                        // Focus shows on the row as the cursor's look
-                        // (`CURSOR_ROW_CLASS`), not as a ring on the button.
-                        className={cn(
-                            'h-auto min-w-0 flex-1 items-start justify-start gap-0 self-stretch rounded-none border-0 px-0 py-2 text-start text-base font-normal whitespace-normal text-inherit hover:bg-transparent hover:text-inherit focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 lg:text-sm dark:hover:bg-transparent',
-                            task.done && 'touch-pan-y touch-pinch-zoom',
-                        )}
-                    >
-                        <TaskLabelView task={task} repeat={repeat} />
-                        {/* Grows in on hover: it takes no room until then, and
-                        a long text gives way to it instead of being covered. */}
-                        <ShortcutHint
-                            action="task.open"
-                            size="row"
-                            className={cn(
-                                'ms-auto mt-0.5 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-data-cursor/task:max-w-8 group-data-cursor/task:opacity-100',
-                                !cursorShown &&
-                                    'group-hover/task:max-w-8 group-hover/task:opacity-100',
+                    {editing !== null ? (
+                        <div className="flex min-w-0 flex-1 items-start self-stretch">
+                            {task.time && (
+                                <span className="ms-1.5 mt-2.5 shrink-0 rounded-full border border-current px-1.5 text-xs leading-5 tabular-nums">
+                                    {task.time}
+                                </span>
                             )}
-                        />
-                    </Button>
+                            <InlineTextEditor
+                                task={task}
+                                caret={editing.caret}
+                                openedAt={editing.openedAt}
+                                onDone={finishEditing}
+                                onDoubleTap={() => {
+                                    setEditing(null);
+                                    onOpen(task.id);
+                                }}
+                            />
+                        </div>
+                    ) : (
+                        <Button
+                            ref={openRef}
+                            type="button"
+                            variant="ghost"
+                            data-task-open
+                            aria-label={label}
+                            onClick={(event) => {
+                                // Enter or Space (no pointer) open the card, as
+                                // does a double click; a tap or click edits.
+                                if (event.detail === 0 || event.detail > 1) {
+                                    onOpen(task.id);
+                                } else {
+                                    startEditing(event);
+                                }
+                            }}
+                            // Focus shows on the row as the cursor's look
+                            // (`CURSOR_ROW_CLASS`), not as a ring on the button.
+                            className={cn(
+                                'h-auto min-w-0 flex-1 items-start justify-start gap-0 self-stretch rounded-none border-0 px-0 py-2 text-start text-base font-normal whitespace-normal text-inherit hover:bg-transparent hover:text-inherit focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 lg:text-sm dark:hover:bg-transparent',
+                                task.done && 'touch-pan-y touch-pinch-zoom',
+                            )}
+                        >
+                            <span ref={textRef} className="contents">
+                                <TaskLabelView task={task} repeat={repeat} />
+                            </span>
+                            {/* Grows in on hover: it takes no room until then, and
+                        a long text gives way to it instead of being covered. */}
+                            <ShortcutHint
+                                action="task.open"
+                                size="row"
+                                className={cn(
+                                    'ms-auto mt-0.5 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-data-cursor/task:max-w-8 group-data-cursor/task:opacity-100',
+                                    !cursorShown &&
+                                        'group-hover/task:max-w-8 group-hover/task:opacity-100',
+                                )}
+                            />
+                        </Button>
+                    )}
                     <Button
                         ref={setActivatorNodeRef}
                         type="button"

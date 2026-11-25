@@ -116,6 +116,8 @@ describe('TaskContextMenu', () => {
         expect(
             screen.getAllByRole('menuitem').map((item) => item.textContent),
         ).toEqual([
+            'Add sub-tasks',
+            'Copy text',
             // Each with its planner key.
             'Tomorrow>',
             'Next weekw',
@@ -327,6 +329,8 @@ describe('TaskMenuButton', () => {
         expect(
             screen.getAllByRole('menuitem').map((item) => item.textContent),
         ).toEqual([
+            'Add sub-tasks',
+            'Copy text',
             'Tomorrow>',
             'Next weekw',
             'Somedays',
@@ -334,6 +338,31 @@ describe('TaskMenuButton', () => {
             'Deletedd',
         ]);
         expect(onOpenTask).not.toHaveBeenCalled();
+    });
+
+    it('opens the task card from Add sub-tasks', async () => {
+        const { task, user, onOpenTask } = await setup();
+
+        await openMoreMenu(user);
+        await user.click(
+            screen.getByRole('menuitem', { name: 'Add sub-tasks' }),
+        );
+
+        expect(onOpenTask).toHaveBeenCalledWith(task.id);
+    });
+
+    it('copies the task text from Copy text', async () => {
+        const { user } = await setup();
+        const copy = vi.fn().mockReturnValue(true);
+        Object.defineProperty(document, 'execCommand', {
+            value: copy,
+            configurable: true,
+        });
+
+        await openMoreMenu(user);
+        await user.click(screen.getByRole('menuitem', { name: 'Copy text' }));
+
+        await waitFor(() => expect(copy).toHaveBeenCalledWith('copy'));
     });
 
     it('runs the picked action', async () => {

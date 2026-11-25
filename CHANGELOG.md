@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.10] - 2026-11-25
+
+### Added
+
+- **Add sub-tasks and Copy text in the task menu.** The task's ⋮ and right-click menu open the task card from "Add
+  sub-tasks" and copy the task's text with "Copy text".
+- **Copy all tasks.** A named list's ⋮ menu and every list card copy the list's tasks as plain text: open tasks one per
+  line with their sub-tasks indented under them (`  - text`, done ones marked ✓), then the completed tasks under
+  "Completed".
+- Tasks with sub-tasks show a small checklist marker with how many are done (for example 1/3).
+
+### Changed
+
+- **Tap a task's text to edit it in place.** A single tap or click puts the caret where you tapped; Enter or tapping
+  away saves and Esc cancels. Double tap or double click opens the task card. Drag and swipe work as before.
+
 ## [0.4.9] - 2026-11-23
 
 ### Fixed
@@ -631,7 +647,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.9...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.10...HEAD
+[0.4.10]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.6...v0.4.7

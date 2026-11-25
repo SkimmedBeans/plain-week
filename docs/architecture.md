@@ -646,7 +646,7 @@ writes the local database (`moveTask`, or `moveListTo` for a list); sync follows
 | `SomedaySection`                                    | A named list's column: a droppable (`column:<list>`) for list drags, its header the list's drag handle (the base column has neither); its header name opens the list card (rename / delete) while still dragging |
 | `lib/planner/drop.ts`                               | Pure functions: drop target → `moveTask` input and the insertion line (`resolveDrop`), edge-zone dates (`edgeDropDate`), list drop → `moveListTo` index (`resolveListReorder`)                                   |
 
-- Sensors: mouse after 5 px of movement (so a click still opens the task; the right button never drags), touch with a
+- Sensors: mouse after 5 px of movement (so a click still edits the task's text; the right button never drags), touch with a
   press that holds 250 ms, which picks the task up, and then moves (a swipe scrolls; a long press never opens the
   context menu, which touch users reach from the row's ⋮ button; see
   [style.md](./style.md#touch-gestures-on-a-task-row)), keyboard from the row's move button (Space or Enter, arrows,

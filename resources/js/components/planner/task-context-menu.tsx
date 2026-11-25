@@ -2,8 +2,10 @@ import {
     ArrowDownToLine,
     ArrowRight,
     CalendarArrowUp,
+    ClipboardCopy,
     Copy,
     EllipsisVertical,
+    ListPlus,
     Trash2,
 } from 'lucide-react';
 import { useRef } from 'react';
@@ -45,6 +47,10 @@ import { TASK_COLOR_STYLES, isTaskColor } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 
 export type TaskContextMenuActions = {
+    /** Opens the task card ("Add sub-tasks", F20). */
+    onOpenCard: () => void;
+    /** Copies the task's text to the clipboard (F22). */
+    onCopyText: () => void;
     onColorChange: (color: TaskColor) => void;
     onMoveToTomorrow: () => void;
     onMoveToNextWeek: () => void;
@@ -160,13 +166,16 @@ function openFromKeyboard(event: KeyboardEvent<HTMLElement>): void {
 /**
  * The task menu's items, the same in the context menu and the "more" button's
  * dropdown: the nine color swatches in two rows (five and four, like the
- * dialog's color picker), the quick moves, Duplicate and Delete. Each item
+ * dialog's color picker), Add sub-tasks (opens the task card) and Copy text,
+ * the quick moves, Duplicate and Delete. Each item
  * shows its key before its icon; the key's slot stays (empty on touch
  * devices) so the icon keeps its place at the end.
  */
 function TaskMenuItems({
     task,
     parts: { RadioGroup, RadioItem, Item, Separator, Shortcut },
+    onOpenCard,
+    onCopyText,
     onColorChange,
     onMoveToTomorrow,
     onMoveToNextWeek,
@@ -208,6 +217,19 @@ function TaskMenuItems({
                     </RadioItem>
                 ))}
             </RadioGroup>
+            <Separator />
+            {/* The card holds sub-tasks and notes; a tap on the text edits
+                it in place (F19), so this is the menu's way to the card. */}
+            <Item onSelect={onOpenCard}>
+                {t('planner.addSubtasks')}
+                <Shortcut>{null}</Shortcut>
+                <ListPlus />
+            </Item>
+            <Item onSelect={onCopyText}>
+                {t('planner.copyText')}
+                <Shortcut>{null}</Shortcut>
+                <ClipboardCopy />
+            </Item>
             <Separator />
             <Item data-shortcut="task.nextDay" onSelect={onMoveToTomorrow}>
                 {t('planner.tomorrow')}

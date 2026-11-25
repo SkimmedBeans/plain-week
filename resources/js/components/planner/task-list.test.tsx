@@ -236,20 +236,107 @@ describe('TaskList', () => {
         expect(await listTasksIn({ date: DAY })).toEqual([]);
     });
 
-    it('opens a task on click, Enter or Space', async () => {
+    it('opens a task with Enter or Space', async () => {
         const task = await createTask({ text: 'Open me', date: DAY });
         const onOpenTask = vi.fn();
         const user = userEvent.setup();
         render(<Day onOpenTask={onOpenTask} />);
 
         const row = await screen.findByRole('button', { name: 'Open me' });
-        await user.click(row);
         row.focus();
         await user.keyboard('{Enter}');
         await user.keyboard(' ');
 
-        expect(onOpenTask).toHaveBeenCalledTimes(3);
+        expect(onOpenTask).toHaveBeenCalledTimes(2);
         expect(onOpenTask).toHaveBeenCalledWith(task.id);
+    });
+
+    it('edits the text in place on a click and saves it with Enter', async () => {
+        const task = await createTask({ text: 'Buy milk', date: DAY });
+        const onOpenTask = vi.fn();
+        const user = userEvent.setup();
+        render(<Day onOpenTask={onOpenTask} />);
+
+        await user.click(
+            await screen.findByRole('button', { name: 'Buy milk' }),
+        );
+        const field = screen.getByRole<HTMLTextAreaElement>('textbox', {
+            name: 'Edit the text of Buy milk',
+        });
+        expect(document.activeElement).toBe(field);
+
+        field.select();
+        await user.keyboard('Buy oat milk{Enter}');
+
+        await waitFor(async () =>
+            expect((await listTasksIn({ date: DAY }))[0].text).toBe(
+                'Buy oat milk',
+            ),
+        );
+        expect(
+            screen.queryByRole('textbox', { name: /Edit the text/ }),
+        ).toBeNull();
+        expect(onOpenTask).not.toHaveBeenCalled();
+        expect((await listTasksIn({ date: DAY }))[0].id).toBe(task.id);
+    });
+
+    it('cancels an inline edit with Esc and keeps an emptied text', async () => {
+        await createTask({ text: 'Keep me', date: DAY });
+        const user = userEvent.setup();
+        render(<Day />);
+
+        await user.click(
+            await screen.findByRole('button', { name: 'Keep me' }),
+        );
+        let field = screen.getByRole('textbox', { name: /Edit the text/ });
+        await user.type(field, ' changed{Escape}', { skipClick: true });
+        expect((await listTasksIn({ date: DAY }))[0].text).toBe('Keep me');
+
+        await user.click(
+            await screen.findByRole('button', { name: 'Keep me' }),
+        );
+        field = screen.getByRole<HTMLTextAreaElement>('textbox', {
+            name: /Edit the text/,
+        });
+        (field as HTMLTextAreaElement).select();
+        await user.keyboard('{Backspace}{Enter}');
+        expect((await listTasksIn({ date: DAY }))[0].text).toBe('Keep me');
+    });
+
+    it('opens the card on a double tap', async () => {
+        const task = await createTask({ text: 'Twice', date: DAY });
+        const onOpenTask = vi.fn();
+        const user = userEvent.setup();
+        render(<Day onOpenTask={onOpenTask} />);
+
+        await user.click(await screen.findByRole('button', { name: 'Twice' }));
+        await user.click(
+            screen.getByRole('textbox', { name: /Edit the text/ }),
+        );
+
+        expect(onOpenTask).toHaveBeenCalledWith(task.id);
+        expect(
+            screen.queryByRole('textbox', { name: /Edit the text/ }),
+        ).toBeNull();
+    });
+
+    it('marks a task that has sub-tasks', async () => {
+        await createTask({
+            text: 'Pack',
+            date: DAY,
+            subtasks: [
+                { id: 'a', text: 'Socks', done: true },
+                { id: 'b', text: 'Shoes', done: false },
+            ],
+        });
+        render(<Day />);
+
+        expect(
+            await screen.findByRole('button', {
+                name: 'Pack 1 of 2 sub-tasks done',
+            }),
+        ).toBeTruthy();
+        expect(screen.getByTestId('subtask-badge').textContent).toBe('1/2');
     });
 
     it('opens a link in the text in a new tab instead of the task', async () => {
@@ -269,7 +356,10 @@ describe('TaskList', () => {
         expect(onOpenTask).not.toHaveBeenCalled();
 
         await user.click(screen.getByText('Read', { exact: false }));
-        expect(onOpenTask).toHaveBeenCalledTimes(1);
+        expect(
+            screen.getByRole('textbox', { name: /Edit the text/ }),
+        ).toBeTruthy();
+        expect(onOpenTask).not.toHaveBeenCalled();
         open.mockRestore();
     });
 
