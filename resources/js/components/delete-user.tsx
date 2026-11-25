@@ -1,3 +1,4 @@
+import { Dialog } from '@/components/back-closable-dialog';
 import { Form, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
@@ -7,7 +8,6 @@ import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
     DialogClose,
     DialogContent,
     DialogDescription,

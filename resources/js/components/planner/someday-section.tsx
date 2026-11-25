@@ -1,3 +1,4 @@
+import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { GripVertical, MoreHorizontal, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -15,7 +16,6 @@ import {
 } from '@/components/planner/planner-dnd';
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -36,7 +36,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-    AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
