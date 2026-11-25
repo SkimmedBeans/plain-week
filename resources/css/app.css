@@ -251,3 +251,31 @@
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
 }
+
+/*
+ * Compact density (F32, Settings > Preferences, per device): shorter ruled
+ * rows everywhere, and tasks in Someday and the named lists clamped to two
+ * lines instead of three. Unlayered, so it wins over the utilities.
+ */
+[data-density='compact'] {
+    --spacing-row: 2.25rem;
+}
+
+/* The theme inlines `--spacing-row` into `min-h-row` / `h-row`. */
+[data-density='compact'] [data-task-id] {
+    min-height: 2.25rem;
+}
+
+[data-density='compact'] [data-new-task-row] {
+    height: 2.25rem;
+}
+
+[data-density='compact'] [data-task-open],
+[data-density='compact'] [data-task-editor] {
+    padding-block: 0.375rem;
+}
+
+[data-density='compact'] [data-someday-list] [data-task-text] {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}

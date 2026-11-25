@@ -42,11 +42,17 @@ function Day({ onOpenTask = () => {} }: { onOpenTask?: (id: string) => void }) {
     );
 }
 
+// The test week is current: its days are not folded as past (F29).
 beforeEach(async () => {
+    vi.useFakeTimers({
+        toFake: ['Date'],
+        now: new Date('2026-10-12T08:00:00'),
+    });
     await wipeLocalDatabase();
 });
 
 afterEach(() => {
+    vi.useRealTimers();
     cleanup();
 });
 
@@ -234,6 +240,32 @@ describe('TaskList', () => {
         await user.click(document.body);
 
         expect(await listTasksIn({ date: DAY })).toEqual([]);
+    });
+
+    it('folds the completed tasks of a past day until unfolded', async () => {
+        vi.setSystemTime(new Date('2026-10-14T08:00:00'));
+        const done = await createTask({ text: 'Was done', date: DAY });
+        await toggleDone(done.id);
+        await createTask({ text: 'Still open', date: DAY });
+        const user = userEvent.setup();
+        render(<Day />);
+
+        await screen.findByRole('button', { name: 'Still open' });
+        expect(screen.queryByText('Was done')).toBeNull();
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Completed (1), Show completed tasks',
+            }),
+        );
+        expect(await screen.findByText('Was done')).toBeTruthy();
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Completed (1), Hide completed tasks',
+            }),
+        );
+        expect(screen.queryByText('Was done')).toBeNull();
     });
 
     it('opens a task with Enter or Space', async () => {

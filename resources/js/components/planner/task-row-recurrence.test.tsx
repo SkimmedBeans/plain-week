@@ -9,7 +9,14 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+    afterEach,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    vi,
+} from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { TaskList } from '@/components/planner/task-list';
 import { Toaster } from '@/components/ui/sonner';
@@ -75,11 +82,17 @@ function openMenu(button: HTMLElement) {
     return screen.findByRole('menu', { name: 'Task: Gym' });
 }
 
+// The test week is current: its days are not folded as past (F29).
 beforeEach(async () => {
+    vi.useFakeTimers({
+        toFake: ['Date'],
+        now: new Date('2026-10-12T08:00:00'),
+    });
     await wipeLocalDatabase();
 });
 
 afterEach(() => {
+    vi.useRealTimers();
     cleanup();
 });
 

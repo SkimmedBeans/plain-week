@@ -68,13 +68,19 @@ function cursorRow(): HTMLElement | null {
     return document.querySelector('[data-cursor]');
 }
 
+// The test week is current: its days are not folded as past (F29).
 beforeEach(async () => {
+    vi.useFakeTimers({
+        toFake: ['Date'],
+        now: new Date('2026-10-12T08:00:00'),
+    });
     await wipeLocalDatabase();
     await createTask({ date: MONDAY, text: 'Buy milk' });
     await createTask({ date: MONDAY, text: 'Call mom' });
 });
 
 afterEach(() => {
+    vi.useRealTimers();
     cleanup();
 });
 

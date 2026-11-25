@@ -7,6 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.12] - 2026-11-25
+
+### Added
+
+- **Collapse Someday lists.** The chevron on a Someday or named list header collapses it into a chip with its name and
+  open-task count (for example "Shed · 7"), in the list's title color, after the expanded lists. A collapsed list gives
+  its grid space back. Tap the chip to open the list card, or its chevron to expand the list. Remembered per device.
+- **Open-task counts.** Someday and every named list show how many open tasks they hold next to their name.
+- **Overflow cue.** A list that runs past its cell on desktop fades out at the bottom (and at the top once scrolled), so
+  hidden tasks are obvious. Taps and drops still reach the faded rows.
+- **Compact rows.** Settings › Preferences › Compact rows makes task rows shorter and shows at most two lines per task in
+  Someday and the named lists. Applies to this device only.
+
+### Changed
+
+- Days before today show their completed tasks folded under "Completed (n)"; tap it to show them. The fold resets when
+  the planner reloads. Today and later days are unchanged.
+
 ## [0.4.11] - 2026-11-25
 
 ### Fixed
@@ -655,7 +673,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.11...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.12...HEAD
+[0.4.12]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.8...v0.4.9
