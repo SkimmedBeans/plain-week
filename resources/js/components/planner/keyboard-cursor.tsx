@@ -37,6 +37,7 @@ import {
 } from '@/lib/planner/cursor';
 import type { Cursor, CursorList } from '@/lib/planner/cursor';
 import { placementKey, resolveListDrop } from '@/lib/planner/drop';
+import { searchDialogStore } from '@/lib/planner/search-dialog';
 import { shortcutsDialogStore } from '@/lib/planner/shortcuts-dialog';
 import {
     SOMEDAY_MOVE,
@@ -607,6 +608,7 @@ export function KeyboardCursorProvider({
             navigation.goToToday();
             show({ listKey: today, taskId: null, index: 0 });
         },
+        'general.search': () => searchDialogStore.open(),
         'general.undo': () => undoLatest(),
         'general.settings': onOpenSettings ? () => onOpenSettings() : undefined,
         'general.help': () => shortcutsDialogStore.open(),

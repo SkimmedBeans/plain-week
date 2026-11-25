@@ -137,7 +137,8 @@ function SearchContent({
                                                 TASK_COLOR_STYLES[result.color]
                                                     .pill,
                                                 TASK_COLOR_STYLES[result.color]
-                                                    .pill && 'rounded-full px-2',
+                                                    .pill &&
+                                                    'rounded-full px-2',
                                             )}
                                         >
                                             {result.text}

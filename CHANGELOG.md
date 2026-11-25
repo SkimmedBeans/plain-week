@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.13] - 2026-11-25
+
+### Added
+
+- **Search all tasks.** The search button in the header (or `/` on desktop) finds tasks by their text, notes or
+  sub-tasks in every day, Someday and named list, collapsed lists included. It searches this device's copy, so it works
+  offline. Pick a result, or press Enter for the first one, to open its task card. A repeating task shows once and opens
+  its next occurrence.
+
 ## [0.4.12] - 2026-11-25
 
 ### Added
@@ -673,7 +682,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.12...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.13...HEAD
+[0.4.13]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.9...v0.4.10

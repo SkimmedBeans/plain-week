@@ -60,6 +60,7 @@ export type ShortcutId =
     | 'week.next'
     | 'week.today'
     | 'general.undo'
+    | 'general.search'
     | 'general.settings'
     | 'general.help'
     | 'dialog.date'
@@ -281,6 +282,14 @@ export const SHORTCUTS: ShortcutDefinition[] = [
             return t('planner.shortcutWeekToday');
         },
         group: 'Weeks',
+    },
+    {
+        id: 'general.search',
+        keys: [['/']],
+        get label() {
+            return t('planner.shortcutGeneralSearch');
+        },
+        group: 'General',
     },
     {
         id: 'general.undo',

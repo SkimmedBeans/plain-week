@@ -2,11 +2,7 @@ import { db } from '@/lib/db/database';
 import { parseDateKey, toDateKey } from '@/lib/db/dates';
 import type { SomedayList, Task, TaskColor } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
-import {
-    occurrenceId,
-    occursOn,
-    toItem,
-} from '@/lib/recurrence/expand';
+import { occurrenceId, occursOn, toItem } from '@/lib/recurrence/expand';
 import type { SeriesItem } from '@/lib/recurrence/expand';
 import { formatShortDate, formatWeekday } from './format';
 
@@ -47,9 +43,7 @@ export function matchesQuery(
     }
 
     const haystack = normalizeForSearch(
-        [task.text, task.notes, ...task.subtasks.map((s) => s.text)].join(
-            '\n',
-        ),
+        [task.text, task.notes, ...task.subtasks.map((s) => s.text)].join('\n'),
     );
 
     return words.every((word) => haystack.includes(word));
@@ -110,7 +104,7 @@ export async function searchTasks(
 
     const [rows, listRows] = await Promise.all([
         db.tasks.toArray(),
-        db.lists.toArray(),
+        db.someday_lists.toArray(),
     ]);
     const lists = new Map(
         listRows

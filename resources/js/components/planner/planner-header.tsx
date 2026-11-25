@@ -1,7 +1,8 @@
-import { ChevronLeft, ChevronRight, Undo2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Undo2 } from 'lucide-react';
 import { AccountButton } from '@/components/planner/account-button';
 import { HintedLabel } from '@/components/planner/shortcut-hint';
 import { Button } from '@/components/ui/button';
+import { searchDialogStore } from '@/lib/planner/search-dialog';
 import {
     Tooltip,
     TooltipContent,
@@ -143,6 +144,26 @@ export function PlannerHeader({
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
                         {deletes.count === 0 ? 'Nothing to undo' : undoLabel}
+                    </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon-lg"
+                            className="size-10 rounded-full"
+                            onClick={() => searchDialogStore.open()}
+                            aria-label={t('planner.search')}
+                            data-test="search-tasks"
+                        >
+                            <Search className="size-5" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                        <HintedLabel
+                            label={t('planner.search')}
+                            action="general.search"
+                        />
                     </TooltipContent>
                 </Tooltip>
                 <AccountButton />
