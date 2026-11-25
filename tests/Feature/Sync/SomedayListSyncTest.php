@@ -26,6 +26,7 @@ function wireList(array $overrides = []): array
         'id' => (string) Str::uuid7(),
         'name' => 'Errands',
         'color' => 'none',
+        'archived' => false,
         'column' => 3,
         'position' => 'a0',
         'created_at' => '2026-11-15T08:35:00.123Z',
@@ -73,6 +74,26 @@ test('older clients can create and rename lists without sending a color', functi
     $this->getJson(route('sync.pull'))
         ->assertJsonPath('lists.0.name', 'Groceries')
         ->assertJsonPath('lists.0.color', 'green');
+});
+
+test('a list can be archived and restored, and older clients leave it as it is', function () {
+    $list = wireList();
+    pushLists([$list])->assertOk();
+    $this->getJson(route('sync.pull'))->assertJsonPath('lists.0.archived', false);
+
+    pushLists([[...$list, 'archived' => true, 'updated_at' => '2026-11-15T09:00:00.000Z']])->assertOk();
+    expect(SomedayList::find($list['id']))->archived->toBeTrue();
+
+    // A client that does not know the field renames it: it stays archived.
+    $older = $list;
+    unset($older['archived']);
+    pushLists([[...$older, 'name' => 'Old errands', 'updated_at' => '2026-11-15T10:00:00.000Z']])->assertOk();
+    $this->getJson(route('sync.pull'))
+        ->assertJsonPath('lists.0.name', 'Old errands')
+        ->assertJsonPath('lists.0.archived', true);
+
+    pushLists([[...$list, 'archived' => false, 'updated_at' => '2026-11-15T11:00:00.000Z']])->assertOk();
+    expect(SomedayList::find($list['id']))->archived->toBeFalse();
 });
 
 test('a newer update wins and an older one is silently ignored', function () {
@@ -148,5 +169,6 @@ test('invalid list records are rejected', function (array $list) {
     'empty name' => [wireList(['name' => ''])],
     'name too long' => [wireList(['name' => str_repeat('a', 61)])],
     'invalid color' => [wireList(['color' => 'orange'])],
+    'archived not a boolean' => [wireList(['archived' => 'yes'])],
     'column below the someday area' => [wireList(['column' => 2])],
 ]);

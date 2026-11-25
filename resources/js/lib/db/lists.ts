@@ -123,9 +123,17 @@ export function setListColor(
     return updateList(id, { color });
 }
 
+/** Archives a list (hidden from the planner, tasks kept) or restores it. */
+export function setListArchived(
+    id: string,
+    archived: boolean,
+): Promise<SomedayList | null> {
+    return updateList(id, { archived });
+}
+
 function updateList(
     id: string,
-    patch: Pick<Partial<SomedayList>, 'name' | 'color'>,
+    patch: Pick<Partial<SomedayList>, 'name' | 'color' | 'archived'>,
 ): Promise<SomedayList | null> {
     return writeLists(async () => {
         const list = await db.someday_lists.get(id);

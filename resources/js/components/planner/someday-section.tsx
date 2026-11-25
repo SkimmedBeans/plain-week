@@ -1,6 +1,13 @@
 import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { ChevronUp, GripVertical, MoreHorizontal, Plus } from 'lucide-react';
+import {
+    Archive,
+    ChevronUp,
+    GripVertical,
+    MoreHorizontal,
+    Plus,
+} from 'lucide-react';
+import { ArchivedListsDialog } from '@/components/planner/archived-lists';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
@@ -45,15 +52,17 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import { useSomedayTasks } from '@/hooks/use-tasks';
+import { useSomedayLists, useSomedayTasks } from '@/hooks/use-tasks';
 import {
     createList,
     deleteList,
     moveList,
     renameList,
+    setListArchived,
     setListColor,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
+import { toastWithUndo } from '@/lib/planner/undo';
 import { TASK_COLORS, type TaskColor } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
 import { copyListTasks } from '@/lib/planner/clipboard';
@@ -177,6 +186,34 @@ export function SomedaySection({
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameName, setRenameName] = useState('');
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [archivedOpen, setArchivedOpen] = useState(false);
+    const allLists = useSomedayLists();
+    const archivedCount =
+        list.column === 0
+            ? (allLists?.filter((item) => item.archived).length ?? 0)
+            : 0;
+
+    const archive = () => {
+        if (list.id === undefined) {
+            return;
+        }
+        const id = list.id;
+
+        void setListArchived(id, true).then(
+            (updated) => {
+                if (updated === null) {
+                    toast.error(t('planner.listArchiveFailed'));
+
+                    return;
+                }
+                toastWithUndo(
+                    t('planner.listArchived', { name: list.name }),
+                    () => void setListArchived(id, false),
+                );
+            },
+            () => toast.error(t('planner.listArchiveFailed')),
+        );
+    };
     // The list card (F11): which list it is open on, null when closed.
     const [cardIdentity, setCardIdentity] = useState<ListCardIdentity | null>(
         null,
@@ -301,6 +338,19 @@ export function SomedaySection({
                     >
                         <ChevronUp />
                     </Button>
+                    {list.column === 0 && archivedCount > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground"
+                            aria-label={t('planner.archivedListsCount', {
+                                count: archivedCount,
+                            })}
+                            onClick={() => setArchivedOpen(true)}
+                        >
+                            <Archive />
+                        </Button>
+                    )}
                     {list.column === 0 ? (
                         <Button
                             variant="ghost"
@@ -456,6 +506,9 @@ export function SomedaySection({
                                         </span>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={archive}>
+                                        {t('planner.archiveList')}
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem
                                         variant="destructive"
                                         onClick={() => setDeleteOpen(true)}
@@ -482,6 +535,15 @@ export function SomedaySection({
             />
             {listIndicatorEdge !== null && (
                 <ListDropIndicator edge={listIndicatorEdge} />
+            )}
+            {list.column === 0 && (
+                <ArchivedListsDialog
+                    open={archivedOpen}
+                    onOpenChange={setArchivedOpen}
+                    weekStart={weekStart}
+                    today={today}
+                    onOpenTask={onOpenTask}
+                />
             )}
             {list.column === 0 && (
                 <Dialog open={createOpen} onOpenChange={setCreateOpen}>
