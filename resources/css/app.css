@@ -261,6 +261,15 @@
     --spacing-row: 2.25rem;
 }
 
+/* The theme inlines `--spacing-row` into `min-h-row` / `h-row`. */
+[data-density='compact'] [data-task-id] {
+    min-height: 2.25rem;
+}
+
+[data-density='compact'] [data-new-task-row] {
+    height: 2.25rem;
+}
+
 [data-density='compact'] [data-task-open],
 [data-density='compact'] [data-task-editor] {
     padding-block: 0.375rem;
