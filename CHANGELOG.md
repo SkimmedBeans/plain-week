@@ -5,6 +5,20 @@ All notable changes to Plain Week are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.28] - 2026-11-26
+
+### Added
+
+- **Calendar feed card in Settings › Integrations.** The card for the v0.4.27 feed: turn it on and off, copy the URL,
+  open it in the calendar app (`webcal://`), make a new URL (which stops the old one), and see how to subscribe from
+  each app. Settings › Integrations is now always there; the Google Calendar card shows only when the instance has its
+  keys.
+
+### Changed
+
+- **Upstream sync (upstream fdc38be, upstream v0.4.4).** Merged upstream PR #125 (the calendar feed card) and PR #126
+  (the upstream v0.4.4 release commit — version bookkeeping only on upstream).
+
 ## [0.4.27] - 2026-11-26
 
 ### Added
@@ -845,7 +859,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.26...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.27...HEAD
+[0.4.28]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.27...v0.4.28
 [0.4.27]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.26...v0.4.27
 [0.4.26]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.25...v0.4.26
 [0.4.25]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.24...v0.4.25
