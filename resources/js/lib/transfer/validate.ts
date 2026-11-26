@@ -507,10 +507,23 @@ export function validateList(value: unknown, index: number): SomedayList {
         v.fail('note', `must be text of at most ${NOTE_MAX} characters`);
     }
 
+    const images = value.images;
+    if (
+        images !== undefined &&
+        (!Array.isArray(images) ||
+            images.length > 20 ||
+            images.some((item) => typeof item !== 'string' || item === ''))
+    ) {
+        v.fail('images', 'must be a list of at most 20 picture ids');
+    }
+
     return {
         id,
         name,
         ...(hasColor ? { color } : {}),
+        ...(Array.isArray(images) && images.length > 0
+            ? { images: images as string[] }
+            : {}),
         ...(archived === true ? { archived } : {}),
         ...(typeof note === 'string' ? { note } : {}),
         column: column as number,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\OidcController;
+use App\Http\Controllers\NoteImageController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\SyncController;
 use App\Http\Middleware\EnsureHasAccess;
@@ -17,6 +18,9 @@ Route::inertia('/', 'planner')->middleware(EnsureHasAccess::class)->name('home')
 Route::middleware(['auth', 'throttle:sync', EnsureHasAccess::class, RememberTimezone::class])->prefix('sync')->name('sync.')->group(function () {
     Route::post('push', [SyncController::class, 'push'])->name('push');
     Route::get('pull', [SyncController::class, 'pull'])->name('pull');
+    // Pictures in notes (F25).
+    Route::post('images', [NoteImageController::class, 'store'])->name('images.store');
+    Route::get('images/{image}', [NoteImageController::class, 'show'])->whereUuid('image')->name('images.show');
 });
 
 // This browser's Web Push subscription (see Settings › Notifications). Only when the instance has VAPID keys.

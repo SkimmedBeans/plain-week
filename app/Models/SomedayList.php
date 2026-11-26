@@ -20,13 +20,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $color
  * @property bool $archived
  * @property string|null $note
+ * @property list<string>|null $images
  * @property int $column
  * @property string $position
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  * @property CarbonImmutable|null $deleted_at
  */
-#[Fillable(['id', 'name', 'color', 'archived', 'note', 'column', 'position', 'created_at', 'updated_at', 'deleted_at'])]
+#[Fillable(['id', 'name', 'color', 'archived', 'note', 'images', 'column', 'position', 'created_at', 'updated_at', 'deleted_at'])]
 class SomedayList extends Model
 {
     /** @use HasFactory<SomedayListFactory> */
@@ -49,6 +50,7 @@ class SomedayList extends Model
             'user_id' => 'integer',
             'column' => 'integer',
             'archived' => 'boolean',
+            'images' => 'array',
             'created_at' => UtcMillisDateTime::class,
             'updated_at' => UtcMillisDateTime::class,
             'deleted_at' => UtcMillisDateTime::class,

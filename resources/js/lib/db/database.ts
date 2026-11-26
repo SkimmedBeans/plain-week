@@ -3,6 +3,7 @@ import type { EntityTable } from 'dexie';
 import type {
     ListOutboxEntry,
     MetaEntry,
+    NoteImage,
     OutboxEntry,
     SomedayList,
     Task,
@@ -14,6 +15,7 @@ export class PlainWeekDatabase extends Dexie {
     meta!: EntityTable<MetaEntry, 'key'>;
     someday_lists!: EntityTable<SomedayList, 'id'>;
     list_outbox!: EntityTable<ListOutboxEntry, 'list_id'>;
+    note_images!: EntityTable<NoteImage, 'id'>;
 
     constructor(name = 'plain-week') {
         super(name);
@@ -49,6 +51,12 @@ export class PlainWeekDatabase extends Dexie {
             someday_lists: 'id, column, deleted_at',
             list_outbox: 'list_id',
         });
+
+        // Pictures in notes (F25): this device's copies, and which ones the
+        // server does not have yet.
+        this.version(4).stores({
+            note_images: 'id, uploaded',
+        });
     }
 }
 
@@ -62,6 +70,7 @@ export function allTables(database: PlainWeekDatabase) {
         database.meta,
         database.someday_lists,
         database.list_outbox,
+        database.note_images,
     ];
 }
 

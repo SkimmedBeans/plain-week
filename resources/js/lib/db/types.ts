@@ -110,6 +110,8 @@ export type SomedayList = {
      * `NOTE_MAX` characters); null or omitted is an ordinary task list.
      */
     note?: string | null;
+    /** The ids of a note's pictures, in order (F25); see `NoteImage`. */
+    images?: string[];
     id: string;
     name: string;
     /**
@@ -123,6 +125,17 @@ export type SomedayList = {
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
+};
+
+/**
+ * A note picture's bytes on this device (F25), never synced as such: the
+ * server keeps its own copy (`/sync/images`). `uploaded` is 0 until the
+ * server has it (a number, so it can be indexed).
+ */
+export type NoteImage = {
+    id: string;
+    blob: Blob;
+    uploaded: 0 | 1;
 };
 
 /**
