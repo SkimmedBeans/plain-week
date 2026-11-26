@@ -25,6 +25,7 @@ import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { createList } from '@/lib/db/lists';
 import { setLabelName } from '@/lib/db/labels';
 import { createTask, listTasksIn } from '@/lib/db/tasks';
+import { toDateKey } from '@/lib/db/dates';
 import { toastAction } from '@/test/toasts';
 import type { TaskPlacement } from '@/lib/db/tasks';
 import type { Task } from '@/lib/db/types';
@@ -141,9 +142,9 @@ describe('TaskContextMenu', () => {
         ).toEqual([
             'Add sub-tasks',
             'Copy text',
-            // Each with its planner key.
-            'Tomorrow>',
-            'Next weekw',
+            // Today and Pick a date have no key.
+            'Today',
+            'Pick a date',
             'Somedays',
             'Duplicatey',
             'Deletedd',
@@ -155,10 +156,10 @@ describe('TaskContextMenu', () => {
         const { task, user, button } = await setup();
 
         await openMenu(button);
-        await user.keyboard('w');
+        await user.keyboard('s');
         await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
         await waitFor(async () =>
-            expect((await stored(task.id))?.date).toBe('2026-10-19'),
+            expect((await stored(task.id))?.date).toBeNull(),
         );
     });
 
@@ -241,27 +242,18 @@ describe('TaskContextMenu', () => {
         );
     });
 
-    it('moves the task to tomorrow, next week and Someday', async () => {
+    it('moves the task to today and Someday', async () => {
         const { task, button } = await setup();
+        const todayKey = toDateKey(new Date());
 
         await openMenu(button);
-        await select('Tomorrow');
+        await select('Today');
         await waitFor(async () =>
-            expect((await stored(task.id))?.date).toBe('2026-10-13'),
+            expect((await stored(task.id))?.date).toBe(todayKey),
         );
 
         cleanup();
-        render(<List placement={{ date: '2026-10-13' }} />);
-        await openMenu(
-            await screen.findByRole('button', { name: 'Plan trip' }),
-        );
-        await select('Next week');
-        await waitFor(async () =>
-            expect((await stored(task.id))?.date).toBe('2026-10-20'),
-        );
-
-        cleanup();
-        render(<List placement={{ date: '2026-10-20' }} />);
+        render(<List placement={{ date: todayKey }} />);
         await openMenu(
             await screen.findByRole('button', { name: 'Plan trip' }),
         );
@@ -273,13 +265,27 @@ describe('TaskContextMenu', () => {
         );
     });
 
+    it('picks a date from the calendar popover', async () => {
+        const { task, button, user } = await setup();
+
+        await openMenu(button);
+        await select('Pick a date');
+        // The calendar opens on the task's own month (October 2026).
+        await user.click(
+            await screen.findByRole('button', { name: /October 20th, 2026/ }),
+        );
+        await waitFor(async () =>
+            expect((await stored(task.id))?.date).toBe('2026-10-20'),
+        );
+    });
+
     it('does not offer Someday for a Someday task', async () => {
         const { button } = await setup({ date: null, list: 0 });
 
         await openMenu(button);
 
         expect(screen.queryByRole('menuitem', { name: 'Someday' })).toBeNull();
-        expect(screen.getByRole('menuitem', { name: 'Tomorrow' })).toBeTruthy();
+        expect(screen.getByRole('menuitem', { name: 'Today' })).toBeTruthy();
     });
 
     it('duplicates the task', async () => {
@@ -381,8 +387,8 @@ describe('TaskMenuButton', () => {
         ).toEqual([
             'Add sub-tasks',
             'Copy text',
-            'Tomorrow>',
-            'Next weekw',
+            'Today',
+            'Pick a date',
             'Somedays',
             'Duplicatey',
             'Deletedd',
@@ -425,9 +431,9 @@ describe('TaskMenuButton', () => {
         );
 
         await openMoreMenu(user);
-        await user.keyboard('w');
+        await user.keyboard('s');
         await waitFor(async () =>
-            expect((await stored(task.id))?.date).toBe('2026-10-19'),
+            expect((await stored(task.id))?.date).toBeNull(),
         );
     });
 

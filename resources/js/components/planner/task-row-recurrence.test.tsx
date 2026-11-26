@@ -162,7 +162,11 @@ describe('Recurring task rows', () => {
         const { user, button, id } = await setup();
 
         await openMenu(button);
-        await choose('Tomorrow');
+        await choose('Pick a date');
+        // The calendar opens on the occurrence's month (October 2026).
+        await user.click(
+            await screen.findByRole('button', { name: /October 15th, 2026/ }),
+        );
 
         await waitFor(async () =>
             expect(await queryTask(id)).toMatchObject({

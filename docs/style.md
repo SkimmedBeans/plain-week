@@ -579,17 +579,17 @@ If the list is deleted while the card is open (here or on another device, throug
 
 Built in `resources/js/components/planner/task-context-menu.tsx` (shadcn `ContextMenu`) and wrapped around every task
 row, in the days and in Someday. The row's "more" button (`TaskMenuButton`, shadcn `DropdownMenu`) opens the same items:
-both render one `TaskMenuItems` list, given the context menu's or the dropdown's parts. The actions come in as props (`onColorChange`, `onMoveToTomorrow`,
-`onMoveToNextWeek`, `onMoveToSomeday`, `onDuplicate`, `onDelete`); `TaskRow` wires them to the shared task actions in
+both render one `TaskMenuItems` list, given the context menu's or the dropdown's parts. The actions come in as props (`onColorChange`, `onMoveToToday`,
+`onPickDate`, `onMoveToSomeday`, `onDuplicate`, `onDelete`); `TaskRow` wires them to the shared task actions in
 `lib/planner/task-actions.ts`, which the task dialog uses too.
 
 | Part   | Behaviour                                                                                                                                                                                                                                                   |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Colors | The nine swatches in two rows of five and four (`TaskColorSwatch`, as in the dialog's color picker), `menuitemradio` items with the current color checked; the swatch grid sets the menu's width; arrow keys move through it in order, like the other items |
-| Moves  | Tomorrow, Next week and Someday, as in the dialog's More menu, with a "Moved to …" toast and Undo; Someday is hidden for a Someday task                                                                                                                     |
+| Moves  | **Today** (moves the task to today), **Pick a date** (opens a `Calendar` in a `Popover`; choosing a day moves the task there) and Someday, each with a "Moved to …" toast and Undo; Someday is hidden for a Someday task                                    |
 | Copy   | Duplicate (toast "Task duplicated."); the copy of a recurring task is a one-off task                                                                                                                                                                        |
 | Delete | After a separator, `variant="destructive"` (the translucent preset menu shows it in the accent color); deletes at once with an "Undo" toast                                                                                                                 |
-| Keys   | Each action shows its planner key (`>`, `w`, `s`, `y`, `d d`) for mouse users; pressing it while the menu is open picks the item                                                                                                                            |
+| Keys   | Each action with a key shows its planner key (`s`, `y`, `d d`) for mouse users; pressing it while the menu is open picks the item (Today and Pick a date have none)                                                                                         |
 
 On a recurring task, a color change and Delete ask the scope first (moves never do: they move only that task).
 

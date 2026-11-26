@@ -21,7 +21,14 @@ import {
     TaskMenuButton,
 } from '@/components/planner/task-context-menu';
 import type { TaskContextMenuActions } from '@/components/planner/task-context-menu';
+import { focusCalendarDay } from '@/components/planner/task-dialog/calendar-focus';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Tooltip,
@@ -29,6 +36,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSeries } from '@/hooks/use-tasks';
+import { parseDateKey, toDateKey } from '@/lib/db/dates';
 import { updateTask } from '@/lib/db/tasks';
 import type { TaskPlacement } from '@/lib/db/tasks';
 import type { TaskDragData } from '@/lib/planner/drop';
@@ -39,9 +47,8 @@ import {
     deleteWithUndo,
     duplicateWithToast,
     moveWithUndo,
-    nextWeekMove,
     setTaskColor,
-    tomorrowMove,
+    todayMove,
 } from '@/lib/planner/task-actions';
 import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { t } from '@/lib/i18n';
@@ -431,6 +438,12 @@ export function TaskRow({
     } | null>(null);
     const textRef = useRef<HTMLSpanElement>(null);
     const refocusRow = useRef(false);
+    // The "Pick a date" popover: whether it is open, and the month the
+    // calendar shows so paging is kept when it is reopened.
+    const [pickDateOpen, setPickDateOpen] = useState(false);
+    const [pickDateMonth, setPickDateMonth] = useState<Date | undefined>(
+        undefined,
+    );
 
     useLayoutEffect(() => {
         if (editing === null && refocusRow.current) {
@@ -482,8 +495,18 @@ export function TaskRow({
                 );
             }
         },
-        onMoveToTomorrow: () => moveWithUndo(task.id, tomorrowMove(task)),
-        onMoveToNextWeek: () => moveWithUndo(task.id, nextWeekMove(task)),
+        onMoveToToday: () => {
+            const move = todayMove();
+            if (move.date !== task.date) {
+                void moveWithUndo(task.id, move);
+            }
+        },
+        onPickDate: () => {
+            // The context menu's dismissal click would otherwise be read as an
+            // outside click by the popover's dismiss layer, closing it
+            // instantly. Open on the next tick so that click has settled first.
+            window.setTimeout(() => setPickDateOpen(true), 0);
+        },
         onMoveToSomeday: () => moveWithUndo(task.id, SOMEDAY_MOVE),
         onMoveToList: (column, listName) =>
             moveWithUndo(
@@ -761,6 +784,61 @@ export function TaskRow({
                     </Button>
                     <TaskMenuButton task={task} {...actions} />
                 </div>
+                <Popover
+                    open={pickDateOpen}
+                    onOpenChange={(open) => {
+                        setPickDateOpen(open);
+                        if (!open) {
+                            setPickDateMonth(undefined);
+                        }
+                    }}
+                >
+                    <PopoverTrigger asChild>
+                        <button
+                            type="button"
+                            tabIndex={-1}
+                            aria-hidden
+                            className="pointer-events-none absolute end-0 bottom-0 size-px"
+                        />
+                    </PopoverTrigger>
+                    <PopoverContent
+                        align="end"
+                        className="w-auto p-0"
+                        onOpenAutoFocus={focusCalendarDay}
+                        onCloseAutoFocus={(event) => {
+                            // The row may have moved to another day by now;
+                            // hand focus to wherever the task's button sits.
+                            event.preventDefault();
+                            const row = document.querySelector<HTMLElement>(
+                                `[data-task-id="${CSS.escape(task.id)}"] button`,
+                            );
+                            row?.focus();
+                        }}
+                    >
+                        <Calendar
+                            mode="single"
+                            weekStartsOn={1}
+                            selected={
+                                task.date ? parseDateKey(task.date) : undefined
+                            }
+                            defaultMonth={
+                                pickDateMonth ??
+                                (task.date
+                                    ? parseDateKey(task.date)
+                                    : new Date())
+                            }
+                            onMonthChange={setPickDateMonth}
+                            onSelect={(date) => {
+                                setPickDateOpen(false);
+                                if (date && toDateKey(date) !== task.date) {
+                                    void moveWithUndo(task.id, {
+                                        date: toDateKey(date),
+                                    });
+                                }
+                            }}
+                        />
+                    </PopoverContent>
+                </Popover>
             </div>
         </TaskContextMenu>
     );
