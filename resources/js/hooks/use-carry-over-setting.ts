@@ -1,5 +1,10 @@
 import { useSyncExternalStore } from 'react';
-import { collapsedLists, compactDensity } from '@/lib/planner/device-settings';
+import {
+    collapsedLists,
+    compactDensity,
+    plannerView,
+} from '@/lib/planner/device-settings';
+import type { PlannerView } from '@/lib/planner/device-settings';
 import { carryOverSetting } from '@/lib/planner/preferences';
 
 /** Whether "Move unfinished tasks to today" is on, on this device. */
@@ -26,5 +31,14 @@ export function useCompactDensity(): boolean {
         compactDensity.subscribe,
         compactDensity.get,
         compactDensity.get,
+    );
+}
+
+/** The planner's view on this device: Week or Lists (F30). */
+export function usePlannerView(): PlannerView {
+    return useSyncExternalStore(
+        plannerView.subscribe,
+        plannerView.get,
+        plannerView.get,
     );
 }

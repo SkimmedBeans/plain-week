@@ -6,6 +6,7 @@ import {
     Copy,
     EllipsisVertical,
     ListPlus,
+    ListTree,
     Trash2,
 } from 'lucide-react';
 import { useRef } from 'react';
@@ -26,6 +27,9 @@ import {
     ContextMenuRadioItem,
     ContextMenuSeparator,
     ContextMenuShortcut,
+    ContextMenuSub,
+    ContextMenuSubContent,
+    ContextMenuSubTrigger,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
@@ -36,9 +40,13 @@ import {
     DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuShortcut,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useMenuShortcuts } from '@/hooks/use-menu-shortcuts';
+import { useSomedayLists } from '@/hooks/use-tasks';
 import { t } from '@/lib/i18n';
 import { TASK_COLORS } from '@/lib/db/types';
 import type { Task, TaskColor } from '@/lib/db/types';
@@ -58,6 +66,11 @@ export type TaskContextMenuActions = {
     onMoveToSomeday: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
+    /**
+     * Moves the task to a Someday list (F30): 0 is Someday, a number above a
+     * named list's column. Offered for every list but the task's own.
+     */
+    onMoveToList: (column: number, name: string) => void;
 };
 
 type Props = TaskContextMenuActions & {
@@ -95,6 +108,9 @@ type MenuParts = {
     Item: ComponentType<ItemProps>;
     Separator: ComponentType;
     Shortcut: ComponentType<{ children: ReactNode }>;
+    Sub: ComponentType<{ children: ReactNode }>;
+    SubTrigger: ComponentType<{ children: ReactNode }>;
+    SubContent: ComponentType<{ children: ReactNode }>;
 };
 
 const CONTEXT_MENU_PARTS: MenuParts = {
@@ -103,6 +119,9 @@ const CONTEXT_MENU_PARTS: MenuParts = {
     Item: ContextMenuItem,
     Separator: ContextMenuSeparator,
     Shortcut: ContextMenuShortcut,
+    Sub: ContextMenuSub,
+    SubTrigger: ContextMenuSubTrigger,
+    SubContent: ContextMenuSubContent,
 };
 
 const DROPDOWN_MENU_PARTS: MenuParts = {
@@ -111,6 +130,9 @@ const DROPDOWN_MENU_PARTS: MenuParts = {
     Item: DropdownMenuItem,
     Separator: DropdownMenuSeparator,
     Shortcut: DropdownMenuShortcut,
+    Sub: DropdownMenuSub,
+    SubTrigger: DropdownMenuSubTrigger,
+    SubContent: DropdownMenuSubContent,
 };
 
 /** The menu's items that have a planner shortcut. */
@@ -173,7 +195,16 @@ function openFromKeyboard(event: KeyboardEvent<HTMLElement>): void {
  */
 function TaskMenuItems({
     task,
-    parts: { RadioGroup, RadioItem, Item, Separator, Shortcut },
+    parts: {
+        RadioGroup,
+        RadioItem,
+        Item,
+        Separator,
+        Shortcut,
+        Sub,
+        SubTrigger,
+        SubContent,
+    },
     onOpenCard,
     onCopyText,
     onColorChange,
@@ -182,7 +213,20 @@ function TaskMenuItems({
     onMoveToSomeday,
     onDuplicate,
     onDelete,
+    onMoveToList,
 }: TaskContextMenuActions & { task: Task; parts: MenuParts }) {
+    // Every Someday list but the task's own, shown named lists only (not
+    // archived, not notes): the way to a list that is not on screen (F30).
+    const lists = useSomedayLists();
+    const targets = [
+        { column: 0, name: t('planner.someday') },
+        ...(lists ?? []).filter(
+            (list) => !list.archived && typeof list.note !== 'string',
+        ),
+    ].filter(
+        (list) =>
+            task.date !== null || (task.someday_column ?? 0) !== list.column,
+    );
     const hint = (action: ShortcutId) => (
         <Shortcut>
             <ShortcutHint action={action} />
@@ -247,6 +291,26 @@ function TaskMenuItems({
                     {hint('task.someday')}
                     <ArrowDownToLine />
                 </Item>
+            )}
+            {targets.length > 0 && (lists?.length ?? 0) > 0 && (
+                <Sub>
+                    <SubTrigger>
+                        <ListTree className="me-2" />
+                        {t('planner.moveToList')}
+                    </SubTrigger>
+                    <SubContent>
+                        {targets.map((list) => (
+                            <Item
+                                key={list.column}
+                                onSelect={() =>
+                                    onMoveToList(list.column, list.name)
+                                }
+                            >
+                                {list.name}
+                            </Item>
+                        ))}
+                    </SubContent>
+                </Sub>
             )}
             <Item data-shortcut="task.duplicate" onSelect={onDuplicate}>
                 {t('planner.duplicate')}
