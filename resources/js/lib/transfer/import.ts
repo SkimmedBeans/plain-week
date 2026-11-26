@@ -6,6 +6,12 @@ import { db } from '@/lib/db/database';
 import type { PlainWeekDatabase } from '@/lib/db/database';
 import { nextTimestamp } from '@/lib/db/dates';
 import {
+    isLabelColor,
+    isLabelNameTooLong,
+    normalizeLabelName,
+    writeLabel,
+} from '@/lib/db/labels';
+import {
     compareListOrder,
     compareSomedayOrder,
     compareTaskOrder,
@@ -16,7 +22,7 @@ import { SOMEDAY_COLUMNS } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
 import type { SomedayList, Task } from '@/lib/db/types';
 import { EXPORT_FORMAT, EXPORT_VERSION } from './format';
-import type { ExportFile } from './format';
+import type { ExportFile, ExportedLabel } from './format';
 import { backupRows } from './rows';
 import { ImportError, taskLabel, validateList, validateTask } from './validate';
 
@@ -24,8 +30,9 @@ export { ImportError } from './validate';
 
 /**
  * Importing a backup ADDS its tasks and named lists next to the existing
- * ones, with new ids; nothing that is already in the local database changes.
- * See "Export format" in docs/architecture.md.
+ * ones, with new ids; nothing that is already in the local database changes
+ * (a label name from the file only names a colour that still has its default
+ * name). See "Export format" in docs/architecture.md.
  */
 
 export type ImportSummary = {
@@ -42,6 +49,8 @@ export type ImportPlan = ImportSummary & {
     tasks: Task[];
     /** Named lists to create (new ids, fresh timestamps); order is kept. */
     lists: SomedayList[];
+    /** Label names for colours that have none yet. */
+    labels: ExportedLabel[];
 };
 
 /** Far above any real planner (10 000 tasks are about 5 MB). */
@@ -166,7 +175,45 @@ export async function parseImport(input: Blob | string): Promise<ExportFile> {
             typeof file.app_version === 'string' ? file.app_version : '',
         tasks,
         someday_lists: lists,
+        labels: parseLabels(file.labels),
     };
+}
+
+/**
+ * The file's label names (optional: older files have none). They are only a
+ * nicety next to the tasks, so an entry that is not valid is left out
+ * instead of refusing the file; so is a second entry for the same colour.
+ */
+function parseLabels(value: unknown): ExportedLabel[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    const labels = new Map<string, ExportedLabel>();
+
+    value.forEach((entry: unknown) => {
+        if (typeof entry !== 'object' || entry === null) {
+            return;
+        }
+
+        const { color, name } = entry as Record<string, unknown>;
+
+        if (!isLabelColor(color) || typeof name !== 'string') {
+            return;
+        }
+
+        const normalized = normalizeLabelName(name);
+
+        if (
+            normalized !== '' &&
+            !isLabelNameTooLong(normalized) &&
+            !labels.has(color)
+        ) {
+            labels.set(color, { color, name: normalized });
+        }
+    });
+
+    return [...labels.values()];
 }
 
 const SOMEDAY_LIST = 'someday';
@@ -349,6 +396,13 @@ export async function planImport(
     }
 
     const ends = await listEnds(database, endKeys);
+    // Colours that already have a name locally keep it; the file names only
+    // the unnamed ones.
+    const named = new Set(
+        (await database.labels.toArray())
+            .filter((label) => label.name !== '')
+            .map((label) => label.color),
+    );
     const sortKeys = new Map<string, SomedaySortKey>();
 
     // Appended after the last task of each list, in the file's order. A day
@@ -401,6 +455,9 @@ export async function planImport(
             deleted_at: task.deleted_at === null ? null : now,
         })),
         lists: listRows,
+        labels: file.labels
+            .filter((label) => !named.has(label.color))
+            .map(({ color, name }) => ({ color, name })),
     };
 }
 
@@ -440,6 +497,22 @@ export async function applyImport(
             );
         }
 
+        if (plan.labels.length > 0) {
+            await database.transaction(
+                'rw',
+                database.labels,
+                database.outbox,
+                async () => {
+                    for (const { color, name } of plan.labels) {
+                        // Renamed since `planImport`: the user's name stays.
+                        if (!(await database.labels.get(color))?.name) {
+                            await writeLabel(database, color, name);
+                        }
+                    }
+                },
+            );
+        }
+
         for (let start = 0; start < total; start += batchSize) {
             const batch = plan.tasks.slice(start, start + batchSize);
 
@@ -463,7 +536,7 @@ export async function applyImport(
         }
     } finally {
         // Wake the sync engine once for what was written.
-        if (total > 0 || plan.lists.length > 0) {
+        if (total > 0 || plan.lists.length > 0 || plan.labels.length > 0) {
             notifyLocalChange();
         }
     }

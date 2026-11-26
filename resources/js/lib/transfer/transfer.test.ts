@@ -2,6 +2,7 @@ import { generateNKeysBetween } from 'fractional-indexing';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { queryTask, queryWeekTasks, querySomedayTasks } from '@/lib/db/queries';
+import { setLabelName } from '@/lib/db/labels';
 import { createList, setListColor } from '@/lib/db/lists';
 import {
     createTask,
@@ -108,6 +109,7 @@ describe('export', () => {
             app_version: '1.2.3',
             tasks: [task],
             someday_lists: [],
+            labels: [],
         });
     });
 
@@ -673,6 +675,92 @@ describe('parseImport', () => {
         );
 
         expect(file.tasks).toEqual([task]);
+    });
+});
+
+describe('label names', () => {
+    it('exports the renamed colours only', async () => {
+        await setLabelName('pink', 'Deep work');
+        await setLabelName('green', 'Health');
+        await setLabelName('green', '');
+
+        expect((await buildExport()).labels).toEqual([
+            {
+                color: 'pink',
+                name: 'Deep work',
+                updated_at: expect.any(String),
+            },
+        ]);
+    });
+
+    it('round-trips them through an import', async () => {
+        await setLabelName('pink', 'Deep work');
+        await createTask({ text: 'Write', date: MON, color: 'pink' });
+
+        await roundTrip();
+
+        expect((await db.labels.get('pink'))?.name).toBe('Deep work');
+        expect(await db.outbox.get('pink')).toEqual({
+            task_id: 'pink',
+            entity: 'label',
+            revision: 1,
+        });
+    });
+
+    it('never renames a colour that already has a name', async () => {
+        const file = JSON.stringify({
+            ...JSON.parse(fileWith([])),
+            labels: [
+                { color: 'pink', name: 'From file' },
+                { color: 'mango', name: 'Errands' },
+            ],
+        });
+
+        await setLabelName('pink', 'Mine');
+        await importText(file);
+
+        expect((await db.labels.get('pink'))?.name).toBe('Mine');
+        expect((await db.labels.get('mango'))?.name).toBe('Errands');
+    });
+
+    it('wins over a reset name with a later timestamp', async () => {
+        await db.labels.put({
+            color: 'mango',
+            name: '',
+            updated_at: '2999-01-01T00:00:00.000Z',
+        });
+        await importText(
+            JSON.stringify({
+                ...JSON.parse(fileWith([])),
+                labels: [{ color: 'mango', name: 'Errands' }],
+            }),
+        );
+
+        const label = await db.labels.get('mango');
+
+        expect(label?.name).toBe('Errands');
+        expect(label!.updated_at > '2999-01-01T00:00:00.000Z').toBe(true);
+    });
+
+    it('reads files without labels and skips invalid entries', async () => {
+        expect((await parseImport(fileWith([]))).labels).toEqual([]);
+
+        const file = await parseImport(
+            JSON.stringify({
+                ...JSON.parse(fileWith([])),
+                labels: [
+                    { color: 'none', name: 'Nothing' },
+                    { color: 'teal', name: 'Teal' },
+                    { color: 'pink', name: 'a'.repeat(25) },
+                    { color: 'grey', name: 7 },
+                    'lilac',
+                    { color: 'green', name: '  Health ' },
+                    { color: 'green', name: 'Second' },
+                ],
+            }),
+        );
+
+        expect(file.labels).toEqual([{ color: 'green', name: 'Health' }]);
     });
 });
 
