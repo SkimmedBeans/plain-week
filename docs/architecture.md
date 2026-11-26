@@ -810,7 +810,7 @@ writes the local database (`moveTask`, or `moveListTo` for a list); sync follows
   menu and the shortcuts dialog return focus to the cursor's row when they close.
 - Actions go through the same local writes as the mouse: `toggleDone`, `moveTask` (`J` / `K` use `resolveListDrop`,
   so timed tasks keep their place by time; `<` / `>` change the week when the task leaves it), and the context menu's
-  `moveWithUndo` (`w`, `s`), `duplicateWithToast` (`y`) and `deleteWithUndo` (`d d`, asking the scope of a recurring
+  `moveWithUndo` (`s`), `duplicateWithToast` (`y`) and `deleteWithUndo` (`d d`, asking the scope of a recurring
   task first). `m` opens the context menu anchored to the row's start, like Shift+F10. `a` / `i` with no cursor
   start a task today. Enter opens a task, or starts typing on a new-task row. With no cursor shown and no row
   focused, Enter and `a` act on the row under the mouse, which is what its hint promises; other keys (deletes, moves)

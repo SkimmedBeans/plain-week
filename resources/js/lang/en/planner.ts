@@ -132,6 +132,7 @@ export const planner = {
     'planner.taskColor': 'Task color',
     'planner.tomorrow': 'Tomorrow',
     'planner.nextWeekMove': 'Next week',
+    'planner.pickDate': 'Pick a date',
     'planner.duplicate': 'Duplicate',
     'planner.dragInstructions':
         'To move a task, press Space or Enter on its move button. Use the arrow keys to choose where it goes, Space or Enter to drop it, Escape to cancel.',

@@ -1,7 +1,7 @@
 import {
     ArrowDownToLine,
-    ArrowRight,
-    CalendarArrowUp,
+    CalendarCheck,
+    CalendarDays,
     ClipboardCopy,
     Copy,
     EllipsisVertical,
@@ -61,8 +61,10 @@ export type TaskContextMenuActions = {
     /** Copies the task's text to the clipboard (F22). */
     onCopyText: () => void;
     onColorChange: (color: TaskColor) => void;
-    onMoveToTomorrow: () => void;
-    onMoveToNextWeek: () => void;
+    /** Moves the task to today (menu only; no key is free for it). */
+    onMoveToToday: () => void;
+    /** Opens a date picker; picking a day moves the task there. */
+    onPickDate: () => void;
     /** Not offered for a task that is already in Someday. */
     onMoveToSomeday: () => void;
     onDuplicate: () => void;
@@ -136,10 +138,12 @@ const DROPDOWN_MENU_PARTS: MenuParts = {
     SubContent: DropdownMenuSubContent,
 };
 
-/** The menu's items that have a planner shortcut. */
+/**
+ * The menu's items that have a planner shortcut. `task.nextDay` (>) and
+ * `task.nextWeek` (w) moved to the keyboard only: the menu offers "Today"
+ * and "Pick a date" instead, and those have no keys.
+ */
 const MENU_SHORTCUTS: ShortcutId[] = [
-    'task.nextDay',
-    'task.nextWeek',
     'task.someday',
     'task.duplicate',
     'task.delete',
@@ -209,8 +213,8 @@ function TaskMenuItems({
     onOpenCard,
     onCopyText,
     onColorChange,
-    onMoveToTomorrow,
-    onMoveToNextWeek,
+    onMoveToToday,
+    onPickDate,
     onMoveToSomeday,
     onDuplicate,
     onDelete,
@@ -278,15 +282,15 @@ function TaskMenuItems({
                 <ClipboardCopy />
             </Item>
             <Separator />
-            <Item data-shortcut="task.nextDay" onSelect={onMoveToTomorrow}>
-                {t('planner.tomorrow')}
-                {hint('task.nextDay')}
-                <ArrowRight className="rtl:rotate-180" />
+            <Item onSelect={onMoveToToday}>
+                {t('planner.today')}
+                <Shortcut>{null}</Shortcut>
+                <CalendarCheck />
             </Item>
-            <Item data-shortcut="task.nextWeek" onSelect={onMoveToNextWeek}>
-                {t('planner.nextWeekMove')}
-                {hint('task.nextWeek')}
-                <CalendarArrowUp />
+            <Item onSelect={onPickDate}>
+                {t('planner.pickDate')}
+                <Shortcut>{null}</Shortcut>
+                <CalendarDays />
             </Item>
             {task.date !== null && (
                 <Item data-shortcut="task.someday" onSelect={onMoveToSomeday}>

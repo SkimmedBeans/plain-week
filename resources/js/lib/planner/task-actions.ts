@@ -71,6 +71,11 @@ export function nextWeekMove(task: Task): MoveTaskInput {
     return { date: nextWeekOf(task.date, toDateKey(new Date())) };
 }
 
+/** To today. The day is read when the action runs, like the other moves. */
+export function todayMove(): MoveTaskInput {
+    return { date: toDateKey(new Date()) };
+}
+
 /** To the end of the base Someday list (column 0). */
 export const SOMEDAY_MOVE: MoveTaskInput = { date: null, list: 0 };
 
