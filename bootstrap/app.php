@@ -49,7 +49,11 @@ return Application::configure(basePath: dirname(__DIR__))
             SetLocale::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
-            AddLinkHeadersForPreloadedAssets::class,
+            // Only the first few: the page's own <link rel="modulepreload">
+            // tags list every chunk, and a header listing all of them (30+)
+            // outgrows a reverse proxy's default 4 KB header buffer, which
+            // nginx answers with a 502 ("upstream sent too big header").
+            AddLinkHeadersForPreloadedAssets::using(8),
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
