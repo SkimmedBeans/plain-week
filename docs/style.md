@@ -360,6 +360,12 @@ Row behaviour:
   the text button, and "Add sub-tasks" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
   presses and keys to itself, so selecting text never drags the task or opens the task menu. A web link in the text is
   underlined and a click on it opens the link in a new tab instead, since a button cannot hold an anchor.
+- Week / Lists (F30, per device `plain-week.view`): a `ToggleGroup` above the grid. Week renders the days and the
+  base Someday in the window-shape grid; Lists renders the expanded named lists in
+  `lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]` rows that share the window height (stacked on phones), with an
+  empty-state line when there are none. Collapsed chips follow the view (base Someday in Week, named lists in Lists).
+  The task menu's "Move to list" submenu (Someday and every shown named list but the task's own) moves a task to a list
+  that is not on screen; its toast names the list.
 - Search (F33, `search-dialog.tsx`, `lib/planner/search.ts`): the header's search button or `/` opens a dialog whose
   field searches the local database on every keystroke: every word must appear in the task's text, notes or sub-tasks
   (case and accents ignored), across days, Someday and all named lists (collapsed and archived too). Open tasks first,

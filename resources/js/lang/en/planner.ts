@@ -156,6 +156,12 @@ export const planner = {
     'planner.deleteListDescription': 'Its tasks will move to Someday.',
     'planner.listDeleteFailed': 'Could not delete the list.',
     'planner.addSubtasks': 'Add sub-tasks',
+    'planner.view': 'View',
+    'planner.viewWeek': 'Week',
+    'planner.viewLists': 'Lists',
+    'planner.noLists':
+        'No lists yet. Create one with the + on Someday in the Week view.',
+    'planner.moveToList': 'Move to list',
     'planner.addPicture': 'Add picture',
     'planner.removePicture': 'Remove picture',
     'planner.notePicture': 'Picture {index} in {name}',

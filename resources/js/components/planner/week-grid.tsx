@@ -8,11 +8,14 @@ import { SomedaySection } from '@/components/planner/someday-section';
 import {
     useCollapsedLists,
     useCompactDensity,
+    usePlannerView,
 } from '@/hooks/use-carry-over-setting';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { t } from '@/lib/i18n';
 import { useScrollToToday } from '@/hooks/use-scroll-to-today';
 import { useSomedayLists, useWeekTasks } from '@/hooks/use-tasks';
 import { weekDateKeys } from '@/lib/db/dates';
-import { collapseKey } from '@/lib/planner/device-settings';
+import { collapseKey, plannerView } from '@/lib/planner/device-settings';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -69,54 +72,101 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     const someday: CollapsibleList = { column: 0, name: 'Someday' };
     const isCollapsed = (list: CollapsibleList) =>
         collapsed.includes(collapseKey(list));
+    const view = usePlannerView();
+    const showWeek = view === 'week';
+    const listsShown = (namedLists ?? []).filter((list) => !isCollapsed(list));
+    const chips = (
+        showWeek ? (isCollapsed(someday) ? [someday] : []) : (namedLists ?? [])
+    ).filter(isCollapsed);
 
     return (
         <>
-            <div
-                ref={grid}
-                data-density={compact ? 'compact' : undefined}
-                className={cn(
-                    'grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:gap-y-8',
-                    'lg:week-wide:auto-rows-[minmax(10rem,2fr)] lg:week-wide:grid-cols-5 lg:week-wide:grid-rows-[minmax(14rem,3fr)_minmax(10rem,2fr)]',
-                    'lg:week-square:auto-rows-[minmax(12rem,1fr)] lg:week-square:grid-cols-4 lg:week-square:grid-rows-[repeat(2,minmax(12rem,1fr))]',
-                    'lg:week-tall:auto-rows-[minmax(12rem,1fr)] lg:week-tall:grid-cols-2 lg:week-tall:grid-rows-[repeat(4,minmax(12rem,1fr))]',
-                )}
+            {/* Week: the days and Someday. Lists: the named lists with the
+            whole screen (F30). Remembered per device. */}
+            <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                value={view}
+                aria-label={t('planner.view')}
+                onValueChange={(value) => {
+                    if (value === 'week' || value === 'lists') {
+                        plannerView.set(value);
+                    }
+                }}
+                className="mb-6 shrink-0 self-start lg:mb-5"
             >
-                {days.map((date) => (
-                    <DayColumn
-                        key={date}
-                        date={date}
-                        tasks={tasks?.[date]}
-                        isToday={date === today}
-                        weekStart={weekStart}
-                        onOpenTask={onOpenTask}
-                    />
-                ))}
-                {!isCollapsed(someday) && (
-                    <SomedaySection
-                        list={someday}
-                        weekStart={weekStart}
-                        today={today}
-                        onOpenTask={onOpenTask}
-                    />
-                )}
-                {namedLists?.map((list, index) =>
-                    isCollapsed(list) ? null : (
+                <ToggleGroupItem value="week" data-test="view-week">
+                    {t('planner.viewWeek')}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="lists" data-test="view-lists">
+                    {t('planner.viewLists')}
+                </ToggleGroupItem>
+            </ToggleGroup>
+            {!showWeek && (namedLists ?? []).length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                    {t('planner.noLists')}
+                </p>
+            )}
+            {showWeek ? (
+                <div
+                    ref={grid}
+                    data-density={compact ? 'compact' : undefined}
+                    className={cn(
+                        'grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:gap-y-8',
+                        'lg:week-wide:auto-rows-[minmax(10rem,2fr)] lg:week-wide:grid-cols-5 lg:week-wide:grid-rows-[minmax(14rem,3fr)_minmax(10rem,2fr)]',
+                        'lg:week-square:auto-rows-[minmax(12rem,1fr)] lg:week-square:grid-cols-4 lg:week-square:grid-rows-[repeat(2,minmax(12rem,1fr))]',
+                        'lg:week-tall:auto-rows-[minmax(12rem,1fr)] lg:week-tall:grid-cols-2 lg:week-tall:grid-rows-[repeat(4,minmax(12rem,1fr))]',
+                    )}
+                >
+                    {days.map((date) => (
+                        <DayColumn
+                            key={date}
+                            date={date}
+                            tasks={tasks?.[date]}
+                            isToday={date === today}
+                            weekStart={weekStart}
+                            onOpenTask={onOpenTask}
+                        />
+                    ))}
+                    {!isCollapsed(someday) && (
                         <SomedaySection
-                            key={list.id}
-                            list={list}
+                            list={someday}
                             weekStart={weekStart}
                             today={today}
                             onOpenTask={onOpenTask}
-                            index={index}
-                            canMoveEarlier={index > 0}
-                            canMoveLater={index < namedLists.length - 1}
                         />
-                    ),
-                )}
-            </div>
+                    )}
+                </div>
+            ) : (
+                <div
+                    ref={grid}
+                    data-density={compact ? 'compact' : undefined}
+                    data-lists-view
+                    className="grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:auto-rows-[minmax(14rem,1fr)] lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] lg:gap-y-8"
+                >
+                    {listsShown.map((list) => {
+                        const index = (namedLists ?? []).indexOf(list);
+
+                        return (
+                            <SomedaySection
+                                key={list.id}
+                                list={list}
+                                weekStart={weekStart}
+                                today={today}
+                                onOpenTask={onOpenTask}
+                                index={index}
+                                canMoveEarlier={index > 0}
+                                canMoveLater={
+                                    index < (namedLists ?? []).length - 1
+                                }
+                            />
+                        );
+                    })}
+                </div>
+            )}
             <CollapsedLists
-                lists={[someday, ...(namedLists ?? [])].filter(isCollapsed)}
+                lists={chips}
                 weekStart={weekStart}
                 today={today}
                 onOpenTask={onOpenTask}

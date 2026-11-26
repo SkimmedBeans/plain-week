@@ -21,6 +21,7 @@ import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { TaskList } from '@/components/planner/task-list';
 import { Toaster } from '@/components/ui/sonner';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
+import { createList } from '@/lib/db/lists';
 import { createTask, listTasksIn } from '@/lib/db/tasks';
 import { toastAction } from '@/test/toasts';
 import type { TaskPlacement } from '@/lib/db/tasks';
@@ -88,6 +89,24 @@ afterEach(() => {
 });
 
 describe('TaskContextMenu', () => {
+    it('moves the task to a named list from Move to list', async () => {
+        const shed = await createList('Shed');
+        const { task, button } = await setup();
+
+        await openMenu(button);
+        fireEvent.click(
+            await screen.findByRole('menuitem', { name: 'Move to list' }),
+        );
+        await select('Shed');
+
+        await waitFor(async () =>
+            expect(await stored(task.id)).toMatchObject({
+                date: null,
+                someday_column: shed.column,
+            }),
+        );
+    });
+
     it('opens on right click with the colors and actions, without opening the task', async () => {
         const { button, onOpenTask } = await setup();
 

@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.18] - 2026-11-26
+
+### Added
+
+- **Week and Lists views.** A Week / Lists switch above the planner. Week shows the days and Someday; Lists gives your
+  named lists the whole screen (as many columns as fit on desktop, stacked on phones). The planner opens on Week, and
+  each device remembers the last choice.
+- **Move to list.** The task ⋮ and right-click menu moves a task to Someday or any named list, so a task can go between
+  a day and a list that is not on screen. "Tomorrow" and "Next week" move a list's task onto the week.
+
+### Changed
+
+- Named lists no longer show in the Week view; open Lists to see them.
+
 ## [0.4.17] - 2026-11-26
 
 ### Added
@@ -730,7 +744,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.17...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.18...HEAD
+[0.4.18]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.17...v0.4.18
 [0.4.17]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.16...v0.4.17
 [0.4.16]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.15...v0.4.16
 [0.4.15]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.14...v0.4.15

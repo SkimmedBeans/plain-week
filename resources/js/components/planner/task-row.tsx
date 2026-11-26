@@ -482,6 +482,12 @@ export function TaskRow({
         onMoveToTomorrow: () => moveWithUndo(task.id, tomorrowMove(task)),
         onMoveToNextWeek: () => moveWithUndo(task.id, nextWeekMove(task)),
         onMoveToSomeday: () => moveWithUndo(task.id, SOMEDAY_MOVE),
+        onMoveToList: (column, listName) =>
+            moveWithUndo(
+                task.id,
+                { date: null, list: column },
+                column === 0 ? undefined : listName,
+            ),
         onDuplicate: () => duplicateWithToast(task.id),
         onDelete: () =>
             void scoped('delete', (scope) => deleteWithUndo(task.id, scope)),

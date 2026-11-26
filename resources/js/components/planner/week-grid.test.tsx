@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { WeekGrid } from '@/components/planner/week-grid';
-import { wipeLocalDatabase } from '@/lib/db/database';
+import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { createList, setListArchived } from '@/lib/db/lists';
 import { createTask } from '@/lib/db/tasks';
 
@@ -63,9 +63,10 @@ describe('WeekGrid', () => {
         }
     });
 
-    it('renders a column for every named list, after the base list, in column order', async () => {
+    it('shows the named lists in the Lists view, in column order, and the week in Week', async () => {
         await createList('Ideas');
         await createList('Health');
+        const user = userEvent.setup();
 
         render(
             <ScopePromptProvider>
@@ -77,26 +78,33 @@ describe('WeekGrid', () => {
             </ScopePromptProvider>,
         );
 
+        // Week: the days and Someday only (F30).
         await waitFor(() =>
-            expect(screen.getAllByRole('region')).toHaveLength(10),
+            expect(screen.getAllByRole('region')).toHaveLength(8),
         );
+
+        await user.click(screen.getByRole('radio', { name: 'Lists' }));
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(2),
+        );
+        expect(localStorage.getItem('plain-week.view')).toBe('lists');
 
         const tail = screen
             .getAllByRole('region')
-            .slice(7)
             .map(
                 (section) =>
                     within(section)
                         .getByRole('heading', { level: 2 })
                         .querySelector('[id]')?.textContent,
             );
-        expect(tail).toEqual(['Someday', 'Ideas', 'Health']);
+        expect(tail).toEqual(['Ideas', 'Health']);
     });
 
     it('collapses a list into a chip with its open count, and expands it again', async () => {
         const list = await createList('Shed');
         await createTask({ text: 'Paint', date: null, list: list.column });
         await createTask({ text: 'Fix door', date: null, list: list.column });
+        localStorage.setItem('plain-week.view', 'lists');
         const user = userEvent.setup();
 
         render(
@@ -117,7 +125,7 @@ describe('WeekGrid', () => {
 
         // The column leaves the grid; a chip says what is inside.
         await waitFor(() =>
-            expect(screen.getAllByRole('region')).toHaveLength(8),
+            expect(screen.queryAllByRole('region')).toHaveLength(0),
         );
         const chip = await screen.findByRole('button', {
             name: 'Shed, 2 open',
@@ -131,7 +139,7 @@ describe('WeekGrid', () => {
             screen.getByRole('button', { name: 'Expand the Shed list' }),
         );
         await waitFor(() =>
-            expect(screen.getAllByRole('region')).toHaveLength(9),
+            expect(screen.getAllByRole('region')).toHaveLength(1),
         );
         expect(document.querySelector('[data-collapsed-lists]')).toBeNull();
     });
@@ -177,10 +185,8 @@ describe('WeekGrid', () => {
                 name: 'Restore the Old project list',
             }),
         );
-        await waitFor(() =>
-            expect(
-                screen.getAllByRole('region', { hidden: true }),
-            ).toHaveLength(9),
+        await waitFor(async () =>
+            expect((await db.someday_lists.get(list.id))!.archived).toBe(false),
         );
     });
 });

@@ -81,13 +81,15 @@ export const SOMEDAY_MOVE: MoveTaskInput = { date: null, list: 0 };
 export function moveWithUndo(
     id: string,
     move: MoveTaskInput,
+    /** The named list's name, when `move` goes to one. */
+    name?: string,
 ): Promise<PlannerTask | undefined> {
     const undo = createUndoLog();
 
     return settle(
         moveTask(id, move, { undo }).then((moved) => {
             toastWithUndo(
-                t('planner.movedTo', { place: placementLabel(move) }),
+                t('planner.movedTo', { place: placementLabel(move, name) }),
                 () =>
                     saveLocally(undoChanges(undo), {
                         error: t('planner.undoMoveFailed'),
