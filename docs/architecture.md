@@ -861,7 +861,9 @@ The data layer only helps offline if the app itself loads offline. A service wor
 - **Deploys.** All worker versions share the precache storage until the new one activates, and built files the page
   loads outside the precache are cached at runtime, so the cached shell finds the assets it references. A new worker
   waits; the page shows a Sonner toast ("Update available" with "Reload") that activates it (`SKIP_WAITING`) and
-  reloads. Open tabs check for a new worker every hour while online. Other tabs still running the old version behave as
+  reloads, and `lib/pwa/auto-update.ts` applies it on its own: at once within 10 s of the page opening, otherwise the
+  next time the page is hidden (an old worker left in control could serve the old app, which cannot open the newer
+  Dexie schema, so lists looked empty). Open tabs check for a new worker every hour while online. Other tabs still running the old version behave as
   on any deploy: their next Inertia visit gets a `409` and reloads.
 - **Registration** happens in `resources/js/lib/pwa/register.ts`, called from `app.tsx`. Under the Vite dev server it
   instead unregisters any worker left over from testing a production build on the same origin.

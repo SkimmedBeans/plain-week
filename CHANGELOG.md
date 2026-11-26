@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.30] - 2026-11-26
+
+### Fixed
+
+- **Updates now apply on their own.** A phone that kept running an older version of the app (for example after the
+  server was unreachable for a while) could show Someday and named lists empty or missing after a reload, because the
+  old app cannot read the newer local data. A new version now takes over as soon as the app opens, or the next time it
+  is put in the background, instead of waiting for "Update available" to be tapped.
+
 ## [0.4.29] - 2026-11-26
 
 ### Added
@@ -872,7 +881,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.29...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.30...HEAD
+[0.4.30]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.29...v0.4.30
 [0.4.29]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.28...v0.4.29
 [0.4.28]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.27...v0.4.28
 [0.4.27]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.26...v0.4.27

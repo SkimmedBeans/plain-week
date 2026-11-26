@@ -3,13 +3,15 @@ import { registerSW } from 'virtual:pwa-register';
 import { notifyOfflineVisits } from '@/lib/pwa/offline-visits';
 import { REFRESH_SHELL_MESSAGE } from '@/lib/pwa/request-matchers';
 import { createSessionChangeDetector } from '@/lib/pwa/session-change';
+import { applyUpdateWhenSafe } from '@/lib/pwa/auto-update';
 import { showUpdateToast } from '@/lib/pwa/update-toast';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
- * Registers the service worker (production builds only) and prompts when a
- * new version is waiting.
+ * Registers the service worker (production builds only). A waiting new
+ * version is applied on its own (`applyUpdateWhenSafe`) and offered in a
+ * toast meanwhile.
  */
 export function registerServiceWorker(): void {
     if (import.meta.env.DEV) {
@@ -25,7 +27,11 @@ export function registerServiceWorker(): void {
     }
 
     const updateServiceWorker = registerSW({
-        onNeedRefresh: () => showUpdateToast(() => updateServiceWorker()),
+        onNeedRefresh: () => {
+            const update = () => updateServiceWorker();
+            showUpdateToast(update);
+            applyUpdateWhenSafe(update);
+        },
         onRegisteredSW: (_url, registration) => {
             if (!registration) {
                 return;
