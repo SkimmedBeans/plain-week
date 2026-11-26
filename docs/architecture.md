@@ -98,13 +98,22 @@ is list number `0`, always shown, named "Someday", and it cannot be renamed or d
 | `name`                                     | string (1–60 chars)         |                                                                                                                 |
 | `color`                                    | task color                  | Title palette; defaults to `none` for missing local data or newly synced lists                                  |
 | `note`                                     | string \| `null`            | A list converted to a note (F24): its free text, at most 20,000 chars; `null` is a task list                    |
+| `images`                                   | string[] (UUIDs, ≤ 20)      | A note's pictures in order (F25); bytes via `POST /sync/images`, `GET /sync/images/{id}`; defaults to `[]`      |
 | `archived`                                 | boolean                     | Archived (F31): hidden from the planner, tasks kept; defaults to `false`                                        |
 | `column`                                   | `integer ≥ 3`               | The `someday_column` of the tasks in the list; `0`–`2` are reserved (base list + legacy)                        |
 | `position`                                 | string                      | Fractional index key; lists display in `position` order; a menu move or a drag reassigns it                     |
 | `created_at` / `updated_at` / `deleted_at` | ISO-8601 string \| `null`   | Same format and source as tasks; `updated_at` drives last-write-wins, `deleted_at` is the soft-delete tombstone |
 
 Server-only column: `user_id` (foreign key, cascades on user delete).
-List pushes may omit `color`, `archived` and `note` for older clients. An omitted field preserves the stored value. Pulls always
+
+Note pictures (F25) are files, not sync records. The client downscales a picture (longest side 1600 px, WebP or
+JPEG), keeps it in the Dexie `note_images` table (`{ id, blob, uploaded }`, `uploaded` 0 until the server has it) and
+lists its id on the note. `lib/notes/images.ts` uploads pending ones (`POST /sync/images`, multipart `id` + `image`,
+image types only, at most 4 MB; a retried id answers 200) when a picture is added, a note is shown or the browser comes
+back online, and fetches missing ones (`GET /sync/images/{id}`, owner only, immutable cache) when a note shows them.
+The server keeps them on the local disk at `note-images/{user_id}/{id}` with a `note_images` row; deleting the
+account deletes the folder. Exports carry the ids, not the bytes.
+List pushes may omit `color`, `archived`, `note` and `images` for older clients. An omitted field preserves the stored value. Pulls always
 include both.
 
 A task's list is its existing `someday_column`: a Someday task (`date` is `null`) with `someday_column` `N` belongs to

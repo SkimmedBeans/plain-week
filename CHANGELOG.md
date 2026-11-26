@@ -7,6 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.17] - 2026-11-26
+
+### Added
+
+- **Pictures in notes.** A note (a list converted to a note) has "Add picture" for a photo or image file. Pictures are
+  scaled down to at most 1600 pixels on their longest side, show at once from this device (offline too), and, when you
+  are signed in, upload to your server in the background so your other devices show them. Up to 20 per note.
+  Exports keep which pictures a note has but not the pictures themselves, so keep the storage volume backup in
+  DEPLOY.md for them.
+
+### Upgrade notes
+
+- Adds the `note_images` table and the `someday_lists.images` column; pictures are stored under
+  `storage/app/private/note-images`, on the `plainweek-storage` volume. The container runs the migrations on start.
+
 ## [0.4.16] - 2026-11-26
 
 ### Fixed
@@ -715,7 +730,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.16...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.17...HEAD
+[0.4.17]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.16...v0.4.17
 [0.4.16]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.15...v0.4.16
 [0.4.15]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.14...v0.4.15
 [0.4.14]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.13...v0.4.14
