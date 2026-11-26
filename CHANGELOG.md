@@ -5,6 +5,16 @@ All notable changes to Plain Week are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.25] - 2026-11-26
+
+### Added
+
+- **`#label` in a new task.** Type `#` and a label anywhere in a new task's title ("Gym #pink now") to give it that
+  color; the color id always works (`#green`), and so does a renamed label's name (`#deep-work`). Only the first label
+  applies, and a `#word` that names no label stays in the text. While typing, the row marks the date, time and label it
+  recognized in place, previews them in small chips under the row, and suggests labels as you type `#` (↑ ↓ to move,
+  Enter or Tab to pick, Esc to close).
+
 ## [0.4.24] - 2026-11-26
 
 ### Added
@@ -812,6 +822,7 @@ between devices.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
 [Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.23...HEAD
+[0.4.25]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.24...v0.4.25
 [0.4.24]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.23...v0.4.24
 [0.4.23]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.22...v0.4.23
 [0.4.22]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.21...v0.4.22

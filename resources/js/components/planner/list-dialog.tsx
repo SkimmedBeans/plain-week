@@ -51,7 +51,7 @@ import {
     formatWeekday,
 } from '@/lib/planner/format';
 import { rowKey } from '@/lib/planner/repeat';
-import { parseNewTaskInput } from '@/lib/planner/smart-input';
+import type { ParsedNewTask } from '@/lib/planner/smart-input';
 import { ListNote } from '@/components/planner/list-note';
 import { requestAddPicture } from '@/lib/notes/picture-requests';
 import { copyListTasks, copyWithToast } from '@/lib/planner/clipboard';
@@ -443,16 +443,15 @@ function ListCardTaskList({
         }
     }, [taskCount]);
 
-    const handleSubmit = (input: string) => {
-        const { text, date, time } = parseNewTaskInput(
-            input,
-            toDateKey(new Date()),
-        );
+    const handleSubmit = (
+        { text, date, time, color }: ParsedNewTask,
+        input: string,
+    ) => {
         const target = date === null ? placement : { ...placement, date };
         // A task dated elsewhere leaves this list: say where it went.
         const leavesList = date !== null && date !== placement.date;
 
-        createTask({ ...target, text, time })
+        createTask({ ...target, text, time, ...(color && { color }) })
             .then(() => {
                 if (leavesList) {
                     toast(
