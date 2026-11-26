@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.22] - 2026-11-26
+
+### Fixed
+
+- Behind nginx (including Nginx Proxy Manager) the planner returned 502 Bad Gateway since 0.4.19: the preload `Link`
+  header listed every script chunk and outgrew nginx's default 4 KB header buffer. It now lists only the first eight;
+  the page itself still preloads the rest.
+
 ## [0.4.21] - 2026-11-26
 
 ### Added
@@ -786,7 +794,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.21...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.22...HEAD
+[0.4.22]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.21...v0.4.22
 [0.4.21]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.20...v0.4.21
 [0.4.20]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.19...v0.4.20
 [0.4.19]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.18...v0.4.19
