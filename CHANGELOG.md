@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.34] - 2026-11-26
+
+### Changed
+
+- **Collapsed lists on phones (F52).** In the Lists and Notes views, collapsed lists now stack as full-width rows at
+  the top of the view — directly under the Add / Expand all bar, above the grid — instead of wrapping into chips
+  after the grid. Each row keeps the list's name, open-task count and title color; tapping it still opens the list
+  card and its chevron still expands it. Desktop keeps the wrapping chip row.
+
 ## [0.4.33] - 2026-11-26
 
 ### Changed
@@ -904,7 +913,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.33...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.34...HEAD
+[0.4.34]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.33...v0.4.34
 [0.4.33]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.32...v0.4.33
 [0.4.32]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.31...v0.4.32
 [0.4.31]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.30...v0.4.31

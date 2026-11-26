@@ -400,8 +400,10 @@ Row behaviour:
 - Someday and named list headers have a chevron that collapses the list (F26); the open-task count is on collapsed
   chips only (F44). Lists and Notes have Collapse all / Expand all next to Add (F45, `setListsCollapsed`). Collapsed lists (per device, `plain-week.collapsed-lists` in `localStorage`, see
   `lib/planner/device-settings.ts`) leave the grid and show as chips after it (`collapsed-lists.tsx`): name and open
-  count in the title color, the name opening the list card, the chevron expanding it again. A collapsed list renders no
-  task list, so the keyboard cursor skips it.
+  count in the title color, the name opening the list card, the chevron expanding it again. On phones the Lists and
+  Notes views stack the chips as one full-width row per list, directly under the Add / Expand all bar and above the
+  grid (`max-lg:` classes in `week-grid.tsx` and `collapsed-lists.tsx`, F52); desktop keeps the wrapping chip row
+  after the grid. A collapsed list renders no task list, so the keyboard cursor skips it.
 - A list that scrolls inside its desktop cell gets a 2rem `mask-image` fade at the bottom while more is below and at the
   top once scrolled (`data-overflow-top` / `data-overflow-bottom`, F28). A mask only paints, so taps and drops reach the
   rows under it.

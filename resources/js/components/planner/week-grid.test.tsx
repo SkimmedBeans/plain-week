@@ -254,4 +254,52 @@ describe('WeekGrid', () => {
             expect(screen.getAllByRole('region')).toHaveLength(2),
         );
     });
+
+    it('stacks collapsed lists as full-width rows under the Add bar on phones (F52)', async () => {
+        await createList('Shed');
+        await createList('Homelab');
+        localStorage.setItem('plain-week.view', 'lists');
+        const user = userEvent.setup();
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(2),
+        );
+        await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+        await waitFor(() =>
+            expect(screen.queryAllByRole('region')).toHaveLength(0),
+        );
+
+        // Below `lg` one full-width row per list, stacked (the row switches
+        // to a column), with no top margin: the Add / Expand all bar's own
+        // margin is the only space above.
+        const rows = document.querySelector('[data-collapsed-lists]');
+        expect(rows).not.toBeNull();
+        expect(rows!.className).toContain('max-lg:flex-col');
+        expect(rows!.className).toContain('max-lg:order-1');
+        expect(rows!.className).toContain('max-lg:mb-10');
+        expect(rows!.className).not.toContain('mt-10');
+        expect(rows!.querySelectorAll('li')).toHaveLength(2);
+        for (const row of rows!.querySelectorAll('li')) {
+            expect(row.className).toContain('max-lg:w-full');
+        }
+        // The (here empty) grid sits below the rows on phones; desktop keeps
+        // the chip row after the grid.
+        expect(
+            document.querySelector('[data-lists-view]')!.className,
+        ).toContain('max-lg:order-2');
+
+        // The row still opens the list card by tap.
+        await user.click(screen.getByRole('button', { name: 'Shed, 0 open' }));
+        await screen.findByRole('dialog');
+    });
 });

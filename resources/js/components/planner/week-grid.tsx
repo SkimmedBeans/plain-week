@@ -168,12 +168,14 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     )}
                 </div>
             ) : (
+                // Phones (F52): the collapsed rows sit above the grid,
+                // under the Add / Expand all bar.
                 <div
                     ref={grid}
                     data-density={compact ? 'compact' : undefined}
                     data-stripes={stripes || undefined}
                     data-lists-view
-                    className="grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:auto-rows-[minmax(14rem,1fr)] lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] lg:gap-y-8"
+                    className="grid grid-cols-1 gap-x-6 gap-y-10 max-lg:order-2 lg:min-h-0 lg:flex-1 lg:auto-rows-[minmax(14rem,1fr)] lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] lg:gap-y-8"
                 >
                     {listsShown.map((list) => {
                         const index = (namedLists ?? []).indexOf(list);
@@ -200,6 +202,14 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 weekStart={weekStart}
                 today={today}
                 onOpenTask={onOpenTask}
+                className={
+                    showWeek
+                        ? // Week: after the day grid, on every screen.
+                          'mt-10 lg:mt-6'
+                        : // Lists and Notes: directly under the Add / Expand all
+                          // bar on phones (F52), after the grid on desktop.
+                          'max-lg:order-1 max-lg:mb-10 lg:mt-6'
+                }
             />
         </>
     );
