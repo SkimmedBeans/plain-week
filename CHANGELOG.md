@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.33] - 2026-11-26
+
+### Changed
+
+- **Today / Pick a date in the task menu.** The ⋮ menu on a task (day or Someday) now offers **Today** (moves it to
+  today) and **Pick a date** (opens a date picker, then moves it to the chosen day) instead of "Tomorrow" and "Next
+  week". The `>` (next day) and `w` (next week) keyboard moves are unchanged.
+
 ## [0.4.32] - 2026-11-26
 
 ### Changed
@@ -896,7 +904,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.32...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.33...HEAD
+[0.4.33]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.32...v0.4.33
 [0.4.32]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.31...v0.4.32
 [0.4.31]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.30...v0.4.31
 [0.4.30]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.29...v0.4.30
