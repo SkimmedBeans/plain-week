@@ -279,3 +279,12 @@
     -webkit-line-clamp: 2;
     line-clamp: 2;
 }
+
+/*
+ * Striped rows (F36, F37; Settings > Preferences, on by default): every
+ * other task row takes its list's `--stripe` (a muted wash of the list's
+ * title colour, grey on days, the today colour on today).
+ */
+[data-stripes] [data-task-id][data-stripe] {
+    background-color: var(--stripe);
+}

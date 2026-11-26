@@ -3,8 +3,11 @@ import {
     collapsedLists,
     compactDensity,
     plannerView,
+    stripedRows,
+    todayColor,
 } from '@/lib/planner/device-settings';
 import type { PlannerView } from '@/lib/planner/device-settings';
+import type { TaskColor } from '@/lib/db/types';
 import { carryOverSetting } from '@/lib/planner/preferences';
 
 /** Whether "Move unfinished tasks to today" is on, on this device. */
@@ -40,5 +43,23 @@ export function usePlannerView(): PlannerView {
         plannerView.subscribe,
         plannerView.get,
         plannerView.get,
+    );
+}
+
+/** Whether striped rows are on, on this device (F36, F37). */
+export function useStripedRows(): boolean {
+    return useSyncExternalStore(
+        stripedRows.subscribe,
+        stripedRows.get,
+        stripedRows.get,
+    );
+}
+
+/** Today's colour on this device (F37). */
+export function useTodayColor(): TaskColor {
+    return useSyncExternalStore(
+        todayColor.subscribe,
+        todayColor.get,
+        todayColor.get,
     );
 }

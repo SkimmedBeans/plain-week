@@ -8,6 +8,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import type { CSSProperties } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import {
     SortableContext,
@@ -35,7 +36,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useStripedRows } from '@/hooks/use-carry-over-setting';
 import { useSomedayLists } from '@/hooks/use-tasks';
+import { stripeColor } from '@/lib/planner/device-settings';
 import { toDateKey } from '@/lib/db/dates';
 import { deleteList, renameList, LIST_NAME_MAX } from '@/lib/db/lists';
 import { createTask, toggleDone, type TaskPlacement } from '@/lib/db/tasks';
@@ -135,6 +138,7 @@ function ListDialogSession({
     const open = !isNamed || (known && list !== undefined);
     const contentRef = useRef<HTMLDivElement>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const stripes = useStripedRows();
 
     // Deleted here or on another device (through sync): nothing left to show.
     useEffect(() => {
@@ -221,6 +225,17 @@ function ListDialogSession({
                         header.focus();
                     }
                 }}
+                data-stripes={stripes || undefined}
+                style={
+                    {
+                        '--stripe': stripeColor(
+                            identity.kind === 'day' &&
+                                identity.date === toDateKey(new Date())
+                                ? 'today'
+                                : color,
+                        ),
+                    } as CSSProperties
+                }
                 className="top-4 max-h-[calc(100dvh-2rem)] translate-y-0 gap-4 overflow-y-auto bg-secondary p-4 text-secondary-foreground sm:top-16 sm:max-h-[calc(100dvh-8rem)] sm:max-w-md sm:p-6"
             >
                 <DialogTitle className="sr-only">{srTitle}</DialogTitle>
@@ -488,6 +503,7 @@ function ListCardTaskList({
                         <TaskRow
                             task={task}
                             isCursor={false}
+                            stripe={index % 2 === 1}
                             placement={placement}
                             tasks={listTasks}
                             name={name}

@@ -11,6 +11,7 @@ import {
     useCollapsedLists,
     useCompactDensity,
     usePlannerView,
+    useStripedRows,
 } from '@/hooks/use-carry-over-setting';
 import { t } from '@/lib/i18n';
 import { useScrollToToday } from '@/hooks/use-scroll-to-today';
@@ -70,6 +71,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     const namedLists = lists?.filter((list) => !list.archived);
     const collapsed = useCollapsedLists();
     const compact = useCompactDensity();
+    const stripes = useStripedRows();
     const someday: CollapsibleList = { column: 0, name: 'Someday' };
     const isCollapsed = (list: CollapsibleList) =>
         collapsed.includes(collapseKey(list));
@@ -110,6 +112,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 <div
                     ref={grid}
                     data-density={compact ? 'compact' : undefined}
+                    data-stripes={stripes || undefined}
                     className={cn(
                         'grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:gap-y-8',
                         'lg:week-wide:auto-rows-[minmax(10rem,2fr)] lg:week-wide:grid-cols-5 lg:week-wide:grid-rows-[minmax(14rem,3fr)_minmax(10rem,2fr)]',
@@ -140,6 +143,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 <div
                     ref={grid}
                     data-density={compact ? 'compact' : undefined}
+                    data-stripes={stripes || undefined}
                     data-lists-view
                     className="grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:auto-rows-[minmax(14rem,1fr)] lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] lg:gap-y-8"
                 >

@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
+import { useTodayColor } from '@/hooks/use-carry-over-setting';
+import { stripeColor, todayAccentStyle } from '@/lib/planner/device-settings';
 import { TaskList } from '@/components/planner/task-list';
 import {
     ListDialog,
@@ -45,6 +48,7 @@ export function DayColumn({
     const [cardIdentity, setCardIdentity] = useState<ListCardIdentity | null>(
         null,
     );
+    const todayColorValue = useTodayColor();
 
     const newTaskLabel = t('planner.newTaskForDay', {
         weekday,
@@ -54,6 +58,12 @@ export function DayColumn({
     return (
         <section
             aria-label={t('planner.dayLabel', { weekday, day: dayLabel })}
+            style={
+                {
+                    '--stripe': stripeColor(isToday ? 'today' : 'none'),
+                    ...(isToday ? todayAccentStyle(todayColorValue) : {}),
+                } as CSSProperties
+            }
             aria-current={isToday ? 'date' : undefined}
             className={cn(
                 'flex min-h-0 min-w-0 flex-col',

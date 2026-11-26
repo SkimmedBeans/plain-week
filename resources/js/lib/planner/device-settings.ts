@@ -1,3 +1,5 @@
+import type { TaskColor } from '@/lib/db/types';
+import { isTaskColor } from '@/lib/planner/task-colors';
 import { readStorage, writeStorage } from '@/lib/storage';
 
 /**
@@ -111,3 +113,48 @@ export const plannerView = deviceSetting<PlannerView>(
     (raw) => (isPlannerView(raw) ? raw : 'week'),
     (view) => (view === 'week' ? null : view),
 );
+
+/**
+ * Striped rows (F36, F37): every other task row tinted, a muted wash of the
+ * list's title colour (grey on days and uncoloured lists). On unless turned
+ * off; only "off" is stored.
+ */
+export const stripedRows = deviceSetting<boolean>(
+    'plain-week.stripes',
+    (raw) => raw !== 'off',
+    (on) => (on ? null : 'off'),
+);
+
+/** Today's colour (F37): a task palette colour, or 'none' for the default. */
+export const todayColor = deviceSetting<TaskColor>(
+    'plain-week.today-color',
+    (raw) => (raw !== null && isTaskColor(raw) ? raw : 'none'),
+    (color) => (color === 'none' ? null : color),
+);
+
+/**
+ * The CSS of a list's row stripe (F36): a muted wash of its colour, or the
+ * neutral grey. Set as `--stripe` on the list.
+ */
+export function stripeColor(color: TaskColor | 'today'): string {
+    if (color === 'today') {
+        return 'color-mix(in oklab, var(--planner-accent) 12%, transparent)';
+    }
+
+    return color === 'none'
+        ? 'color-mix(in oklab, var(--muted) 75%, transparent)'
+        : `color-mix(in oklab, var(--task-${color}) 16%, transparent)`;
+}
+
+/**
+ * Overrides of the planner accent for today's column (F37), or none for the
+ * default colour.
+ */
+export function todayAccentStyle(color: TaskColor): Record<string, string> {
+    return color === 'none'
+        ? {}
+        : {
+              '--planner-accent': `var(--task-${color})`,
+              '--planner-accent-muted': `var(--task-${color})`,
+          };
+}

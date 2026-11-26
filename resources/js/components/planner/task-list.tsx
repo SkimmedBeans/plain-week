@@ -270,6 +270,7 @@ export function TaskList({
                         <TaskRow
                             task={task}
                             isCursor={cursor?.taskId === task.id}
+                            stripe={index % 2 === 1}
                             placement={placement}
                             tasks={visibleTasks}
                             name={name}

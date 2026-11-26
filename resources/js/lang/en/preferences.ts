@@ -9,6 +9,13 @@ export const preferences = {
     'preferences.compactLabel': 'Compact rows',
     'preferences.compactDescription':
         'Shorter task rows, and tasks in Someday and your lists show at most two lines. Applies to this device only.',
+    'preferences.stripesLabel': 'Striped rows',
+    'preferences.stripesDescription':
+        'Every other task row is tinted: grey on days, a soft wash of the title colour on your lists. Applies to this device only.',
+    'preferences.todayColorLabel': 'Today colour',
+    'preferences.todayColorDescription':
+        'The colour of today’s column. Applies to this device only.',
+    'preferences.todayColorDefault': 'Default (blue)',
     'preferences.languageHeading': 'Language',
     'preferences.languageDescription':
         'The language of the app and of the emails and notifications you get. Applies to all your devices.',
