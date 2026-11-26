@@ -380,8 +380,11 @@ Row behaviour:
   typing stops and on blur) instead of tasks, in the column and the list card. "Convert to tasks" turns each line back
   into a task (`parsePlainTextList`: indented `- ` lines are sub-tasks, ` ✓` marks done, lines after `Completed` are done
   tasks) and ends the note. A note shows a notebook icon in place of the open count.
-- A note shows its pictures (F25) under the text, full width, each with a remove button, and "Add picture" (a hidden
-  `accept="image/*"` file input, so phones offer the camera). A picture this device cannot get yet (not uploaded by
+- A note shows its pictures (F25) under the text, full width, each with a remove button. "Add picture" is in the
+  note's ⋮ menu and an icon in its card (F34); it opens the shown note's hidden `accept="image/*"` file input through
+  `lib/notes/picture-requests.ts` (so phones offer the camera).
+- Lists and Notes start with an Add button (`add-list.tsx`, F35): name plus List / Note (defaulting to the view's
+  kind); a note is created as a list then converted (empty). Someday's header has no + any more. A picture this device cannot get yet (not uploaded by
   the device that added it, or offline) shows a muted placeholder.
 - A named list's ⋮ menu has "Archive list" (F31, with Undo): the list leaves the planner and its tasks stay in its
   column. While any list is archived, the base Someday header shows an archive button that opens "Archived lists"

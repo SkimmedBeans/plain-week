@@ -1,5 +1,5 @@
 import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
-import { ClipboardCopy, Trash2 } from 'lucide-react';
+import { ClipboardCopy, ImagePlus, Trash2 } from 'lucide-react';
 import {
     Fragment,
     useEffect,
@@ -50,6 +50,7 @@ import {
 import { rowKey } from '@/lib/planner/repeat';
 import { parseNewTaskInput } from '@/lib/planner/smart-input';
 import { ListNote } from '@/components/planner/list-note';
+import { requestAddPicture } from '@/lib/notes/picture-requests';
 import { copyListTasks, copyWithToast } from '@/lib/planner/clipboard';
 import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
@@ -267,6 +268,18 @@ function ListDialogSession({
                                     TASK_COLOR_STYLES[color].pill,
                                 )}
                             />
+                            {typeof list?.note === 'string' && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label={t('planner.addPicture')}
+                                    onClick={() => requestAddPicture(list.id)}
+                                    className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
+                                >
+                                    <ImagePlus className="size-5" />
+                                </Button>
+                            )}
                             <Button
                                 type="button"
                                 variant="ghost"

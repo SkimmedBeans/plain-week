@@ -3,6 +3,7 @@ import {
     CollapsedLists,
     type CollapsibleList,
 } from '@/components/planner/collapsed-lists';
+import { AddList } from '@/components/planner/add-list';
 import { DayColumn } from '@/components/planner/day-column';
 import { ViewBar } from '@/components/planner/view-bar';
 import { SomedaySection } from '@/components/planner/someday-section';
@@ -90,6 +91,14 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
             <div className="mb-6 shrink-0 max-lg:hidden lg:mb-5">
                 <ViewBar />
             </div>
+            {!showWeek && (
+                <div className="mb-6 flex shrink-0 lg:mb-5">
+                    <AddList
+                        key={view}
+                        defaultKind={view === 'notes' ? 'note' : 'list'}
+                    />
+                </div>
+            )}
             {!showWeek && viewLists.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                     {view === 'notes'

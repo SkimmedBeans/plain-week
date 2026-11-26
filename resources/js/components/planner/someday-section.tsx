@@ -6,10 +6,10 @@ import {
     GripVertical,
     NotebookText,
     MoreHorizontal,
-    Plus,
 } from 'lucide-react';
 import { ArchivedListsDialog } from '@/components/planner/archived-lists';
 import { ListNote } from '@/components/planner/list-note';
+import { requestAddPicture } from '@/lib/notes/picture-requests';
 import { listToNoteWithUndo, noteToTasks } from '@/lib/planner/note-actions';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -57,7 +57,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useSomedayLists, useSomedayTasks } from '@/hooks/use-tasks';
 import {
-    createList,
     deleteList,
     moveList,
     renameList,
@@ -194,8 +193,6 @@ export function SomedaySection({
             index,
         },
     });
-    const [createOpen, setCreateOpen] = useState(false);
-    const [name, setName] = useState('');
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameName, setRenameName] = useState('');
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -230,21 +227,6 @@ export function SomedaySection({
     const [cardIdentity, setCardIdentity] = useState<ListCardIdentity | null>(
         null,
     );
-
-    const submitCreate = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (name.trim() === '') {
-            return;
-        }
-
-        void createList(name).then(
-            () => {
-                setName('');
-                setCreateOpen(false);
-            },
-            () => toast.error('Could not create the list.'),
-        );
-    };
 
     const submitRename = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -363,17 +345,7 @@ export function SomedaySection({
                             <Archive />
                         </Button>
                     )}
-                    {list.column === 0 ? (
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground"
-                            aria-label="New list"
-                            onClick={() => setCreateOpen(true)}
-                        >
-                            <Plus />
-                        </Button>
-                    ) : (
+                    {list.column === 0 ? null : (
                         <>
                             <Button
                                 ref={setActivatorNodeRef}
@@ -471,6 +443,15 @@ export function SomedaySection({
                                                 </DropdownMenuSubContent>
                                             </DropdownMenuPortal>
                                         </DropdownMenuSub>
+                                    )}
+                                    {isNote && fullList !== undefined && (
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                requestAddPicture(fullList.id)
+                                            }
+                                        >
+                                            {t('planner.addPicture')}
+                                        </DropdownMenuItem>
                                     )}
                                     {fullList !== undefined && (
                                         <DropdownMenuItem
@@ -580,46 +561,6 @@ export function SomedaySection({
                     today={today}
                     onOpenTask={onOpenTask}
                 />
-            )}
-            {list.column === 0 && (
-                <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>New list</DialogTitle>
-                            <DialogDescription>
-                                Its tasks stay in Someday, in their own column
-                                next to it.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={submitCreate} className="space-y-4">
-                            <Input
-                                autoFocus
-                                value={name}
-                                maxLength={LIST_NAME_MAX}
-                                placeholder="List name"
-                                aria-label="List name"
-                                onChange={(event) =>
-                                    setName(event.target.value)
-                                }
-                            />
-                            <DialogFooter>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => setCreateOpen(false)}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={name.trim() === ''}
-                                >
-                                    Create
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
             )}
             {list.column !== 0 && (
                 <>
