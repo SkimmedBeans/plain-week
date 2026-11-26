@@ -10,6 +10,12 @@
  * The pops this handles are kept from Inertia, which would otherwise reload
  * the page from history: its `popstate` listener is on `window` too, so this
  * one listens in the capture phase and stops the event.
+ *
+ * A page navigation while a card is open (logging in from the login card, a
+ * settings link) puts the new page's entry on top of ours. Then the entry is
+ * no longer ours to take off: going back would undo that navigation. So the
+ * last card closing only goes back while our entry is still the current one,
+ * and a Back press only closes a card when it leaves our entry.
  */
 
 type Entry = { close: () => void };
@@ -47,8 +53,11 @@ function sync(): void {
         pushed = true;
     } else if (stack.length === 0 && pushed) {
         pushed = false;
-        expectedPops += 1;
-        window.history.back();
+
+        if (isMarked(window.history.state)) {
+            expectedPops += 1;
+            window.history.back();
+        }
     }
 }
 
@@ -61,8 +70,9 @@ function handlePopState(event: PopStateEvent): void {
         return;
     }
 
-    if (!pushed) {
-        // A navigation of the page's own (or forward onto a stale entry).
+    if (!pushed || isMarked(event.state)) {
+        // A navigation of the page's own, or Back from a page that was
+        // visited while a card was open, onto our entry: Inertia's to handle.
         return;
     }
 
