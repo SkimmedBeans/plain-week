@@ -5,6 +5,14 @@ All notable changes to Plain Week are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.26] - 2026-11-26
+
+### Changed
+
+- **Upstream sync (upstream v0.4.3).** Merged the release commit for upstream v0.4.3 (8e4420b). It releases the
+  color labels (Settings › Labels, `#label` shortcut, label sync) and OIDC login, which the fork already ships
+  (v0.4.23–v0.4.25 and v0.4.0–v0.4.2 respectively) — so this update contains no app changes.
+
 ## [0.4.25] - 2026-11-26
 
 ### Added
@@ -821,7 +829,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.23...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.25...HEAD
+[0.4.26]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.25...v0.4.26
 [0.4.25]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.24...v0.4.25
 [0.4.24]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.23...v0.4.24
 [0.4.23]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.22...v0.4.23
