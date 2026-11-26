@@ -138,11 +138,11 @@ describe('SomedaySection', () => {
 
     it('adds a list from Add with its name', async () => {
         const user = userEvent.setup();
-        render(<AddList defaultKind="list" />);
+        render(<AddList kind="list" />);
 
         await user.click(screen.getByRole('button', { name: 'Add' }));
         const dialog = await screen.findByRole('dialog', {
-            name: 'Add a list or note',
+            name: 'New list',
         });
 
         const submit = within(dialog).getByRole('button', {
@@ -162,16 +162,14 @@ describe('SomedaySection', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
-    it('adds an empty note when Note is picked', async () => {
+    it('adds an empty note from Notes, without asking which kind (F54)', async () => {
         const user = userEvent.setup();
-        render(<AddList defaultKind="list" />);
+        render(<AddList kind="note" />);
 
         await user.click(screen.getByRole('button', { name: 'Add' }));
-        const dialog = await screen.findByRole('dialog', {
-            name: 'Add a list or note',
-        });
-        await user.type(within(dialog).getByLabelText('List name'), 'Ideas');
-        await user.click(within(dialog).getByRole('radio', { name: 'Note' }));
+        const dialog = await screen.findByRole('dialog', { name: 'New note' });
+        expect(within(dialog).queryByRole('radio')).toBeNull();
+        await user.type(within(dialog).getByLabelText('Note name'), 'Ideas');
         await user.click(
             within(dialog).getByRole('button', { name: 'Create' }),
         );
@@ -183,11 +181,11 @@ describe('SomedaySection', () => {
 
     it('cancels without creating a list', async () => {
         const user = userEvent.setup();
-        render(<AddList defaultKind="list" />);
+        render(<AddList kind="list" />);
 
         await user.click(screen.getByRole('button', { name: 'Add' }));
         const dialog = await screen.findByRole('dialog', {
-            name: 'Add a list or note',
+            name: 'New list',
         });
         await user.type(within(dialog).getByLabelText('List name'), 'Ideas');
         await user.click(
