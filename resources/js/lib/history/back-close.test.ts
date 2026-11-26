@@ -19,7 +19,8 @@ let back: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
     resetBackClose();
-    push = vi.spyOn(window.history, 'pushState').mockImplementation(() => {});
+    window.history.replaceState(null, '');
+    push = vi.spyOn(window.history, 'pushState');
     back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
 });
 
@@ -91,6 +92,34 @@ describe('back-close', () => {
         const inertia = vi.fn();
         window.addEventListener('popstate', inertia);
         pressBack();
+        expect(inertia).toHaveBeenCalledTimes(1);
+        window.removeEventListener('popstate', inertia);
+    });
+
+    it('never goes back over a page navigation made while a card was open', () => {
+        // The card's entry is on top, then a navigation (login) pushes its own.
+        const done = openBackClosable(() => {});
+        const state = vi
+            .spyOn(window.history, 'state', 'get')
+            .mockReturnValue({ page: { url: '/' } });
+
+        done();
+
+        expect(back).not.toHaveBeenCalled();
+        state.mockRestore();
+    });
+
+    it('lets the page handle Back onto its entry from a later page', () => {
+        const close = vi.fn();
+        openBackClosable(close);
+        const inertia = vi.fn();
+        window.addEventListener('popstate', inertia);
+
+        window.dispatchEvent(
+            new PopStateEvent('popstate', { state: { plainWeekCard: true } }),
+        );
+
+        expect(close).not.toHaveBeenCalled();
         expect(inertia).toHaveBeenCalledTimes(1);
         window.removeEventListener('popstate', inertia);
     });

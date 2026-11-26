@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.16] - 2026-11-26
+
+### Fixed
+
+- Logging in, and other page changes made while a card is open, no longer bounce back to the previous page (a
+  regression from the Back-closes-cards change in 0.4.11). Back still closes the open card.
+
 ## [0.4.15] - 2026-11-25
 
 ### Added
@@ -708,7 +715,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.15...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.16...HEAD
+[0.4.16]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.15...v0.4.16
 [0.4.15]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.14...v0.4.15
 [0.4.14]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.13...v0.4.14
 [0.4.13]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.12...v0.4.13
