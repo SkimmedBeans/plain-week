@@ -12,7 +12,7 @@ import { ListNote } from '@/components/planner/list-note';
 import { requestAddPicture } from '@/lib/notes/picture-requests';
 import { listToNoteWithUndo, noteToTasks } from '@/lib/planner/note-actions';
 import { useId, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
 import { TaskList } from '@/components/planner/task-list';
 import {
@@ -68,7 +68,11 @@ import { toastWithUndo } from '@/lib/planner/undo';
 import { TASK_COLORS, type TaskColor } from '@/lib/db/types';
 import { t } from '@/lib/i18n';
 import { copyListTasks, copyWithToast } from '@/lib/planner/clipboard';
-import { collapseKey, setListCollapsed } from '@/lib/planner/device-settings';
+import {
+    collapseKey,
+    setListCollapsed,
+    stripeColor,
+} from '@/lib/planner/device-settings';
 import { isTaskColor, TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -265,6 +269,7 @@ export function SomedaySection({
             ref={isNamed ? setColumnRef : undefined}
             aria-labelledby={titleId}
             data-someday-list
+            style={{ '--stripe': stripeColor(color) } as CSSProperties}
             className={cn(
                 'relative flex min-h-0 min-w-0 flex-col',
                 activeListId === list.id && 'opacity-60',

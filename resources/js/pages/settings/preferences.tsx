@@ -6,9 +6,25 @@ import { Switch } from '@/components/ui/switch';
 import {
     useCarryOverSetting,
     useCompactDensity,
+    useStripedRows,
+    useTodayColor,
 } from '@/hooks/use-carry-over-setting';
+import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { TASK_COLORS } from '@/lib/db/types';
+import { TASK_COLOR_STYLES, isTaskColor } from '@/lib/planner/task-colors';
 import { availableLocales, t } from '@/lib/i18n';
-import { compactDensity } from '@/lib/planner/device-settings';
+import {
+    compactDensity,
+    stripedRows,
+    todayColor,
+} from '@/lib/planner/device-settings';
 import { carryOverSetting } from '@/lib/planner/preferences';
 
 /**
@@ -21,6 +37,8 @@ import { carryOverSetting } from '@/lib/planner/preferences';
 export default function Preferences() {
     const carryOver = useCarryOverSetting();
     const compact = useCompactDensity();
+    const stripes = useStripedRows();
+    const today = useTodayColor();
 
     return (
         <>
@@ -65,6 +83,61 @@ export default function Preferences() {
                         onCheckedChange={compactDensity.set}
                         data-test="compact-switch"
                     />
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                        <Label htmlFor="striped-rows">
+                            {t('preferences.stripesLabel')}
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                            {t('preferences.stripesDescription')}
+                        </p>
+                    </div>
+                    <Switch
+                        id="striped-rows"
+                        checked={stripes}
+                        onCheckedChange={stripedRows.set}
+                        data-test="stripes-switch"
+                    />
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                        <Label htmlFor="today-color">
+                            {t('preferences.todayColorLabel')}
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                            {t('preferences.todayColorDescription')}
+                        </p>
+                    </div>
+                    <Select
+                        value={today}
+                        onValueChange={(value) => {
+                            if (isTaskColor(value)) {
+                                todayColor.set(value);
+                            }
+                        }}
+                    >
+                        <SelectTrigger
+                            id="today-color"
+                            className="w-44 shrink-0"
+                            data-test="today-color"
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {TASK_COLORS.map((color) => (
+                                <SelectItem key={color} value={color}>
+                                    <TaskColorSwatch
+                                        color={color}
+                                        checked={false}
+                                    />
+                                    {color === 'none'
+                                        ? t('preferences.todayColorDefault')
+                                        : TASK_COLOR_STYLES[color].label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 

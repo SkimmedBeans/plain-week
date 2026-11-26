@@ -59,6 +59,8 @@ type Props = {
     name?: string;
     /** The keyboard cursor is on this task. */
     isCursor?: boolean;
+    /** Every other row is striped (F36, F37). */
+    stripe?: boolean;
     /**
      * Opens the task card: a double tap or double click on the text, Enter
      * or Space on it, or "Add sub-tasks" in its menu. A single tap or click
@@ -375,6 +377,7 @@ export function TaskRow({
     tasks,
     name,
     isCursor = false,
+    stripe = false,
     onOpen,
     onToggleDone,
     className,
@@ -523,6 +526,7 @@ export function TaskRow({
             <div
                 ref={setNodeRef}
                 data-task-id={task.id}
+                data-stripe={stripe || undefined}
                 data-cursor={isCursor || undefined}
                 {...listeners}
                 onPointerDown={(event) => {

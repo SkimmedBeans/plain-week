@@ -383,6 +383,11 @@ Row behaviour:
 - A note shows its pictures (F25) under the text, full width, each with a remove button. "Add picture" is in the
   note's ⋮ menu and an icon in its card (F34); it opens the shown note's hidden `accept="image/*"` file input through
   `lib/notes/picture-requests.ts` (so phones offer the camera).
+- Striped rows (F36, F37; `plain-week.stripes`, on unless turned off): the grids and the list card carry
+  `data-stripes`, every odd row `data-stripe`, and each list sets `--stripe` (`stripeColor` in
+  `lib/planner/device-settings.ts`): 75% `--muted` on days, Someday and uncoloured lists, 16% of the title colour on
+  coloured lists, 12% of the accent on today. Today's colour (`plain-week.today-color`, Settings › Preferences) swaps
+  `--planner-accent` and `--planner-accent-muted` for a task colour on today's column only.
 - Lists and Notes start with an Add button (`add-list.tsx`, F35): name plus List / Note (defaulting to the view's
   kind); a note is created as a list then converted (empty). Someday's header has no + any more. A picture this device cannot get yet (not uploaded by
   the device that added it, or offline) shows a muted placeholder.

@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.21] - 2026-11-26
+
+### Added
+
+- **Striped rows.** Every other task row is tinted so rows are easier to follow: grey on days, a soft wash of the title
+  colour on coloured lists, and a tint of today's colour on today. On by default; Settings › Preferences › Striped rows
+  turns it off on this device.
+- **Today colour.** Settings › Preferences › Today colour picks the colour of today's column from the task palette
+  (blue by default), per device.
+
 ## [0.4.20] - 2026-11-26
 
 ### Added
@@ -776,7 +786,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.20...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.21...HEAD
+[0.4.21]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.20...v0.4.21
 [0.4.20]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.19...v0.4.20
 [0.4.19]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.18...v0.4.19
 [0.4.18]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.17...v0.4.18
