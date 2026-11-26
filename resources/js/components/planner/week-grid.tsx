@@ -17,7 +17,9 @@ import { t } from '@/lib/i18n';
 import { useScrollToToday } from '@/hooks/use-scroll-to-today';
 import { useSomedayLists, useWeekTasks } from '@/hooks/use-tasks';
 import { weekDateKeys } from '@/lib/db/dates';
-import { collapseKey } from '@/lib/planner/device-settings';
+import { collapseKey, setListsCollapsed } from '@/lib/planner/device-settings';
+import { Button } from '@/components/ui/button';
+import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -94,11 +96,37 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 <ViewBar />
             </div>
             {!showWeek && (
-                <div className="mb-6 flex shrink-0 lg:mb-5">
+                <div className="mb-6 flex shrink-0 gap-2 lg:mb-5">
                     <AddList
                         key={view}
                         defaultKind={view === 'notes' ? 'note' : 'list'}
                     />
+                    {viewLists.length > 0 && (
+                        // Collapse every list of this view to a chip, or
+                        // expand them all again (F45).
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            data-test="collapse-all"
+                            onClick={() =>
+                                setListsCollapsed(
+                                    viewLists.map((list) => collapseKey(list)),
+                                    listsShown.length > 0,
+                                )
+                            }
+                            className="rounded-full"
+                        >
+                            {listsShown.length > 0 ? (
+                                <ChevronsDownUp />
+                            ) : (
+                                <ChevronsUpDown />
+                            )}
+                            {listsShown.length > 0
+                                ? t('planner.collapseAll')
+                                : t('planner.expandAll')}
+                        </Button>
+                    )}
                 </div>
             )}
             {!showWeek && viewLists.length === 0 && (

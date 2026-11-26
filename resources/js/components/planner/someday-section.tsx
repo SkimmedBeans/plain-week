@@ -153,22 +153,14 @@ export function SomedaySection({
             ? undefined
             : allLists?.find((item) => item.id === list.id);
     const isNote = typeof fullList?.note === 'string';
-    const openCount = tasks?.filter((task) => !task.done).length;
-    // The open-task count after the name (F28), as on a collapsed chip.
+    // A note's header shows a notebook icon after its name. Task lists show
+    // no count there (F44); collapsed chips keep theirs.
     const countBadge = isNote ? (
         <NotebookText
             aria-label={t('planner.isNote')}
             className="ms-2 size-4 shrink-0 text-muted-foreground"
         />
-    ) : openCount === undefined ? null : (
-        <span
-            data-open-count
-            aria-hidden
-            className="ms-2 shrink-0 text-base font-normal text-muted-foreground tabular-nums"
-        >
-            {openCount}
-        </span>
-    );
+    ) : null;
 
     // A named list's header is the drag handle and its whole column the drop
     // target while a list is dragged; the base list never moves.

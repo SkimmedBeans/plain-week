@@ -221,4 +221,37 @@ describe('WeekGrid', () => {
         );
         expect(localStorage.getItem('plain-week.view')).toBe('notes');
     });
+
+    it('collapses and expands every list of the view at once (F45)', async () => {
+        await createList('Errands');
+        await createList('Shed');
+        localStorage.setItem('plain-week.view', 'lists');
+        const user = userEvent.setup();
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(2),
+        );
+        await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+        await waitFor(() =>
+            expect(screen.queryAllByRole('region')).toHaveLength(0),
+        );
+        expect(
+            document.querySelectorAll('[data-collapsed-lists] li'),
+        ).toHaveLength(2);
+
+        await user.click(screen.getByRole('button', { name: 'Expand all' }));
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(2),
+        );
+    });
 });
