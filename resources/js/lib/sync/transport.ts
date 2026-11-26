@@ -1,4 +1,4 @@
-import type { SomedayList, Task } from '@/lib/db/types';
+import type { SomedayList, Task, TaskLabel } from '@/lib/db/types';
 import { pull, push } from '@/routes/sync';
 
 export type PushResponse = {
@@ -13,8 +13,18 @@ export type PullResponse = {
     tasks: Task[];
     /** Every one of the user's lists, including tombstones, on every page. */
     lists: SomedayList[];
+    /** Label names; absent from servers older than sync format 3. */
+    labels?: TaskLabel[];
     cursor: number;
     has_more: boolean;
+};
+
+/** The records of one push. */
+export type PushBatch = {
+    tasks: Task[];
+    /** Absent means "no lists in this batch" (the server treats it as none). */
+    lists?: SomedayList[];
+    labels: TaskLabel[];
 };
 
 /**
@@ -22,11 +32,7 @@ export type PullResponse = {
  * cancels the request (the engine's timeout or `stop()`).
  */
 export type SyncTransport = {
-    push(
-        tasks: Task[],
-        lists: SomedayList[],
-        signal?: AbortSignal,
-    ): Promise<PushResponse>;
+    push(batch: PushBatch, signal?: AbortSignal): Promise<PushResponse>;
     pull(
         cursor: number,
         limit: number,
@@ -36,10 +42,11 @@ export type SyncTransport = {
 
 /**
  * What this client understands, sent as `X-Sync-Format` on push and pull:
- * 2 adds daily ("every N days") rules. The server never sends a daily series
- * to a client without the header (v0.0.3 and older).
+ * 2 adds daily ("every N days") rules, 3 label names (`labels`). The server
+ * never sends a daily series to a client without the header (v0.0.3 and
+ * older), nor labels below 3.
  */
-export const SYNC_FORMAT = 2;
+export const SYNC_FORMAT = 3;
 
 /**
  * The browser's IANA time zone ("Europe/Madrid"), or null if it reports none.
@@ -221,11 +228,11 @@ export async function isSessionGone(
  * Laravel's XSRF-TOKEN cookie.
  */
 export const fetchTransport: SyncTransport = {
-    push: (tasks, lists, signal) =>
+    push: ({ tasks, lists, labels }, signal) =>
         request<PushResponse>(push.url(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...syncHeaders() },
-            body: JSON.stringify({ tasks, lists }),
+            body: JSON.stringify({ tasks, lists, labels }),
             signal,
         }),
     pull: (cursor, limit, signal) =>

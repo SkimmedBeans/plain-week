@@ -7,11 +7,13 @@ import {
 import type { PlainWeekDatabase } from '@/lib/db/database';
 import { compareTimestamps } from '@/lib/db/dates';
 import { purgeDemoTasks } from '@/lib/db/demo';
+import { isLabelColor, normalizeLabelName } from '@/lib/db/labels';
 import type {
     ListOutboxEntry,
     OutboxEntry,
     SomedayList,
     Task,
+    TaskLabel,
 } from '@/lib/db/types';
 import { withSyncLock } from './lock';
 import {
@@ -23,7 +25,7 @@ import {
     retryDelay,
 } from './retry';
 import { REQUEST_TIMEOUT_MS, SYNC_FORMAT, SyncTimeoutError } from './transport';
-import type { SyncTransport } from './transport';
+import type { PushBatch, SyncTransport } from './transport';
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
 
@@ -128,6 +130,63 @@ function toTask(remote: Task): Task {
         series_id: remote.series_id ?? null,
         occurrence_date: remote.occurrence_date ?? null,
     };
+}
+
+/** Keeps only the contract fields of a label from the server, or null for a colour this client does not know. */
+function toLabel(remote: TaskLabel): TaskLabel | null {
+    if (!isLabelColor(remote.color)) {
+        return null;
+    }
+
+    return {
+        color: remote.color,
+        name: normalizeLabelName(remote.name ?? ''),
+        updated_at: remote.updated_at,
+    };
+}
+
+function isLabelEntry(entry: OutboxEntry): boolean {
+    return entry.entity === 'label';
+}
+
+/**
+ * The rule of `SyncEngine.applyRemote` for one kind of record: the remote
+ * records to store and the outbox keys to drop. `keys` are the records'
+ * outbox keys (task id, label colour), with the local records and the
+ * outbox entries read by them.
+ */
+function lastWriteWins<T extends { updated_at: string }>(
+    remotes: T[],
+    keys: string[],
+    locals: Array<T | undefined>,
+    pending: Array<OutboxEntry | undefined>,
+): { toPut: T[]; toUnqueue: string[] } {
+    const toPut: T[] = [];
+    const toUnqueue: string[] = [];
+
+    remotes.forEach((remote, i) => {
+        const local = locals[i];
+
+        if (!local) {
+            toPut.push(remote);
+
+            return;
+        }
+
+        const order = compareTimestamps(remote.updated_at, local.updated_at);
+
+        if (order > 0) {
+            toPut.push(remote);
+
+            if (pending[i]) {
+                toUnqueue.push(keys[i]);
+            }
+        } else if (order === 0 && !pending[i]) {
+            toPut.push(remote);
+        }
+    });
+
+    return { toPut, toUnqueue };
 }
 
 /** Keeps only the contract fields of a list coming from the server. */
@@ -235,8 +294,8 @@ export class SyncEngine {
 
         this.db = options.db;
         this.transport = {
-            push: (tasks, lists) =>
-                this.request((signal) => transport.push(tasks, lists, signal)),
+            push: (batch) =>
+                this.request((signal) => transport.push(batch, signal)),
             pull: (cursor, limit) =>
                 this.request((signal) => transport.pull(cursor, limit, signal)),
         };
@@ -718,15 +777,12 @@ export class SyncEngine {
         entries: OutboxEntry[],
         listEntries: ListOutboxEntry[],
     ): Promise<void> {
-        const [records, listRecords] = await Promise.all([
-            this.db.tasks.bulkGet(entries.map((entry) => entry.task_id)),
+        const [batch, listRecords] = await Promise.all([
+            this.recordsOf(entries),
             this.db.someday_lists.bulkGet(
                 listEntries.map((entry) => entry.list_id),
             ),
         ]);
-        const tasks = records.filter(
-            (task): task is Task => task !== undefined,
-        );
         const sentLists: SentList[] = [];
 
         listEntries.forEach((entry, i) => {
@@ -738,12 +794,16 @@ export class SyncEngine {
         });
 
         try {
-            if (tasks.length > 0 || sentLists.length > 0) {
+            if (
+                batch.tasks.length > 0 ||
+                batch.labels.length > 0 ||
+                sentLists.length > 0
+            ) {
                 this.assertCurrent(generation);
-                await this.transport.push(
-                    tasks,
-                    sentLists.map((item) => item.row),
-                );
+                await this.transport.push({
+                    ...batch,
+                    lists: sentLists.map((item) => item.row),
+                });
             }
         } catch (error) {
             if (!isPermanentFailure(error)) {
@@ -798,6 +858,30 @@ export class SyncEngine {
         await this.clearSentLists(generation, sentLists);
     }
 
+    /** The current records of outbox entries, grouped by entity. */
+    private async recordsOf(entries: OutboxEntry[]): Promise<PushBatch> {
+        const [tasks, labels] = await Promise.all([
+            this.db.tasks.bulkGet(
+                entries
+                    .filter((entry) => !isLabelEntry(entry))
+                    .map((entry) => entry.task_id),
+            ),
+            this.db.labels.bulkGet(
+                entries
+                    .filter((entry) => isLabelEntry(entry))
+                    .map((entry) => entry.task_id)
+                    .filter(isLabelColor),
+            ),
+        ]);
+
+        return {
+            tasks: tasks.filter((task): task is Task => task !== undefined),
+            labels: labels.filter(
+                (label): label is TaskLabel => label !== undefined,
+            ),
+        };
+    }
+
     private async quarantine(
         generation: number,
         entry: OutboxEntry,
@@ -805,7 +889,7 @@ export class SyncEngine {
         const { db } = this;
 
         console.warn(
-            `Sync: the server refused task ${entry.task_id} as invalid; it will be retried after its next change.`,
+            `Sync: the server refused ${isLabelEntry(entry) ? 'label' : 'task'} ${entry.task_id} as invalid; it will be retried after its next change.`,
         );
 
         await db.transaction('rw', db.outbox, async () => {
@@ -915,7 +999,12 @@ export class SyncEngine {
                 // The server repeats the whole list set on every page;
                 // applying it is idempotent (last-write-wins).
                 await this.applyRemoteLists(page.lists.map(toSomedayList));
-                await this.applyRemote(page.tasks.map(toTask));
+                await this.applyRemote(
+                    page.tasks.map(toTask),
+                    (page.labels ?? [])
+                        .map(toLabel)
+                        .filter((label): label is TaskLabel => label !== null),
+                );
                 await db.meta.bulkPut([
                     { key: 'cursor', value: next },
                     { key: 'cursor_format', value: SYNC_FORMAT },
@@ -950,43 +1039,36 @@ export class SyncEngine {
      * change that is older than the remote one would lose on the server anyway,
      * so it is dropped to keep both sides converged.
      */
-    private async applyRemote(remoteTasks: Task[]): Promise<void> {
+    private async applyRemote(
+        remoteTasks: Task[],
+        remoteLabels: TaskLabel[],
+    ): Promise<void> {
+        // Every await stays here, in the caller's transaction: a nested async
+        // helper could resume outside its zone (see `clearAllTables`).
         const { db } = this;
-        const ids = remoteTasks.map((task) => task.id);
-        const [locals, pending] = await Promise.all([
-            db.tasks.bulkGet(ids),
-            db.outbox.bulkGet(ids),
+        const taskIds = remoteTasks.map((task) => task.id);
+        const colors = remoteLabels.map((label) => label.color);
+        const [localTasks, localLabels, pending] = await Promise.all([
+            db.tasks.bulkGet(taskIds),
+            db.labels.bulkGet(colors),
+            db.outbox.bulkGet([...taskIds, ...colors]),
         ]);
-        const toPut: Task[] = [];
-        const toUnqueue: string[] = [];
+        const tasks = lastWriteWins(
+            remoteTasks,
+            taskIds,
+            localTasks,
+            pending.slice(0, taskIds.length),
+        );
+        const labels = lastWriteWins(
+            remoteLabels,
+            colors,
+            localLabels,
+            pending.slice(taskIds.length),
+        );
 
-        remoteTasks.forEach((remote, i) => {
-            const local = locals[i];
-
-            if (!local) {
-                toPut.push(remote);
-
-                return;
-            }
-
-            const order = compareTimestamps(
-                remote.updated_at,
-                local.updated_at,
-            );
-
-            if (order > 0) {
-                toPut.push(remote);
-
-                if (pending[i]) {
-                    toUnqueue.push(remote.id);
-                }
-            } else if (order === 0 && !pending[i]) {
-                toPut.push(remote);
-            }
-        });
-
-        await db.tasks.bulkPut(toPut);
-        await db.outbox.bulkDelete(toUnqueue);
+        await db.tasks.bulkPut(tasks.toPut);
+        await db.labels.bulkPut(labels.toPut);
+        await db.outbox.bulkDelete([...tasks.toUnqueue, ...labels.toUnqueue]);
     }
 
     /**

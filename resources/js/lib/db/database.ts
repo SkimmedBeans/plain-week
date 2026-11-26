@@ -7,6 +7,7 @@ import type {
     OutboxEntry,
     SomedayList,
     Task,
+    TaskLabel,
 } from './types';
 
 export class PlainWeekDatabase extends Dexie {
@@ -16,6 +17,7 @@ export class PlainWeekDatabase extends Dexie {
     someday_lists!: EntityTable<SomedayList, 'id'>;
     list_outbox!: EntityTable<ListOutboxEntry, 'list_id'>;
     note_images!: EntityTable<NoteImage, 'id'>;
+    labels!: EntityTable<TaskLabel, 'color'>;
 
     constructor(name = 'plain-week') {
         super(name);
@@ -57,6 +59,9 @@ export class PlainWeekDatabase extends Dexie {
         this.version(4).stores({
             note_images: 'id, uploaded',
         });
+
+        // Label names, one row per colour (sync format 3).
+        this.version(5).stores({ labels: 'color' });
     }
 }
 
@@ -71,6 +76,7 @@ export function allTables(database: PlainWeekDatabase) {
         database.someday_lists,
         database.list_outbox,
         database.note_images,
+        database.labels,
     ];
 }
 

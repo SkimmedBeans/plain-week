@@ -11,6 +11,7 @@ use App\Http\Requests\Sync\PushRequest;
 use App\Http\Resources\SomedayListResource;
 use App\Http\Resources\TaskResource;
 use App\Jobs\SyncGoogleCalendar;
+use App\Models\TaskLabel;
 use Illuminate\Http\JsonResponse;
 
 class SyncController extends Controller
@@ -20,7 +21,7 @@ class SyncController extends Controller
      */
     public function push(PushRequest $request, PushTasks $pushTasks, PushSomedayLists $pushSomedayLists): JsonResponse
     {
-        $result = $pushTasks->handle($request->user(), $request->records(), SyncFormat::fromRequest($request));
+        $result = $pushTasks->handle($request->user(), $request->records(), SyncFormat::fromRequest($request), $request->labels());
 
         $lists = $pushSomedayLists->handle($request->user(), $request->lists() ?? []);
         $result['lists_applied'] = $lists['applied'];
@@ -38,12 +39,16 @@ class SyncController extends Controller
      */
     public function pull(PullRequest $request, PullTasks $pullTasks): JsonResponse
     {
-        $result = $pullTasks->handle($request->user(), $request->cursor(), $request->limit(), SyncFormat::fromRequest($request));
+        $format = SyncFormat::fromRequest($request);
+        $result = $pullTasks->handle($request->user(), $request->cursor(), $request->limit(), $format);
 
         return response()->json([
             'tasks' => TaskResource::collection($result['tasks']),
             // Lists are few, so every pull returns all of the user's lists, tombstones included, with no cursor.
             'lists' => SomedayListResource::collection($request->user()->somedayLists()->get()),
+            ...$format->understandsLabels()
+                ? ['labels' => $result['labels']->map(fn (TaskLabel $label) => $label->toRecord())->values()]
+                : [],
             'cursor' => $result['cursor'],
             'has_more' => $result['has_more'],
         ]);

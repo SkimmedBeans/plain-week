@@ -21,6 +21,7 @@ export async function buildExport(
             .filter((list) => list.deleted_at === null)
             .toArray()
     ).sort(compareListOrder);
+    const labels = await database.labels.toArray();
 
     return {
         format: EXPORT_FORMAT,
@@ -29,5 +30,6 @@ export async function buildExport(
         app_version: appVersion,
         tasks: backupRows(rows.filter((row) => !demo.has(row.id))),
         someday_lists: lists,
+        labels: labels.filter((label) => label.name !== ''),
     };
 }
