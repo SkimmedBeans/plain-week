@@ -5,6 +5,19 @@ All notable changes to Plain Week are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.4.29] - 2026-11-26
+
+### Added
+
+- **Collapse all / Expand all.** Lists and Notes have a button next to Add that collapses every list of the view into
+  chips at once, or expands them all again.
+
+### Removed
+
+- The open-task count next to a list's name in its header. Collapsed chips still show it ("Shed · 7").
+
 ## [0.4.28] - 2026-11-26
 
 ### Added
@@ -859,7 +872,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.27...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.29...HEAD
+[0.4.29]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.28...v0.4.29
 [0.4.28]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.27...v0.4.28
 [0.4.27]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.26...v0.4.27
 [0.4.26]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.25...v0.4.26

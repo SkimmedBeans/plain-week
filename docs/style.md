@@ -397,8 +397,8 @@ Row behaviour:
 - A named list's ⋮ menu has "Archive list" (F31, with Undo): the list leaves the planner and its tasks stay in its
   column. While any list is archived, the base Someday header shows an archive button that opens "Archived lists"
   (`archived-lists.tsx`): each list with its open count, its name opening the list card, and Restore.
-- Someday and named list headers show the open-task count after the name (`[data-open-count]`, F28) and a chevron
-  that collapses the list (F26). Collapsed lists (per device, `plain-week.collapsed-lists` in `localStorage`, see
+- Someday and named list headers have a chevron that collapses the list (F26); the open-task count is on collapsed
+  chips only (F44). Lists and Notes have Collapse all / Expand all next to Add (F45, `setListsCollapsed`). Collapsed lists (per device, `plain-week.collapsed-lists` in `localStorage`, see
   `lib/planner/device-settings.ts`) leave the grid and show as chips after it (`collapsed-lists.tsx`): name and open
   count in the title color, the name opening the list card, the chevron expanding it again. A collapsed list renders no
   task list, so the keyboard cursor skips it.
