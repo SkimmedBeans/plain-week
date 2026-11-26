@@ -159,6 +159,8 @@ export const planner = {
     'planner.view': 'View',
     'planner.viewWeek': 'Week',
     'planner.viewLists': 'Lists',
+    'planner.viewNotes': 'Notes',
+    'planner.noNotes': 'No notes yet. Turn a list into a note from its ⋯ menu.',
     'planner.noLists':
         'No lists yet. Create one with the + on Someday in the Week view.',
     'planner.moveToList': 'Move to list',

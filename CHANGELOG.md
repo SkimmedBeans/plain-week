@@ -7,6 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.19] - 2026-11-26
+
+### Added
+
+- **Notes view.** The view switch has a third tab, Notes, where lists converted to notes live; Lists now shows task
+  lists only.
+
+### Changed
+
+- On phones the Week / Lists / Notes switch is part of the header, stays at the top while you scroll and fills the
+  width in equal thirds. Undo and Search sit next to it.
+- The previous and next week arrows (and their shortcuts) are greyed out on Lists and Notes.
+
+### Fixed
+
+- On phones the month and week title no longer gets squeezed to a sliver when another week is shown.
+
 ## [0.4.18] - 2026-11-26
 
 ### Added
@@ -744,7 +761,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.18...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.19...HEAD
+[0.4.19]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.18...v0.4.19
 [0.4.18]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.17...v0.4.18
 [0.4.17]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.16...v0.4.17
 [0.4.16]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.15...v0.4.16

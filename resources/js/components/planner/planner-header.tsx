@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight, Search, Undo2 } from 'lucide-react';
 import { AccountButton } from '@/components/planner/account-button';
 import { HintedLabel } from '@/components/planner/shortcut-hint';
+import { ViewBar } from '@/components/planner/view-bar';
+import { usePlannerView } from '@/hooks/use-carry-over-setting';
 import { Button } from '@/components/ui/button';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
 import {
@@ -49,163 +51,177 @@ export function PlannerHeader({
         ? `Undo delete: ${deletes.latestTitle}`
         : 'Undo delete';
 
+    // The week arrows only change the Week view (F39).
+    const weekShown = usePlannerView() === 'week';
+
     return (
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-background/95 px-4 py-3 backdrop-blur-sm lg:static lg:px-6 lg:pt-5 lg:pb-0 lg:backdrop-blur-none">
-            <div className="flex min-w-0 items-center gap-2.5">
-                <h1 className="flex min-w-0 items-baseline gap-2.5 text-3xl leading-tight font-bold tracking-tighter lg:text-4xl">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                onClick={onToday}
-                                disabled={isCurrentWeek}
-                                aria-label={
-                                    isCurrentWeek
-                                        ? undefined
-                                        : t('planner.goToCurrentWeek')
-                                }
-                                className={cn(
-                                    'h-auto min-w-0 shrink truncate rounded-md p-0 font-[inherit] text-3xl leading-[inherit] tracking-[inherit] hover:bg-transparent disabled:opacity-100 lg:text-4xl',
-                                    !isCurrentWeek &&
-                                        // Phones make room for the Today pill.
-                                        'text-planner-accent hover:text-planner-accent/80 max-sm:text-2xl',
-                                )}
+        // On phones the header sticks to the top with the view switch as its
+        // second row (F38); on desktop the switch sits above the grid.
+        <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm lg:static lg:backdrop-blur-none">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 lg:px-6 lg:pt-5 lg:pb-0">
+                <div className="flex min-w-0 items-center gap-2.5">
+                    <h1 className="flex min-w-0 items-baseline gap-2.5 text-3xl leading-tight font-bold tracking-tighter lg:text-4xl">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    onClick={onToday}
+                                    disabled={isCurrentWeek}
+                                    aria-label={
+                                        isCurrentWeek
+                                            ? undefined
+                                            : t('planner.goToCurrentWeek')
+                                    }
+                                    className={cn(
+                                        'h-auto min-w-0 shrink truncate rounded-md p-0 font-[inherit] text-3xl leading-[inherit] tracking-[inherit] hover:bg-transparent disabled:opacity-100 lg:text-4xl',
+                                        !isCurrentWeek &&
+                                            // Phones make room for the Today pill.
+                                            'text-planner-accent hover:text-planner-accent/80 max-sm:text-2xl',
+                                    )}
+                                >
+                                    <span className="lg:hidden">
+                                        {formatMonthTitle(thursday, 'short')}
+                                    </span>
+                                    <span className="max-lg:hidden">
+                                        {formatMonthTitle(thursday, 'long')}
+                                    </span>
+                                </Button>
+                            </TooltipTrigger>
+                            {!isCurrentWeek && (
+                                <TooltipContent side="bottom">
+                                    {todayHint}
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                        {/* Phones have no room for both the week number and the
+                        Today pill, so the pill takes its place there. */}
+                        <span
+                            className={cn(
+                                'shrink-0 text-muted-foreground/50',
+                                !isCurrentWeek && 'max-sm:hidden',
+                            )}
+                        >
+                            <abbr
+                                title={t('planner.weekTitle', { week })}
+                                className="no-underline"
                             >
-                                <span className="lg:hidden">
-                                    {formatMonthTitle(thursday, 'short')}
-                                </span>
-                                <span className="max-lg:hidden">
-                                    {formatMonthTitle(thursday, 'long')}
-                                </span>
-                            </Button>
-                        </TooltipTrigger>
-                        {!isCurrentWeek && (
+                                {formatWeekNumber(week)}
+                            </abbr>
+                        </span>
+                    </h1>
+                    {!isCurrentWeek && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onToday}
+                                    className="rounded-full border-planner-accent px-3 font-semibold text-planner-accent hover:bg-planner-accent/10 hover:text-planner-accent max-sm:h-7 max-sm:px-2.5 max-sm:text-xs dark:bg-transparent dark:hover:bg-planner-accent/15"
+                                    data-test="today-button"
+                                >
+                                    {t('planner.today')}
+                                </Button>
+                            </TooltipTrigger>
                             <TooltipContent side="bottom">
                                 {todayHint}
                             </TooltipContent>
-                        )}
+                        </Tooltip>
+                    )}
+                </div>
+                <nav
+                    aria-label={t('planner.weekNav')}
+                    className="flex shrink-0 items-center gap-1.5"
+                >
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            {/* A disabled button gets no pointer events, so the
+                            tooltip hangs on a wrapper. */}
+                            <span className="inline-flex max-lg:hidden">
+                                <Button
+                                    variant="ghost"
+                                    size="icon-lg"
+                                    className="size-10 rounded-full"
+                                    onClick={() => void undoLastDelete()}
+                                    disabled={deletes.count === 0}
+                                    aria-label={undoLabel}
+                                    data-test="undo-delete"
+                                >
+                                    <Undo2 className="size-5 rtl:-scale-x-100" />
+                                </Button>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            {deletes.count === 0
+                                ? 'Nothing to undo'
+                                : undoLabel}
+                        </TooltipContent>
                     </Tooltip>
-                    {/* Phones have no room for both the week number and the
-                        Today pill, so the pill takes its place there. */}
-                    <span
-                        className={cn(
-                            'shrink-0 text-muted-foreground/50',
-                            !isCurrentWeek && 'max-sm:hidden',
-                        )}
-                    >
-                        <abbr
-                            title={t('planner.weekTitle', { week })}
-                            className="no-underline"
-                        >
-                            {formatWeekNumber(week)}
-                        </abbr>
-                    </span>
-                </h1>
-                {!isCurrentWeek && (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={onToday}
-                                className="rounded-full border-planner-accent px-3 font-semibold text-planner-accent hover:bg-planner-accent/10 hover:text-planner-accent max-sm:h-7 max-sm:px-2.5 max-sm:text-xs dark:bg-transparent dark:hover:bg-planner-accent/15"
-                                data-test="today-button"
+                                variant="ghost"
+                                size="icon-lg"
+                                className="size-10 rounded-full max-lg:hidden"
+                                onClick={() => searchDialogStore.open()}
+                                aria-label={t('planner.search')}
+                                data-test="search-tasks"
                             >
-                                {t('planner.today')}
+                                <Search className="size-5" />
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                            {todayHint}
+                            <HintedLabel
+                                label={t('planner.search')}
+                                action="general.search"
+                            />
                         </TooltipContent>
                     </Tooltip>
-                )}
-            </div>
-            <nav
-                aria-label={t('planner.weekNav')}
-                className="flex shrink-0 items-center gap-1.5"
-            >
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        {/* A disabled button gets no pointer events, so the
-                            tooltip hangs on a wrapper. */}
-                        <span className="inline-flex">
+                    <AccountButton />
+                    <Tooltip>
+                        <TooltipTrigger asChild>
                             <Button
-                                variant="ghost"
                                 size="icon-lg"
-                                className="size-10 rounded-full"
-                                onClick={() => void undoLastDelete()}
-                                disabled={deletes.count === 0}
-                                aria-label={undoLabel}
-                                data-test="undo-delete"
+                                className={navButton}
+                                onClick={onPreviousWeek}
+                                disabled={!weekShown}
+                                aria-label={t('planner.previousWeek')}
                             >
-                                <Undo2 className="size-5 rtl:-scale-x-100" />
+                                <ChevronLeft className="size-5 rtl:rotate-180" />
                             </Button>
-                        </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                        {deletes.count === 0 ? 'Nothing to undo' : undoLabel}
-                    </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon-lg"
-                            className="size-10 rounded-full"
-                            onClick={() => searchDialogStore.open()}
-                            aria-label={t('planner.search')}
-                            data-test="search-tasks"
-                        >
-                            <Search className="size-5" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                        <HintedLabel
-                            label={t('planner.search')}
-                            action="general.search"
-                        />
-                    </TooltipContent>
-                </Tooltip>
-                <AccountButton />
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            size="icon-lg"
-                            className={navButton}
-                            onClick={onPreviousWeek}
-                            aria-label={t('planner.previousWeek')}
-                        >
-                            <ChevronLeft className="size-5 rtl:rotate-180" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                        <HintedLabel
-                            label={t('planner.previousWeek')}
-                            action="week.previous"
-                            all
-                        />
-                    </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            size="icon-lg"
-                            className={navButton}
-                            onClick={onNextWeek}
-                            aria-label={t('planner.nextWeek')}
-                        >
-                            <ChevronRight className="size-5 rtl:rotate-180" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                        <HintedLabel
-                            label={t('planner.nextWeek')}
-                            action="week.next"
-                            all
-                        />
-                    </TooltipContent>
-                </Tooltip>
-            </nav>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            <HintedLabel
+                                label={t('planner.previousWeek')}
+                                action="week.previous"
+                                all
+                            />
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                size="icon-lg"
+                                className={navButton}
+                                onClick={onNextWeek}
+                                disabled={!weekShown}
+                                aria-label={t('planner.nextWeek')}
+                            >
+                                <ChevronRight className="size-5 rtl:rotate-180" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            <HintedLabel
+                                label={t('planner.nextWeek')}
+                                action="week.next"
+                                all
+                            />
+                        </TooltipContent>
+                    </Tooltip>
+                </nav>
+            </div>
+            <div className="lg:hidden">
+                <ViewBar />
+            </div>
         </header>
     );
 }

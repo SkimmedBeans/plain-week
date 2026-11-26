@@ -4,18 +4,18 @@ import {
     type CollapsibleList,
 } from '@/components/planner/collapsed-lists';
 import { DayColumn } from '@/components/planner/day-column';
+import { ViewBar } from '@/components/planner/view-bar';
 import { SomedaySection } from '@/components/planner/someday-section';
 import {
     useCollapsedLists,
     useCompactDensity,
     usePlannerView,
 } from '@/hooks/use-carry-over-setting';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { t } from '@/lib/i18n';
 import { useScrollToToday } from '@/hooks/use-scroll-to-today';
 import { useSomedayLists, useWeekTasks } from '@/hooks/use-tasks';
 import { weekDateKeys } from '@/lib/db/dates';
-import { collapseKey, plannerView } from '@/lib/planner/device-settings';
+import { collapseKey } from '@/lib/planner/device-settings';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -74,38 +74,27 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
         collapsed.includes(collapseKey(list));
     const view = usePlannerView();
     const showWeek = view === 'week';
-    const listsShown = (namedLists ?? []).filter((list) => !isCollapsed(list));
+    // Lists shows the task lists, Notes the lists converted to notes (F38).
+    const viewLists = (namedLists ?? []).filter(
+        (list) => (typeof list.note === 'string') === (view === 'notes'),
+    );
+    const listsShown = viewLists.filter((list) => !isCollapsed(list));
     const chips = (
-        showWeek ? (isCollapsed(someday) ? [someday] : []) : (namedLists ?? [])
+        showWeek ? (isCollapsed(someday) ? [someday] : []) : viewLists
     ).filter(isCollapsed);
 
     return (
         <>
-            {/* Week: the days and Someday. Lists: the named lists with the
-            whole screen (F30). Remembered per device. */}
-            <ToggleGroup
-                type="single"
-                variant="outline"
-                size="sm"
-                value={view}
-                aria-label={t('planner.view')}
-                onValueChange={(value) => {
-                    if (value === 'week' || value === 'lists') {
-                        plannerView.set(value);
-                    }
-                }}
-                className="mb-6 shrink-0 self-start lg:mb-5"
-            >
-                <ToggleGroupItem value="week" data-test="view-week">
-                    {t('planner.viewWeek')}
-                </ToggleGroupItem>
-                <ToggleGroupItem value="lists" data-test="view-lists">
-                    {t('planner.viewLists')}
-                </ToggleGroupItem>
-            </ToggleGroup>
-            {!showWeek && (namedLists ?? []).length === 0 && (
+            {/* Desktop: the view switch above the grid; phones have it in
+                the sticky header (F38). */}
+            <div className="mb-6 shrink-0 max-lg:hidden lg:mb-5">
+                <ViewBar />
+            </div>
+            {!showWeek && viewLists.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                    {t('planner.noLists')}
+                    {view === 'notes'
+                        ? t('planner.noNotes')
+                        : t('planner.noLists')}
                 </p>
             )}
             {showWeek ? (

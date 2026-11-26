@@ -652,7 +652,7 @@ export function TaskRow({
                     // The keyboard cursor, or keyboard focus on the text
                     // button, scrolled clear of the sticky header on phones.
                     CURSOR_ROW_CLASS,
-                    'max-lg:scroll-mt-20',
+                    'max-lg:scroll-mt-32',
                     className,
                 )}
             >
