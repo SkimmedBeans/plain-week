@@ -136,6 +136,11 @@ export function placementLabel(
     return name ?? t('planner.someday');
 }
 
+/** The first done task of a list in display order (where Completed starts). */
+function firstDoneId(tasks: Task[]): string | null {
+    return tasks.find((task) => task.done)?.id ?? null;
+}
+
 /**
  * Lands `active` in a list at `slot`, an insertion index into `tasks` (the
  * list in display order, which may contain `active` itself): 0 is above the
@@ -145,6 +150,12 @@ export function placementLabel(
  * there: the neighbours handed to `moveTask` are the closest untimed tasks
  * around the slot, and a timed task keeps its place by time (moving it within
  * its own day changes nothing). Someday is positional throughout.
+ *
+ * Open and done tasks are shown as two groups (open first, then Completed),
+ * while their stored positions interleave, so only tasks of the dragged
+ * task's own group are its neighbours: dropping an open task anywhere at or
+ * below the last open one lands it at the end of the open tasks, and the
+ * insertion line shows there, above Completed.
  *
  * Returns `null` when the drop would leave the task where it is.
  */
@@ -162,7 +173,8 @@ export function resolveListDrop(
     const others = tasks.filter((task) => task.id !== active.id);
     const otherSlot =
         activeIndex !== -1 && activeIndex < slot ? slot - 1 : slot;
-    const positional = (task: Task) => !isDay || task.time === null;
+    const positional = (task: Task) =>
+        task.done === active.done && (!isDay || task.time === null);
 
     const afterId = others.slice(0, otherSlot).findLast(positional)?.id ?? null;
     const beforeId = others.slice(otherSlot).find(positional)?.id ?? null;
@@ -185,9 +197,10 @@ export function resolveListDrop(
 
     const beforeTaskId =
         isDay && active.time !== null
-            ? (others.find((task) => compareDayOrder(active, task) < 0)?.id ??
-              null)
-            : beforeId;
+            ? (others.find(
+                  (task) => !task.done && compareDayOrder(active, task) < 0,
+              )?.id ?? (active.done ? null : firstDoneId(others)))
+            : (beforeId ?? (active.done ? null : firstDoneId(others)));
 
     return {
         move: { ...placement, afterId, beforeId },

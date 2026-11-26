@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.31] - 2026-11-26
+
+### Fixed
+
+- On a day (or list) with completed tasks, an open task can be dragged to the end of the open tasks again: the drop
+  line shows above Completed and the task lands last among the open ones, instead of the line jumping into the
+  Completed section.
+
 ## [0.4.30] - 2026-11-26
 
 ### Fixed
@@ -881,7 +889,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.30...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.31...HEAD
+[0.4.31]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.30...v0.4.31
 [0.4.30]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.29...v0.4.30
 [0.4.29]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.28...v0.4.29
 [0.4.28]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.27...v0.4.28

@@ -485,6 +485,12 @@ function ListCardTaskList({
                     <Fragment key={rowKey(task)}>
                         {task.id === firstDoneId && (
                             <>
+                                {/* The end of the open tasks: a drop line
+                                    before the first done task shows above
+                                    the empty row and Completed. */}
+                                {indicatorBefore === task.id && (
+                                    <DropIndicator />
+                                )}
                                 {/* The empty row sits between the open tasks
                                     and the Completed section. */}
                                 <NewTaskRow
@@ -498,7 +504,8 @@ function ListCardTaskList({
                                 />
                             </>
                         )}
-                        {indicatorBefore === task.id && <DropIndicator />}
+                        {indicatorBefore === task.id &&
+                            task.id !== firstDoneId && <DropIndicator />}
                         <TaskRow
                             task={task}
                             isCursor={false}

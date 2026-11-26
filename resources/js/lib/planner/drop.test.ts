@@ -44,6 +44,30 @@ const c = task('c');
 const monday = [a, b, c];
 
 describe('resolveListDrop', () => {
+    it('lands an open task at the end of the open ones when the day has done tasks', () => {
+        // Stored order a, done1, b; shown: a, b, then Completed: done1.
+        const done1 = task('a5', { done: true });
+        const x = task('z');
+        const shown = [a, b, done1, x];
+        const dayWithX = [a, b, x, done1];
+
+        // Dropped on the lower half of the last open task, or on a done row.
+        for (const slot of [2, 3, 4]) {
+            expect(resolveListDrop(x, { date: TUESDAY }, shown, slot)).toEqual({
+                move: { date: TUESDAY, afterId: 'b', beforeId: null },
+                indicator: { listKey: TUESDAY, beforeTaskId: 'a5' },
+            });
+        }
+
+        // Within its own day: moving the last open task to the end is no move.
+        expect(resolveListDrop(x, { date: MONDAY }, dayWithX, 4)).toBeNull();
+        // Moving a above b, at the end of the open ones.
+        expect(resolveListDrop(a, { date: MONDAY }, [a, b, done1], 2)).toEqual({
+            move: { date: MONDAY, afterId: 'b', beforeId: null },
+            indicator: { listKey: MONDAY, beforeTaskId: 'a5' },
+        });
+    });
+
     it('reorders within a day', () => {
         expect(resolveListDrop(c, { date: MONDAY }, monday, 0)).toEqual({
             move: { date: MONDAY, afterId: null, beforeId: 'a' },
