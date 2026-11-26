@@ -5,6 +5,22 @@ All notable changes to Plain Week are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.27] - 2026-11-26
+
+### Added
+
+- **Calendar feed (ICS), server side.** Each account can turn on a private `.ics` subscription URL
+  (`/calendar/<token>.ics`) for Apple Calendar, Outlook and other calendar apps: the same events as the Google Calendar
+  sync (dated tasks from 30 days ago on, recurring occurrences from 7 days ago to 60 days ahead, notes and a link to
+  the task), refreshed every 15 minutes. A new URL can be made at any time, which stops the old one. It needs nothing
+  configured on self-hosted instances; in SaaS mode it needs a plan. The settings card comes in a follow-up.
+
+### Changed
+
+- **Upstream sync (upstream c8223e1).** Merged upstream PR #124, which adds the server side of the ICS
+  subscription feed: `ics_feeds` table + IcsFeed model, IcsFeedController/IcsCalendar/IcsWriter,
+  PlannerEvent/CalendarWindow, settings routes + IntegrationsController, docs and PHP tests.
+
 ## [0.4.26] - 2026-11-26
 
 ### Changed
@@ -829,7 +845,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.25...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.26...HEAD
+[0.4.27]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.26...v0.4.27
 [0.4.26]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.25...v0.4.26
 [0.4.25]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.24...v0.4.25
 [0.4.24]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.23...v0.4.24
