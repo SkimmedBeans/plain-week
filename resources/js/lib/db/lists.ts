@@ -140,6 +140,14 @@ export function clearListNote(id: string): Promise<SomedayList | null> {
     return updateList(id, { note: null });
 }
 
+/** Sets the ids of a note's pictures, in order (F25). */
+export function setListImages(
+    id: string,
+    images: string[],
+): Promise<SomedayList | null> {
+    return updateList(id, { images });
+}
+
 /** Saves a note's text (F24), cut to `NOTE_MAX` characters. */
 export function setListNote(
     id: string,
@@ -267,7 +275,10 @@ export async function undoListToNote(
 
 function updateList(
     id: string,
-    patch: Pick<Partial<SomedayList>, 'name' | 'color' | 'archived' | 'note'>,
+    patch: Pick<
+        Partial<SomedayList>,
+        'name' | 'color' | 'archived' | 'note' | 'images'
+    >,
 ): Promise<SomedayList | null> {
     return writeLists(async () => {
         const list = await db.someday_lists.get(id);

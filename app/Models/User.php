@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -51,6 +52,14 @@ use Laravel\Passport\HasApiTokens;
 #[Hidden(['password', 'oidc_issuer', 'oidc_sub', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'stripe_id', 'pm_type', 'pm_last_four', 'lifetime_payment_id'])]
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail, OAuthenticatable, PasskeyUser
 {
+    protected static function booted(): void
+    {
+        // Pictures in notes (F25) are files: the rows cascade, the files go here.
+        static::deleted(function (User $user): void {
+            Storage::disk('local')->deleteDirectory(NoteImage::directoryFor($user->id));
+        });
+    }
+
     /** @use HasFactory<UserFactory> */
     use Billable, HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 

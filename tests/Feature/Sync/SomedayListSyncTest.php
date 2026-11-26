@@ -28,6 +28,7 @@ function wireList(array $overrides = []): array
         'color' => 'none',
         'archived' => false,
         'note' => null,
+        'images' => [],
         'column' => 3,
         'position' => 'a0',
         'created_at' => '2026-11-15T08:35:00.123Z',
@@ -191,5 +192,6 @@ test('invalid list records are rejected', function (array $list) {
     'invalid color' => [wireList(['color' => 'orange'])],
     'archived not a boolean' => [wireList(['archived' => 'yes'])],
     'note too long' => [wireList(['note' => str_repeat('a', 20001)])],
+    'image id not a uuid' => [wireList(['images' => ['nope']])],
     'column below the someday area' => [wireList(['column' => 2])],
 ]);

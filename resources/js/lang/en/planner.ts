@@ -156,6 +156,13 @@ export const planner = {
     'planner.deleteListDescription': 'Its tasks will move to Someday.',
     'planner.listDeleteFailed': 'Could not delete the list.',
     'planner.addSubtasks': 'Add sub-tasks',
+    'planner.addPicture': 'Add picture',
+    'planner.removePicture': 'Remove picture',
+    'planner.notePicture': 'Picture {index} in {name}',
+    'planner.pictureUnavailable':
+        'This picture has not reached this device yet.',
+    'planner.pictureFailed': 'Could not add the picture.',
+    'planner.picturesFull': 'A note holds up to 20 pictures.',
     'planner.convertToNote': 'Convert to note',
     'planner.convertToTasks': 'Convert to tasks',
     'planner.listToNoteDone': 'The {name} list is a note now.',
