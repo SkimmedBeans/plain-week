@@ -25,6 +25,8 @@ type Props = {
     weekStart: Date;
     today: string;
     onOpenTask: (taskId: string) => void;
+    /** Extra classes for the row: spacing and order differ per view (F52). */
+    className?: string;
 };
 
 /**
@@ -32,8 +34,18 @@ type Props = {
  * ones: they give their grid space back. A chip shows the list's name and
  * open-task count in its title color; pressing it opens the list card, and
  * its chevron expands the list again.
+ *
+ * Phones (F52): the chips stack as one full-width row per list, so the row
+ * can sit directly under the Add / Expand all bar of the Lists and Notes
+ * views; desktop keeps the wrapping chip row.
  */
-export function CollapsedLists({ lists, weekStart, today, onOpenTask }: Props) {
+export function CollapsedLists({
+    lists,
+    weekStart,
+    today,
+    onOpenTask,
+    className,
+}: Props) {
     if (lists.length === 0) {
         return null;
     }
@@ -42,7 +54,10 @@ export function CollapsedLists({ lists, weekStart, today, onOpenTask }: Props) {
         <ul
             data-collapsed-lists
             aria-label={t('planner.collapsedLists')}
-            className="mt-10 flex shrink-0 flex-wrap gap-2 lg:mt-6"
+            className={cn(
+                'flex shrink-0 flex-wrap gap-2 max-lg:flex-col',
+                className,
+            )}
         >
             {lists.map((list) => (
                 <CollapsedListChip
@@ -76,7 +91,7 @@ function CollapsedListChip({
     return (
         <li
             className={cn(
-                'flex items-center rounded-full border border-border',
+                'flex items-center rounded-full border border-border max-lg:w-full',
                 TASK_COLOR_STYLES[color].pill,
                 color !== 'none' && 'border-transparent',
             )}
@@ -97,13 +112,13 @@ function CollapsedListChip({
                           })
                 }
                 onClick={() => setCard(identity)}
-                className="rounded-full pe-1 font-semibold text-inherit hover:bg-transparent hover:text-inherit dark:hover:bg-transparent"
+                className="rounded-full pe-1 font-semibold text-inherit hover:bg-transparent hover:text-inherit max-lg:min-w-0 max-lg:flex-1 max-lg:justify-start dark:hover:bg-transparent"
             >
-                {list.name}
+                <span className="max-lg:truncate">{list.name}</span>
                 {typeof list.note === 'string' ? (
                     <NotebookText className="opacity-70" />
                 ) : (
-                    <span className="font-normal tabular-nums opacity-70">
+                    <span className="shrink-0 font-normal tabular-nums opacity-70">
                         · {open}
                     </span>
                 )}
