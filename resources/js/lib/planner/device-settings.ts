@@ -96,14 +96,18 @@ export const compactDensity = deviceSetting<boolean>(
     (on) => (on ? 'on' : null),
 );
 
-export type PlannerView = 'week' | 'lists';
+export type PlannerView = 'week' | 'lists' | 'notes';
+
+export function isPlannerView(value: unknown): value is PlannerView {
+    return value === 'week' || value === 'lists' || value === 'notes';
+}
 
 /**
- * The planner's view on this device (F30): the week (days and Someday) or
- * the named lists with the whole screen to themselves.
+ * The planner's view on this device (F30, F38): the week (days and
+ * Someday), the named task lists, or the notes, each with the whole screen.
  */
 export const plannerView = deviceSetting<PlannerView>(
     'plain-week.view',
-    (raw) => (raw === 'lists' ? 'lists' : 'week'),
-    (view) => (view === 'lists' ? 'lists' : null),
+    (raw) => (isPlannerView(raw) ? raw : 'week'),
+    (view) => (view === 'week' ? null : view),
 );

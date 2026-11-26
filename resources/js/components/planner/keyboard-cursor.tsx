@@ -37,6 +37,7 @@ import {
 } from '@/lib/planner/cursor';
 import type { Cursor, CursorList } from '@/lib/planner/cursor';
 import { placementKey, resolveListDrop } from '@/lib/planner/drop';
+import { plannerView } from '@/lib/planner/device-settings';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
 import { shortcutsDialogStore } from '@/lib/planner/shortcuts-dialog';
 import {
@@ -500,6 +501,10 @@ export function KeyboardCursorProvider({
     };
 
     const changeWeek = (weeks: -1 | 1) => () => {
+        // The week only changes what the Week view shows (F39).
+        if (plannerView.get() !== 'week') {
+            return false;
+        }
         rows.current.clear();
 
         if (weeks === -1) {

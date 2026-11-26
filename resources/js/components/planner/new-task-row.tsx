@@ -84,7 +84,7 @@ export function NewTaskRow({
             role="group"
             aria-label={t('planner.newTaskRowLabel', { label })}
             className={cn(
-                'group/new relative h-row border-b border-border outline-none max-lg:scroll-mt-20',
+                'group/new relative h-row border-b border-border outline-none max-lg:scroll-mt-32',
                 CURSOR_ROW_CLASS,
                 // Typing: the input's own lifted look replaces the cursor.
                 'has-[input:focus]:bg-transparent has-[input:focus]:before:hidden',

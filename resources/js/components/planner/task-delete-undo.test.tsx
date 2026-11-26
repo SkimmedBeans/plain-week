@@ -111,7 +111,8 @@ describe('header undo for deletes', () => {
     it('is disabled until something is deleted', async () => {
         render(<Day />);
 
-        const button = screen.getByRole('button', { name: 'Undo delete' });
+        // The header's button (phones show the same one in the view bar, F40).
+        const [button] = screen.getAllByRole('button', { name: 'Undo delete' });
 
         expect((button as HTMLButtonElement).disabled).toBe(true);
     });
@@ -125,15 +126,15 @@ describe('header undo for deletes', () => {
         await deleteWithUndo(gym.id);
         await deleteWithUndo(swim.id);
 
-        const button = await screen.findByRole('button', {
+        const [button] = await screen.findAllByRole('button', {
             name: 'Undo delete: Swim',
         });
         await user.click(button);
 
         await waitFor(async () => expect(await liveTexts()).toEqual(['Swim']));
         expect(
-            await screen.findByRole('button', { name: 'Undo delete: Gym' }),
-        ).toBeTruthy();
+            await screen.findAllByRole('button', { name: 'Undo delete: Gym' }),
+        ).toHaveLength(2);
     });
 
     it('forgets a delete once its toast has undone it', async () => {
@@ -148,7 +149,7 @@ describe('header undo for deletes', () => {
         await user.click(undoButtons.at(-1)!);
 
         await waitFor(async () => expect(await liveTexts()).toEqual(['Gym']));
-        const button = await screen.findByRole('button', {
+        const [button] = await screen.findAllByRole('button', {
             name: 'Undo delete',
         });
         expect((button as HTMLButtonElement).disabled).toBe(true);

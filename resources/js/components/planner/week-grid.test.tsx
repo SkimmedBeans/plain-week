@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { WeekGrid } from '@/components/planner/week-grid';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
-import { createList, setListArchived } from '@/lib/db/lists';
+import { convertListToNote, createList, setListArchived } from '@/lib/db/lists';
 import { createTask } from '@/lib/db/tasks';
 
 describe('WeekGrid', () => {
@@ -188,5 +188,37 @@ describe('WeekGrid', () => {
         await waitFor(async () =>
             expect((await db.someday_lists.get(list.id))!.archived).toBe(false),
         );
+    });
+
+    it('shows task lists on Lists and notes on Notes', async () => {
+        await createList('Errands');
+        const note = await createList('Ideas');
+        await convertListToNote(note.id);
+        const user = userEvent.setup();
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        await user.click(await screen.findByRole('radio', { name: 'Lists' }));
+        await waitFor(() =>
+            expect(
+                screen.getAllByRole('region').map((r) => r.textContent),
+            ).toEqual([expect.stringContaining('Errands')]),
+        );
+
+        await user.click(screen.getByRole('radio', { name: 'Notes' }));
+        await waitFor(() =>
+            expect(
+                screen.getAllByRole('region').map((r) => r.textContent),
+            ).toEqual([expect.stringContaining('Ideas')]),
+        );
+        expect(localStorage.getItem('plain-week.view')).toBe('notes');
     });
 });

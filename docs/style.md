@@ -360,6 +360,10 @@ Row behaviour:
   the text button, and "Add sub-tasks" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
   presses and keys to itself, so selecting text never drags the task or opens the task menu. A web link in the text is
   underlined and a click on it opens the link in a new tab instead, since a button cannot hold an anchor.
+- The view switch (`view-bar.tsx`, F30/F38/F40) has Week, Lists (task lists) and Notes (lists converted to notes). On
+  phones it is the sticky header's second row in equal thirds, with Undo and Search beside it (the first row keeps the
+  title, Today, account and week arrows, so the title never gets squeezed); task rows and today use `max-lg:scroll-mt-32`
+  to clear that taller header. Off Week the week arrows are disabled and their shortcuts do nothing (F39).
 - Week / Lists (F30, per device `plain-week.view`): a `ToggleGroup` above the grid. Week renders the days and the
   base Someday in the window-shape grid; Lists renders the expanded named lists in
   `lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]` rows that share the window height (stacked on phones), with an
