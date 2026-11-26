@@ -55,11 +55,11 @@ test('push stores a label and pull returns it', function () {
 
     pushLabels([$label])
         ->assertOk()
-        ->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1]);
+        ->assertExactJson(['applied' => [], 'rejected' => [], 'cursor' => 1, 'lists_applied' => [], 'lists_rejected' => []]);
 
     pullLabels()
         ->assertOk()
-        ->assertExactJson(['tasks' => [], 'labels' => [$label], 'cursor' => 1, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [], 'lists' => [], 'labels' => [$label], 'cursor' => 1, 'has_more' => false]);
 
     expect(TaskLabel::sole())
         ->user_id->toBe($this->user->id)
@@ -104,6 +104,7 @@ test('labels and tasks share one version sequence and paginate together', functi
     pullLabels(['cursor' => 3])
         ->assertExactJson([
             'tasks' => [],
+            'lists' => [],
             'labels' => [wireLabel(['color' => 'lilac', 'name' => 'Home'])],
             'cursor' => 4,
             'has_more' => false,
@@ -119,7 +120,7 @@ test('clients before format 3 get no labels and keep their old response shape', 
     $headers = $format === null ? [] : [SyncFormat::HEADER => (string) $format->value];
 
     test()->getJson(route('sync.pull'), $headers)
-        ->assertExactJson(['tasks' => [$task], 'cursor' => 1, 'has_more' => false]);
+        ->assertExactJson(['tasks' => [$task], 'lists' => [], 'cursor' => 1, 'has_more' => false]);
 })->with([
     'no header' => [null],
     'daily rules' => [SyncFormat::DailyRules],
