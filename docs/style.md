@@ -391,8 +391,8 @@ Row behaviour:
   `lib/planner/device-settings.ts`): 75% `--muted` on days, Someday and uncoloured lists, 16% of the title colour on
   coloured lists, 12% of the accent on today. Today's colour (`plain-week.today-color`, Settings › Preferences) swaps
   `--planner-accent` and `--planner-accent-muted` for a task colour on today's column only.
-- Lists and Notes start with an Add button (`add-list.tsx`, F35): name plus List / Note (defaulting to the view's
-  kind); a note is created as a list then converted (empty). Someday's header has no + any more. A picture this device cannot get yet (not uploaded by
+- Lists and Notes start with an Add button (`add-list.tsx`, F35): only a name, and it creates the view's kind
+  (F54): a task list on Lists, an empty note on Notes (created as a list, then converted). Someday's header has no + any more. A picture this device cannot get yet (not uploaded by
   the device that added it, or offline) shows a muted placeholder.
 - A named list's ⋮ menu has "Archive list" (F31, with Undo): the list leaves the planner and its tasks stay in its
   column. While any list is archived, the base Someday header shows an archive button that opens "Archived lists"

@@ -12,21 +12,20 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { LIST_NAME_MAX, convertListToNote, createList } from '@/lib/db/lists';
 import { t } from '@/lib/i18n';
 
 type Kind = 'list' | 'note';
 
 /**
- * "Add" on the Lists and Notes views (F35): a name and whether it is a task
- * list or a note (a note starts empty, F24). Defaults to the view's kind.
+ * "Add" on the Lists and Notes views (F35, F54): asks only for a name and
+ * creates the view's kind, a task list on Lists, an empty note (F24) on
+ * Notes.
  */
-export function AddList({ defaultKind }: { defaultKind: Kind }) {
+export function AddList({ kind }: { kind: Kind }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
-    const [kind, setKind] = useState<Kind>(defaultKind);
+    const isNote = kind === 'note';
 
     const submit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -36,7 +35,7 @@ export function AddList({ defaultKind }: { defaultKind: Kind }) {
 
         void createList(name)
             .then(async (list) => {
-                if (kind === 'note') {
+                if (isNote) {
                     await convertListToNote(list.id);
                 }
                 setName('');
@@ -52,10 +51,7 @@ export function AddList({ defaultKind }: { defaultKind: Kind }) {
                 variant="outline"
                 size="sm"
                 data-test="add-list"
-                onClick={() => {
-                    setKind(defaultKind);
-                    setOpen(true);
-                }}
+                onClick={() => setOpen(true)}
                 className="shrink-0 self-start rounded-full"
             >
                 <Plus />
@@ -64,9 +60,15 @@ export function AddList({ defaultKind }: { defaultKind: Kind }) {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{t('planner.addListTitle')}</DialogTitle>
+                        <DialogTitle>
+                            {isNote
+                                ? t('planner.addNoteTitle')
+                                : t('planner.addListOnlyTitle')}
+                        </DialogTitle>
                         <DialogDescription>
-                            {t('planner.addListDescription')}
+                            {isNote
+                                ? t('planner.addNoteDescription')
+                                : t('planner.addListOnlyDescription')}
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={submit} className="space-y-4">
@@ -74,37 +76,18 @@ export function AddList({ defaultKind }: { defaultKind: Kind }) {
                             autoFocus
                             value={name}
                             maxLength={LIST_NAME_MAX}
-                            placeholder={t('planner.listName')}
-                            aria-label={t('planner.listName')}
+                            placeholder={
+                                isNote
+                                    ? t('planner.noteName')
+                                    : t('planner.listName')
+                            }
+                            aria-label={
+                                isNote
+                                    ? t('planner.noteName')
+                                    : t('planner.listName')
+                            }
                             onChange={(event) => setName(event.target.value)}
                         />
-                        <RadioGroup
-                            value={kind}
-                            onValueChange={(value) =>
-                                setKind(value === 'note' ? 'note' : 'list')
-                            }
-                            aria-label={t('planner.addListKind')}
-                            className="flex gap-6"
-                        >
-                            <div className="flex items-center gap-2">
-                                <RadioGroupItem
-                                    value="list"
-                                    id="add-kind-list"
-                                />
-                                <Label htmlFor="add-kind-list">
-                                    {t('planner.addKindList')}
-                                </Label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <RadioGroupItem
-                                    value="note"
-                                    id="add-kind-note"
-                                />
-                                <Label htmlFor="add-kind-note">
-                                    {t('planner.addKindNote')}
-                                </Label>
-                            </div>
-                        </RadioGroup>
                         <DialogFooter>
                             <Button
                                 type="button"

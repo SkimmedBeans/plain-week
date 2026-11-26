@@ -99,7 +99,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 <div className="mb-6 flex shrink-0 gap-2 lg:mb-5">
                     <AddList
                         key={view}
-                        defaultKind={view === 'notes' ? 'note' : 'list'}
+                        kind={view === 'notes' ? 'note' : 'list'}
                     />
                     {viewLists.length > 0 && (
                         // Collapse every list of this view to a chip, or
