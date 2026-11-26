@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.32] - 2026-11-26
+
+### Changed
+
+- Add on the Lists tab makes a list and Add on the Notes tab makes a note straight away: the dialog only asks for the
+  name (the List / Note choice is gone).
+
 ## [0.4.31] - 2026-11-26
 
 ### Fixed
@@ -889,7 +896,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.31...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.32...HEAD
+[0.4.32]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.31...v0.4.32
 [0.4.31]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.30...v0.4.31
 [0.4.30]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.29...v0.4.30
 [0.4.29]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.28...v0.4.29
