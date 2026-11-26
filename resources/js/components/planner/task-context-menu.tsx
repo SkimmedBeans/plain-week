@@ -47,11 +47,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useMenuShortcuts } from '@/hooks/use-menu-shortcuts';
 import { useSomedayLists } from '@/hooks/use-tasks';
+import { useTaskColorName } from '@/hooks/use-task-labels';
 import { t } from '@/lib/i18n';
 import { TASK_COLORS } from '@/lib/db/types';
 import type { Task, TaskColor } from '@/lib/db/types';
 import type { ShortcutId } from '@/lib/planner/shortcuts';
-import { TASK_COLOR_STYLES, isTaskColor } from '@/lib/planner/task-colors';
+import { isTaskColor } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 
 export type TaskContextMenuActions = {
@@ -188,10 +189,10 @@ function openFromKeyboard(event: KeyboardEvent<HTMLElement>): void {
 /**
  * The task menu's items, the same in the context menu and the "more" button's
  * dropdown: the nine color swatches in two rows (five and four, like the
- * dialog's color picker), Add sub-tasks (opens the task card) and Copy text,
- * the quick moves, Duplicate and Delete. Each item
- * shows its key before its icon; the key's slot stays (empty on touch
- * devices) so the icon keeps its place at the end.
+ * dialog's color picker; each named after its label, in a tooltip), Add
+ * sub-tasks (opens the task card) and Copy text, the quick moves, Duplicate
+ * and Delete. Each item shows its key before its icon; the key's slot stays
+ * (empty on touch devices) so the icon keeps its place at the end.
  */
 function TaskMenuItems({
     task,
@@ -227,6 +228,7 @@ function TaskMenuItems({
         (list) =>
             task.date !== null || (task.someday_column ?? 0) !== list.column,
     );
+    const colorName = useTaskColorName();
     const hint = (action: ShortcutId) => (
         <Shortcut>
             <ShortcutHint action={action} />
@@ -249,7 +251,7 @@ function TaskMenuItems({
                     <RadioItem
                         key={color}
                         value={color}
-                        aria-label={TASK_COLOR_STYLES[color].label}
+                        aria-label={colorName(color)}
                         // The swatch carries the check: hide the item's own
                         // indicator (its first child).
                         className="size-8 justify-center rounded-full p-0 *:first:hidden"
@@ -257,6 +259,7 @@ function TaskMenuItems({
                         <TaskColorSwatch
                             color={color}
                             checked={color === task.color}
+                            label={colorName(color)}
                         />
                     </RadioItem>
                 ))}

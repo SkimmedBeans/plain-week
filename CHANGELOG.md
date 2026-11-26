@@ -5,6 +5,15 @@ All notable changes to Plain Week are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.24] - 2026-11-26
+
+### Added
+
+- **Settings › Labels.** A new settings page to name each task color (for example Pink → "Deep work"): it shows the
+  `#tag` each name gives, saves as you type, offline, and refuses a name another label or color already has. A custom
+  name can be reset to the color name. The color pickers (task menu and task dialog) now name each color after its
+  label.
+
 ## [0.4.23] - 2026-11-26
 
 ### Added
@@ -802,7 +811,9 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.22...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.23...HEAD
+[0.4.24]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.23...v0.4.24
+[0.4.23]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.22...v0.4.23
 [0.4.22]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.21...v0.4.22
 [0.4.21]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.20...v0.4.21
 [0.4.20]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.19...v0.4.20
