@@ -20,8 +20,10 @@ import {
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { TaskList } from '@/components/planner/task-list';
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { createList } from '@/lib/db/lists';
+import { setLabelName } from '@/lib/db/labels';
 import { createTask, listTasksIn } from '@/lib/db/tasks';
 import { toastAction } from '@/test/toasts';
 import type { TaskPlacement } from '@/lib/db/tasks';
@@ -39,15 +41,17 @@ function List({
     const tasks = useLiveQuery(() => listTasksIn(placement), [placement]);
 
     return (
-        <ScopePromptProvider>
-            <TaskList
-                placement={placement}
-                tasks={tasks}
-                newTaskLabel="New task"
-                onOpenTask={onOpenTask}
-            />
-            <Toaster />
-        </ScopePromptProvider>
+        <TooltipProvider>
+            <ScopePromptProvider>
+                <TaskList
+                    placement={placement}
+                    tasks={tasks}
+                    newTaskLabel="New task"
+                    onOpenTask={onOpenTask}
+                />
+                <Toaster />
+            </ScopePromptProvider>
+        </TooltipProvider>
     );
 }
 
@@ -208,6 +212,33 @@ describe('TaskContextMenu', () => {
                 .getByRole('menuitemradio', { name: 'Pink' })
                 .getAttribute('aria-checked'),
         ).toBe('true');
+    });
+
+    it('names the colors after their labels', async () => {
+        await setLabelName('pink', 'Deep work');
+        const { task, user, button } = await setup();
+
+        await openMenu(button);
+        const pink = await screen.findByRole('menuitemradio', {
+            name: 'Deep work',
+        });
+        expect(
+            screen.queryByRole('menuitemradio', { name: 'Pink' }),
+        ).toBeNull();
+        expect(
+            screen.getByRole('menuitemradio', { name: 'No color' }),
+        ).toBeTruthy();
+
+        // The swatch is the last child (the item's own indicator is hidden).
+        await user.hover(pink.lastElementChild!);
+        expect((await screen.findByRole('tooltip')).textContent).toBe(
+            'Deep work',
+        );
+
+        fireEvent.click(pink);
+        await waitFor(async () =>
+            expect((await stored(task.id))?.color).toBe('pink'),
+        );
     });
 
     it('moves the task to tomorrow, next week and Someday', async () => {

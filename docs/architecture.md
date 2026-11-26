@@ -55,7 +55,8 @@ The name a user gave a task color, synced with the account (all devices). One re
 
 A color without a record, or with `name: ''`, is shown with its translated default name ("Pink", the
 `planner.color<Color>` keys). Resetting a name writes `''` (there are no tombstones: the record is the whole state).
-Same server-only columns as a task.
+Same server-only columns as a task. Users rename labels in Settings › Labels (`/settings/labels`), and the color
+pickers show the effective names.
 
 ### Recurring tasks
 
@@ -337,6 +338,7 @@ Pure helpers for the UI, in `lib/planner/task-labels.ts`:
 | Hook                                      | Returns                                                                                                                                                                   |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `useTaskLabels()`                         | `{ labels, isLoading, setLabelName }`: `resolveLabels` of the live records (default names during the first read)                                                          |
+| `useTaskColorName()`                      | `(color) => string`: the color's effective label name for pickers ("No color" for `none`)                                                                                 |
 | `useWeekTasks(weekStart: Date)`           | `Record<'YYYY-MM-DD', PlannerTask[]>` for the 7 days from `weekStart` (every day present), occurrences included, timed first                                              |
 | `useSomedayTasks(weekStart, today, list)` | `PlannerTask[]` for one Someday list — `list` 0 is the base list (which also shows orphaned tasks), a number above is that named list — in order, archived tasks left out |
 | `useSomedayLists()`                       | `SomedayList[]`, the named lists in `position` order (the base list is not a row and is not included)                                                                     |
@@ -927,6 +929,7 @@ Laravel provides:
 | `/settings/*`                                |                                       | `auth`.                                                                              |
 | `GET /settings/data`                         | `data.edit`                           | `auth`. Inertia page `settings/data` (export / import run client-side).              |
 | `GET /settings/preferences`                  | `preferences.edit`                    | `auth`. Inertia page `settings/preferences` (values stored in the browser).          |
+| `GET /settings/labels`                       | `labels.edit`                         | `auth`. Inertia page `settings/labels` (names in IndexedDB, synced).                 |
 | `PATCH /settings/language`                   | `language.update`                     | `auth`. `{ language: <offered locale> \| null }` (`users.language`); redirects back. |
 | `GET /settings/integrations`                 | `integrations.edit`                   | `auth`.² Inertia page `settings/integrations`.                                       |
 | `GET /settings/integrations/google/connect`  | `integrations.google.connect`         | `auth`.¹ ² Redirects to Google's consent screen (`throttle:10,1`).                   |
