@@ -86,6 +86,12 @@ export function setListCollapsed(key: string, collapsed: boolean): void {
     collapsedLists.set(collapsed ? [...keys, key] : keys);
 }
 
+/** Collapses or expands several lists at once (F45). */
+export function setListsCollapsed(keys: string[], collapsed: boolean): void {
+    const rest = collapsedLists.get().filter((item) => !keys.includes(item));
+    collapsedLists.set(collapsed ? [...rest, ...keys] : rest);
+}
+
 /** The key of a Someday list in `collapsedLists`. */
 export function collapseKey(list: { id?: string }): string {
     return list.id ?? 'someday';

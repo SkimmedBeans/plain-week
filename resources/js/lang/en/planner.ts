@@ -161,6 +161,8 @@ export const planner = {
     'planner.deleteListDescription': 'Its tasks will move to Someday.',
     'planner.listDeleteFailed': 'Could not delete the list.',
     'planner.addSubtasks': 'Add sub-tasks',
+    'planner.collapseAll': 'Collapse all',
+    'planner.expandAll': 'Expand all',
     'planner.addList': 'Add',
     'planner.addListTitle': 'Add a list or note',
     'planner.addListDescription':
