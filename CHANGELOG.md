@@ -7,6 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.20] - 2026-11-26
+
+### Added
+
+- **Add a list or note from Lists and Notes.** An Add button at the top of the Lists and Notes views asks for a name and
+  whether it is a list or a note (it defaults to the view you are on).
+
+### Changed
+
+- "Add picture" is now in a note's ⋮ menu (and an icon in the note's card) instead of under the note's text.
+
+### Removed
+
+- The + on Someday's header in the Week view; new lists are added from Lists or Notes.
+
 ## [0.4.19] - 2026-11-26
 
 ### Added
@@ -761,7 +776,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.19...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.20...HEAD
+[0.4.20]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.19...v0.4.20
 [0.4.19]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.18...v0.4.19
 [0.4.18]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.17...v0.4.18
 [0.4.17]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.16...v0.4.17

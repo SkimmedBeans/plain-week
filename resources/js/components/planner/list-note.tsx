@@ -1,4 +1,4 @@
-import { ImagePlus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
     uploadPendingImages,
     watchImageUploads,
 } from '@/lib/notes/images';
+import { onAddPictureRequest } from '@/lib/notes/picture-requests';
 import { cn } from '@/lib/utils';
 
 /** How long typing pauses before the note is saved. */
@@ -115,7 +116,18 @@ function NotePictures({ list }: { list: SomedayList }) {
     const input = useRef<HTMLInputElement>(null);
     const images = list.images ?? [];
 
+    // "Add picture" in the note's ⋮ menu opens this note's picker (F34).
+    useEffect(
+        () => onAddPictureRequest(list.id, () => input.current?.click()),
+        [list.id],
+    );
+
     const add = async (file: File) => {
+        if (images.length >= NOTE_IMAGES_MAX) {
+            toast.error(t('planner.picturesFull'));
+
+            return;
+        }
         try {
             await addNoteImage(list, file);
         } catch {
@@ -158,18 +170,6 @@ function NotePictures({ list }: { list: SomedayList }) {
                     }
                 }}
             />
-            {images.length < NOTE_IMAGES_MAX && (
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => input.current?.click()}
-                    className="self-start text-muted-foreground"
-                >
-                    <ImagePlus />
-                    {t('planner.addPicture')}
-                </Button>
-            )}
         </div>
     );
 }

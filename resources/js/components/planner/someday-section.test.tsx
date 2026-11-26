@@ -9,6 +9,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import { AddList } from '@/components/planner/add-list';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { SomedaySection } from '@/components/planner/someday-section';
 import { Toaster } from '@/components/ui/sonner';
@@ -106,11 +107,11 @@ describe('SomedaySection', () => {
         expect((await queryLists())[0].color).toBe('none');
     });
 
-    it('heads the base column with Someday and offers New list', () => {
+    it('heads the base column with Someday, without New list (F35)', () => {
         render(<Section list={BASE} />);
 
         expect(screen.getByText('Someday')).toBeTruthy();
-        expect(screen.getByRole('button', { name: 'New list' })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'New list' })).toBeNull();
         expect(
             screen.queryByRole('button', { name: /More options/ }),
         ).toBeNull();
@@ -135,12 +136,14 @@ describe('SomedaySection', () => {
         ).toBeTruthy();
     });
 
-    it('creates a list from the base header with its name', async () => {
+    it('adds a list from Add with its name', async () => {
         const user = userEvent.setup();
-        render(<Section list={BASE} />);
+        render(<AddList defaultKind="list" />);
 
-        await user.click(screen.getByRole('button', { name: 'New list' }));
-        const dialog = await screen.findByRole('dialog', { name: 'New list' });
+        await user.click(screen.getByRole('button', { name: 'Add' }));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'Add a list or note',
+        });
 
         const submit = within(dialog).getByRole('button', {
             name: 'Create',
@@ -155,15 +158,37 @@ describe('SomedaySection', () => {
         });
         const [list] = await queryLists();
         expect(list?.name).toBe('Ideas');
+        expect(list?.note ?? null).toBeNull();
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
+    it('adds an empty note when Note is picked', async () => {
+        const user = userEvent.setup();
+        render(<AddList defaultKind="list" />);
+
+        await user.click(screen.getByRole('button', { name: 'Add' }));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'Add a list or note',
+        });
+        await user.type(within(dialog).getByLabelText('List name'), 'Ideas');
+        await user.click(within(dialog).getByRole('radio', { name: 'Note' }));
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Create' }),
+        );
+
+        await waitFor(async () =>
+            expect((await queryLists())[0]?.note).toBe(''),
+        );
     });
 
     it('cancels without creating a list', async () => {
         const user = userEvent.setup();
-        render(<Section list={BASE} />);
+        render(<AddList defaultKind="list" />);
 
-        await user.click(screen.getByRole('button', { name: 'New list' }));
-        const dialog = await screen.findByRole('dialog', { name: 'New list' });
+        await user.click(screen.getByRole('button', { name: 'Add' }));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'Add a list or note',
+        });
         await user.type(within(dialog).getByLabelText('List name'), 'Ideas');
         await user.click(
             within(dialog).getByRole('button', { name: 'Cancel' }),
