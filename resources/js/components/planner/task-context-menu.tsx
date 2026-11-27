@@ -56,7 +56,7 @@ import { isTaskColor } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 
 export type TaskContextMenuActions = {
-    /** Opens the task card ("Add sub-tasks", F20). */
+    /** Opens the task details card. */
     onOpenCard: () => void;
     /** Copies the task's text to the clipboard (F22). */
     onCopyText: () => void;
@@ -241,6 +241,12 @@ function TaskMenuItems({
 
     return (
         <>
+            <Item onSelect={onOpenCard}>
+                {t('planner.taskDetails')}
+                <Shortcut>{null}</Shortcut>
+                <ListPlus />
+            </Item>
+            <Separator />
             <RadioGroup
                 aria-label={t('planner.taskColor')}
                 value={task.color}
@@ -269,13 +275,6 @@ function TaskMenuItems({
                 ))}
             </RadioGroup>
             <Separator />
-            {/* The card holds sub-tasks and notes; a tap on the text edits
-                it in place (F19), so this is the menu's way to the card. */}
-            <Item onSelect={onOpenCard}>
-                {t('planner.addSubtasks')}
-                <Shortcut>{null}</Shortcut>
-                <ListPlus />
-            </Item>
             <Item onSelect={onCopyText}>
                 {t('planner.copyText')}
                 <Shortcut>{null}</Shortcut>
@@ -319,6 +318,7 @@ function TaskMenuItems({
                     </SubContent>
                 </Sub>
             )}
+            <Separator />
             <Item data-shortcut="task.duplicate" onSelect={onDuplicate}>
                 {t('planner.duplicate')}
                 {hint('task.duplicate')}

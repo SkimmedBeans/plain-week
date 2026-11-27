@@ -162,7 +162,6 @@ export const planner = {
     'planner.deleteListTitle': 'Delete “{name}”?',
     'planner.deleteListDescription': 'Its tasks will move to Someday.',
     'planner.listDeleteFailed': 'Could not delete the list.',
-    'planner.addSubtasks': 'Add sub-tasks',
     'planner.collapseAll': 'Collapse all',
     'planner.expandAll': 'Expand all',
     'planner.addList': 'Add',
@@ -175,6 +174,8 @@ export const planner = {
     'planner.create': 'Create',
     'planner.view': 'View',
     'planner.viewWeek': 'Week',
+    'planner.jumpToDay': 'Jump to day',
+    'planner.taskDetails': 'Task details',
     'planner.viewLists': 'Lists',
     'planner.viewNotes': 'Notes',
     'planner.noNotes':

@@ -30,7 +30,7 @@ export function ViewBar() {
                         plannerView.set(value);
                     }
                 }}
-                className="max-lg:min-w-0 max-lg:flex-1 max-lg:*:flex-1"
+                className="max-lg:min-w-0 max-lg:flex-1 max-lg:*:flex-1 [&>[data-state=on]]:bg-primary [&>[data-state=on]]:text-primary-foreground"
             >
                 <ToggleGroupItem value="week" data-test="view-week">
                     {t('planner.viewWeek')}

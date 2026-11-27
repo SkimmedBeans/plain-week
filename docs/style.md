@@ -360,7 +360,7 @@ Row behaviour:
   the complete check. A single click or tap on the text turns it into an inline `Textarea` with the caret where it was
   pressed (F19): Enter or leaving the field saves through `updateTask` (a recurring task asks its scope first), Esc
   cancels, and an emptied text keeps the old one. A second press within 350 ms (`DOUBLE_TAP_MS`), Enter or Space on
-  the text button, and "Add sub-tasks" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
+  the text button, and "Task details" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
   presses and keys to itself, so selecting text never drags the task or opens the task menu. A web link in the text is
   underlined and a click on it opens the link in a new tab instead, since a button cannot hold an anchor.
 - The view switch (`view-bar.tsx`, F30/F38/F40) has Week, Lists (task lists) and Notes (lists converted to notes). On
@@ -410,6 +410,9 @@ Row behaviour:
 - On phones, Week, Lists and Notes each remember their scroll position while the planner is mounted.
   Task and list cards keep their controls visible while scrolling. Closing a task opened from search
   restores the query and result position.
+- The phone Week heading shows the date range and has a menu for jumping to any day or Someday.
+  A horizontal swipe on the heading or blank planner space changes the week. Task rows, editable
+  controls, and the screen edges are outside the swipe area so their gestures keep working.
 - A list that scrolls inside its desktop cell gets a 2rem `mask-image` fade at the bottom while more is below and at the
   top once scrolled (`data-overflow-top` / `data-overflow-bottom`, F28). A mask only paints, so taps and drops reach the
   rows under it.
@@ -420,8 +423,8 @@ Row behaviour:
   `--spacing-row`, so the rule sets the row heights directly).
 - A task with sub-tasks shows a small `ListChecks` icon and "done/total" after its text (F21); the row's accessible
   name ends in "1 of 2 sub-tasks done".
-- The task menu (right click or ⋮) starts with the color swatches, then "Add sub-tasks" (opens the dialog) and "Copy
-  text" (F22). A named list's ⋮ menu and every list card header have "Copy all tasks to clipboard" (F23): open tasks
+- The task menu (right click or ⋮) starts with "Task details", followed by color swatches, "Copy text", and
+  grouped move actions. Task list menus and list card headers have "Copy all tasks to clipboard" (F23): open tasks
   one per line, sub-tasks under them as `  - text` (a done one ends in ` ✓`), then a blank line, `Completed` and the
   done tasks. Copying uses the Clipboard API in a secure context and falls back to `execCommand('copy')` over plain
   HTTP (`lib/planner/clipboard.ts`).
