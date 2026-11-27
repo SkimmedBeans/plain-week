@@ -368,8 +368,8 @@ Row behaviour:
   title, Today, account and week arrows, so the title never gets squeezed); task rows and today use `max-lg:scroll-mt-32`
   to clear that taller header. Off Week the week arrows are disabled and their shortcuts do nothing (F39).
 - Week / Lists (F30, per device `plain-week.view`): a `ToggleGroup` above the grid. Week renders the days and the
-  base Someday in the window-shape grid. Lists uses content-height sheets with a thin outline, a subtle list tint,
-  and a visible inline **+ Add task** prompt. Sheets stack on phones and use tracks at least 22rem wide on desktop.
+  base Someday in the window-shape grid. Lists and Notes use content-height sheets with a thin outline and a subtle
+  tint. Sheets stack on phones and use tracks at least 22rem wide on desktop. Lists has an inline **+ Add task** prompt.
   The title opens the list card. Collapsed chips follow the view (base Someday in Week, named lists in Lists).
   The task menu's "Move to list" submenu (Someday and every shown named list but the task's own) moves a task to a list
   that is not on screen; its toast names the list.

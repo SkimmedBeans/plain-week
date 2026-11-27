@@ -175,12 +175,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     data-density={compact ? 'compact' : undefined}
                     data-stripes={stripes || undefined}
                     data-lists-view
-                    className={cn(
-                        'grid grid-cols-1 max-lg:order-2',
-                        view === 'lists'
-                            ? 'content-start items-start gap-6 lg:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))]'
-                            : 'gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:auto-rows-[minmax(14rem,1fr)] lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] lg:gap-y-8',
-                    )}
+                    className="grid grid-cols-1 content-start items-start gap-6 max-lg:order-2 lg:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))]"
                 >
                     {listsShown.map((list) => {
                         const index = (namedLists ?? []).indexOf(list);
@@ -192,7 +187,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                                 weekStart={weekStart}
                                 today={today}
                                 onOpenTask={onOpenTask}
-                                paper={view === 'lists'}
+                                paper
                                 index={index}
                                 canMoveEarlier={index > 0}
                                 canMoveLater={
