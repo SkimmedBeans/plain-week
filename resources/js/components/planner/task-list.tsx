@@ -37,6 +37,7 @@ import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type Props = {
+    paper?: boolean;
     /** The day or the Someday list this list shows. */
     placement: TaskPlacement;
     /** The named list's name, when `placement` is in one. */
@@ -69,6 +70,7 @@ export function DropIndicator() {
  * when its tasks do not fit.
  */
 export function TaskList({
+    paper = false,
     placement,
     name,
     tasks,
@@ -255,6 +257,7 @@ export function TaskList({
                                 <NewTaskRow
                                     ref={newTaskInput}
                                     label={newTaskLabel}
+                                    showPrompt={paper}
                                     isCursor={cursorOnNewRow}
                                     onSubmit={handleSubmit}
                                     onCancel={handleCancel}
@@ -296,6 +299,7 @@ export function TaskList({
                     <NewTaskRow
                         ref={newTaskInput}
                         label={newTaskLabel}
+                        showPrompt={paper}
                         isCursor={cursorOnNewRow}
                         onSubmit={handleSubmit}
                         onCancel={handleCancel}
@@ -316,6 +320,7 @@ export function TaskList({
                     <NewTaskRow
                         ref={newTaskInput}
                         label={newTaskLabel}
+                        showPrompt={paper}
                         isCursor={cursorOnNewRow}
                         onSubmit={handleSubmit}
                         onCancel={handleCancel}
@@ -324,12 +329,14 @@ export function TaskList({
             )}
             {/* Desktop: ruled lines down to the bottom of the cell. Pointer
                 only; the empty row above is the keyboard's way in. */}
-            <div
-                aria-hidden
-                data-list-filler
-                onClick={() => newTaskInput.current?.focus()}
-                className="min-h-0 flex-1 cursor-text bg-ruled max-lg:hidden"
-            />
+            {!paper && (
+                <div
+                    aria-hidden
+                    data-list-filler
+                    onClick={() => newTaskInput.current?.focus()}
+                    className="min-h-0 flex-1 cursor-text bg-ruled max-lg:hidden"
+                />
+            )}
         </div>
     );
 }
