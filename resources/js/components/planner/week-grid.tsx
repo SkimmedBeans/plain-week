@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
     CollapsedLists,
     type CollapsibleList,
@@ -59,13 +59,37 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     const lists = useSomedayLists();
     const grid = useRef<HTMLDivElement>(null);
     const days = weekDateKeys(weekStart);
+    const view = usePlannerView();
+    const showWeek = view === 'week';
+    const belowLg = useIsBelowLg();
+    const viewScrollPositions = useRef<Partial<Record<typeof view, number>>>(
+        {},
+    );
+
+    useLayoutEffect(() => {
+        if (!belowLg) {
+            return;
+        }
+
+        const positions = viewScrollPositions.current;
+        const remembered = positions[view];
+        if (remembered !== undefined || view !== 'week') {
+            window.scrollTo({ top: remembered ?? 0, behavior: 'instant' });
+        }
+
+        const rememberScroll = () => {
+            positions[view] = window.scrollY;
+        };
+        window.addEventListener('scroll', rememberScroll, { passive: true });
+        return () => window.removeEventListener('scroll', rememberScroll);
+    }, [belowLg, view]);
 
     // Right after a week change `tasks` still holds the previous week's days.
     const loaded = tasks?.[days[0]] !== undefined;
     useScrollToToday(grid, {
         weekStartKey: days[0],
         showsToday: days.includes(today),
-        ready: loaded,
+        ready: loaded && showWeek,
     });
 
     // Named lists come in their display order (`position`, see `queryLists`);
@@ -78,13 +102,10 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     const someday: CollapsibleList = { column: 0, name: 'Someday' };
     const isCollapsed = (list: CollapsibleList) =>
         collapsed.includes(collapseKey(list));
-    const view = usePlannerView();
-    const showWeek = view === 'week';
     // Lists shows the task lists, Notes the lists converted to notes (F38).
     const viewLists = (namedLists ?? []).filter(
         (list) => (typeof list.note === 'string') === (view === 'notes'),
     );
-    const belowLg = useIsBelowLg();
     const noteRows = view === 'notes' && belowLg;
     const [createdNoteId, setCreatedNoteId] = useState<string | null>(null);
     const listsShown = noteRows

@@ -418,4 +418,32 @@ describe('WeekGrid', () => {
         await waitFor(() => expect(document.activeElement).toBe(note));
         setViewportWidth(1024);
     });
+
+    it('saves the latest note text when the editor unmounts before autosave', async () => {
+        const list = await createList('Draft');
+        await convertListToNote(list.id);
+        localStorage.setItem('plain-week.view', 'notes');
+        setViewportWidth(412);
+        const user = userEvent.setup();
+        const { unmount } = render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        await user.click(await screen.findByRole('button', { name: 'Draft' }));
+        await user.type(
+            await screen.findByRole('textbox', { name: 'Note: Draft' }),
+            'Keep it',
+        );
+        unmount();
+
+        await waitFor(async () =>
+            expect((await db.someday_lists.get(list.id))?.note).toBe('Keep it'),
+        );
+    });
 });

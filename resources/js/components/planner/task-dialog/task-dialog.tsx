@@ -1,9 +1,10 @@
 import { Dialog } from '@/components/back-closable-dialog';
-import { CircleCheck, Trash2 } from 'lucide-react';
+import { CircleCheck, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useTaskDialogShortcuts } from '@/hooks/use-task-dialog-shortcuts';
+import { useBackToClose } from '@/hooks/use-back-to-close';
 import { toggleDone, updateTask } from '@/lib/db/tasks';
 import { t } from '@/lib/i18n';
 import { deleteWithUndo } from '@/lib/planner/task-actions';
@@ -81,6 +82,7 @@ function TaskDialogContent({ onClose }: { onClose: () => void }) {
     const titleRef = useRef<LinkedTextFieldHandle>(null);
     const notesRef = useRef<LinkedTextFieldHandle>(null);
     const [picker, setPicker] = useState<ToolbarPicker | null>(null);
+    useBackToClose(picker !== null, () => setPicker(null));
     const quick = useQuickActions();
 
     const handleDelete = async () => {
@@ -158,9 +160,14 @@ function TaskDialogContent({ onClose }: { onClose: () => void }) {
                         `[data-task-id="${CSS.escape(task.id)}"] button`,
                     );
 
-                    if (row) {
+                    const target =
+                        row ??
+                        document.querySelector<HTMLElement>(
+                            '[data-planner-content]',
+                        );
+                    if (target) {
                         event.preventDefault();
-                        row.focus();
+                        target.focus({ preventScroll: true });
                     }
                 }}
                 className="top-4 max-h-[calc(100dvh-2rem)] translate-y-0 gap-4 overflow-y-auto bg-secondary p-4 text-secondary-foreground sm:top-16 sm:max-h-[calc(100dvh-8rem)] sm:max-w-lg sm:p-6"
@@ -168,7 +175,7 @@ function TaskDialogContent({ onClose }: { onClose: () => void }) {
                 <DialogTitle className="sr-only">
                     {t('task.editTitle')}
                 </DialogTitle>
-                <div className="-mx-2 -mt-1 flex min-w-0 items-center gap-1">
+                <div className="-mx-2 -mt-1 flex min-w-0 items-center gap-1 max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:bg-secondary">
                     <TaskDatePicker />
                     <TaskTimePicker />
                     <div className="ms-auto flex items-center gap-1">
@@ -190,6 +197,16 @@ function TaskDialogContent({ onClose }: { onClose: () => void }) {
                         <TaskRepeatPicker />
                         <TaskColorPicker />
                         <TaskMoreMenu />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={t('common.close')}
+                            onClick={onClose}
+                            className="lg:hidden"
+                        >
+                            <X />
+                        </Button>
                     </div>
                 </div>
                 {/*

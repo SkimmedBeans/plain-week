@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.40] - 2026-11-27
+
+### Changed
+
+- **Mobile editing and navigation (F70, F71).** The planner remembers the scroll position of
+  each view and returns to the same search after opening a result. Editor controls stay in
+  reach while scrolling, and Back closes the task picker or note menu before the card.
+
+### Fixed
+
+- Notes save pending text when the editor closes or the app is backgrounded. A failed save
+  keeps the draft in the editor and offers Retry save.
+
 ## [0.4.39] - 2026-11-27
 
 ### Changed
@@ -956,7 +969,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.39...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.40...HEAD
+[0.4.40]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.39...v0.4.40
 [0.4.39]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.38...v0.4.39
 [0.4.38]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.37...v0.4.38
 [0.4.37]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.36...v0.4.37

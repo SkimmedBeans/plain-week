@@ -197,6 +197,7 @@ export const planner = {
     },
     'planner.noteConvertFailed': 'Could not convert the list.',
     'planner.noteSaveFailed': 'Could not save the note.',
+    'planner.retryNoteSave': 'Retry save',
     'planner.noteLabel': 'Note: {name}',
     'planner.notePlaceholder': 'Write anything…',
     'planner.noteCopied': 'Copied the note.',

@@ -407,6 +407,9 @@ Row behaviour:
   after the grid. A collapsed list renders no task list, so the keyboard cursor skips it.
 - Phone Notes uses compact, reorderable rows. Tapping a note opens its card with a note actions menu,
   and creating a note opens the card with the text field focused.
+- On phones, Week, Lists and Notes each remember their scroll position while the planner is mounted.
+  Task and list cards keep their controls visible while scrolling. Closing a task opened from search
+  restores the query and result position.
 - A list that scrolls inside its desktop cell gets a 2rem `mask-image` fade at the bottom while more is below and at the
   top once scrolled (`data-overflow-top` / `data-overflow-bottom`, F28). A mask only paints, so taps and drops reach the
   rows under it.
