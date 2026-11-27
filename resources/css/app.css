@@ -321,3 +321,18 @@
 [data-stripes] [data-task-id][data-stripe] {
     background-color: var(--stripe);
 }
+
+[data-stripes] [data-day-card] [data-list-filler] {
+    background-image:
+        repeating-linear-gradient(
+            to bottom,
+            transparent 0 calc(var(--spacing-row) - 1px),
+            var(--color-border) calc(var(--spacing-row) - 1px)
+                var(--spacing-row)
+        ),
+        repeating-linear-gradient(
+            to bottom,
+            var(--stripe) 0 var(--spacing-row),
+            transparent var(--spacing-row) calc(2 * var(--spacing-row))
+        );
+}

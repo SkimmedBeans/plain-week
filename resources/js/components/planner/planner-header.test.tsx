@@ -19,6 +19,7 @@ function renderHeader(isCurrentWeek: boolean) {
                 onPreviousWeek={() => {}}
                 onNextWeek={() => {}}
                 onToday={onToday}
+                onGoToWeekOf={() => {}}
             />
         </TooltipProvider>,
     );
@@ -29,16 +30,23 @@ function renderHeader(isCurrentWeek: boolean) {
 describe('PlannerHeader', () => {
     afterEach(cleanup);
 
-    it('has no Today button on the current week', () => {
+    it('keeps the desktop Today button disabled on the current week', () => {
         renderHeader(true);
 
-        expect(screen.queryByRole('button', { name: 'Today' })).toBeNull();
+        expect(
+            screen.getByRole<HTMLButtonElement>('button', { name: 'Today' })
+                .disabled,
+        ).toBe(true);
     });
 
-    it('shows a Today button next to the week number on another week', () => {
+    it('returns to today from the desktop week controls', () => {
         const onToday = renderHeader(false);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+        const desktopToday = document.querySelector<HTMLElement>(
+            '[data-test=desktop-today-button]',
+        );
+        expect(desktopToday).not.toBeNull();
+        fireEvent.click(desktopToday!);
 
         expect(onToday).toHaveBeenCalledOnce();
         // The week number gives the pill its room on phones.

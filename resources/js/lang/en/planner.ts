@@ -129,6 +129,7 @@ export const planner = {
     'planner.today': 'Today',
     'planner.weekTitle': 'Week {week}',
     'planner.weekNav': 'Week',
+    'planner.jumpToWeek': 'Jump to week. {range}',
     'planner.previousWeek': 'Previous week',
     'planner.nextWeek': 'Next week',
     'planner.addedTo': 'Added to {weekday} {date}',

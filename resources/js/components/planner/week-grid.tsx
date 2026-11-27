@@ -197,7 +197,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     data-stripes={stripes || undefined}
                     className={cn(
                         'grid grid-cols-1 gap-x-6 gap-y-10 lg:min-h-0 lg:flex-1 lg:gap-y-8',
-                        'lg:week-wide:auto-rows-[minmax(10rem,2fr)] lg:week-wide:grid-cols-5 lg:week-wide:grid-rows-[minmax(14rem,3fr)_minmax(10rem,2fr)]',
+                        'lg:week-wide:auto-rows-[minmax(12rem,1fr)] lg:week-wide:grid-cols-5 lg:week-wide:grid-rows-[repeat(2,minmax(12rem,1fr))]',
                         'lg:week-square:auto-rows-[minmax(12rem,1fr)] lg:week-square:grid-cols-4 lg:week-square:grid-rows-[repeat(2,minmax(12rem,1fr))]',
                         'lg:week-tall:auto-rows-[minmax(12rem,1fr)] lg:week-tall:grid-cols-2 lg:week-tall:grid-rows-[repeat(4,minmax(12rem,1fr))]',
                     )}

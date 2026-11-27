@@ -5,6 +5,7 @@ import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import { KeyboardCursorProvider } from '@/components/planner/keyboard-cursor';
 import { ListDialog } from '@/components/planner/list-dialog';
 import { SearchDialog } from '@/components/planner/search-dialog';
+import { MobileWeekNavigation } from '@/components/planner/mobile-week-navigation';
 import { PlannerDnd } from '@/components/planner/planner-dnd';
 import { PlannerHeader } from '@/components/planner/planner-header';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
@@ -27,6 +28,7 @@ import { parseDateKey } from '@/lib/db/dates';
 import type { NamedSearchResult } from '@/lib/planner/search';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
 import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { edit as settings } from '@/routes/profile';
 
 /**
@@ -99,27 +101,24 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                     >
                         {/* On desktop the page is exactly the window: the header, then the
                         week filling the rest. */}
-                        <div
-                            className="flex min-h-screen flex-col overflow-x-clip bg-background text-foreground lg:h-dvh"
-                            {...weekSwipe.handlers}
-                        >
+                        <div className="flex min-h-screen flex-col overflow-x-clip bg-background text-foreground lg:h-dvh">
                             <PlannerHeader
                                 weekStart={navigation.weekStart}
                                 isCurrentWeek={navigation.isCurrentWeek}
                                 onPreviousWeek={navigation.previousWeek}
                                 onNextWeek={navigation.nextWeek}
                                 onToday={navigation.goToToday}
+                                onGoToWeekOf={navigation.goToWeekOf}
                             />
                             <main
                                 ref={weekSwipe.surface}
                                 tabIndex={-1}
                                 data-planner-content
-                                className="flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6"
-                                style={
-                                    belowLg && weekShown
-                                        ? { touchAction: 'pan-y pinch-zoom' }
-                                        : undefined
-                                }
+                                className={cn(
+                                    'flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6',
+                                    weekShown &&
+                                        'max-lg:pb-[calc(6rem+env(safe-area-inset-bottom))]',
+                                )}
                             >
                                 <PlannerDnd
                                     weekStart={navigation.weekStart}
@@ -133,6 +132,12 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                                     />
                                 </PlannerDnd>
                             </main>
+                            {weekShown && (
+                                <MobileWeekNavigation
+                                    navigation={navigation}
+                                    swipeHandlers={weekSwipe.handlers}
+                                />
+                            )}
                         </div>
                         <TaskDialog
                             taskId={

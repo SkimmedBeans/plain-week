@@ -48,6 +48,7 @@ function Day({ placement = DAY_PLACEMENT }: { placement?: TaskPlacement }) {
                     onPreviousWeek={() => {}}
                     onNextWeek={() => {}}
                     onToday={() => {}}
+                    onGoToWeekOf={() => {}}
                 />
                 <TaskList
                     placement={placement}

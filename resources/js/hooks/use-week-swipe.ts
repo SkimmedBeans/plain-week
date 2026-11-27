@@ -33,21 +33,6 @@ export function useWeekSwipe(
             return;
         }
 
-        const target = event.target;
-        if (
-            !(target instanceof Element) ||
-            !target.closest(
-                '[data-week-swipe-heading], [data-planner-content]',
-            ) ||
-            target.closest(
-                '[data-task-id], input, textarea, select, a, [contenteditable], [role="menu"], [role="dialog"]',
-            ) ||
-            (target.closest('button') &&
-                !target.closest('[data-week-swipe-heading]'))
-        ) {
-            return;
-        }
-
         gesture.current = {
             id: event.pointerId,
             x: event.clientX,

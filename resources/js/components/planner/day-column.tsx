@@ -57,6 +57,7 @@ export function DayColumn({
 
     return (
         <section
+            data-day-card
             data-planner-jump={date}
             tabIndex={-1}
             aria-label={t('planner.dayLabel', { weekday, day: dayLabel })}
@@ -68,19 +69,15 @@ export function DayColumn({
             }
             aria-current={isToday ? 'date' : undefined}
             className={cn(
-                'flex min-h-0 min-w-0 flex-col max-lg:scroll-mt-32',
-                // A soft tint that bleeds 10px past the start, end and top
-                // (and the bottom of the desktop cell), padded back so the
-                // header and rows stay in place. The scroll margin (128px) keeps
-                // it clear of the sticky mobile header and view bar (about 112px).
+                'flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-background p-3 max-lg:scroll-mt-32 lg:p-4',
                 isToday &&
-                    '-mx-2.5 -mt-2.5 rounded-t-lg bg-planner-accent/6 px-2.5 pt-2.5 max-lg:scroll-mt-32 lg:-mb-2.5 lg:rounded-b-lg lg:pb-2.5 dark:bg-planner-accent/10',
+                    'border-planner-accent/40 bg-planner-accent/6 dark:bg-planner-accent/10',
                 className,
             )}
         >
             <h2
                 className={cn(
-                    'flex items-baseline border-b-2 px-2.5 pb-3 text-lg leading-7 lg:text-xl',
+                    'flex items-baseline border-b-2 pb-3 text-lg leading-7 lg:text-xl',
                     isToday
                         ? 'border-planner-accent text-planner-accent'
                         : isWeekend &&
