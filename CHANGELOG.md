@@ -7,6 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.44] - 2026-11-27
+
+### Changed
+
+- **Offline recovery and backups (F65, F74).** The account menu explains when local changes are
+  waiting to sync. Backup previews show lists, notes and label names alongside tasks, and Data
+  explains that note picture files are stored separately from the JSON.
+
+### Fixed
+
+- Planners and backup files containing notes, lists or label names can be exported and imported
+  even when they have zero tasks.
+- The cached planner refreshes after a session change even if the service worker has yet to
+  take control of the page.
+
 ## [0.4.43] - 2026-11-27
 
 ### Added
@@ -1004,7 +1019,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.43...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.44...HEAD
+[0.4.44]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.43...v0.4.44
 [0.4.43]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.42...v0.4.43
 [0.4.42]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.41...v0.4.42
 [0.4.41]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.40...v0.4.41

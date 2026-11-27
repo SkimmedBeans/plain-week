@@ -42,6 +42,10 @@ export type ImportSummary = {
     recurringCount: number;
     /** Named lists the user will see added. */
     listCount: number;
+    /** Free-text notes included in listCount. */
+    noteCount: number;
+    labelCount: number;
+    hasNotePictures: boolean;
 };
 
 export type ImportPlan = ImportSummary & {
@@ -279,11 +283,15 @@ export function summarizeImport(file: ExportFile): ImportSummary {
     // Only live lists are imported; a hand-edited file's tombstones are
     // dropped (a deleted list's tasks already moved to Someday, so its
     // tombstone is pure noise).
+    const lists = file.someday_lists.filter((list) => list.deleted_at === null);
+    const notes = lists.filter((list) => typeof list.note === 'string');
     return {
         taskCount: visible.length,
         recurringCount: series.size,
-        listCount: file.someday_lists.filter((list) => list.deleted_at === null)
-            .length,
+        listCount: lists.length,
+        noteCount: notes.length,
+        labelCount: file.labels.length,
+        hasNotePictures: notes.some((note) => (note.images?.length ?? 0) > 0),
     };
 }
 

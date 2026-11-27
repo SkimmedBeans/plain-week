@@ -361,36 +361,49 @@ export const settings = {
     'settings.data.title': 'Data settings',
     'settings.data.export.title': 'Export data',
     'settings.data.export.description':
-        'Download all your tasks, recurring ones included, as a JSON file. Keep it as a backup or move your planner to another Plain Week instance.',
+        'Download your tasks, lists, notes and custom label names as a JSON backup.',
+    'settings.data.notePictures':
+        'The JSON records note picture IDs. It cannot restore the image files unless they are still available to your account or device.',
     'settings.data.export.button': 'Export data',
     'settings.data.import.title': 'Import data',
     'settings.data.import.description':
-        'Add the tasks of an export file to your planner. Your existing tasks stay unchanged; importing the same file twice adds its tasks twice.',
+        'Add items from an export file. Importing the same file again adds another copy of its tasks, lists and notes.',
     'settings.data.import.button': 'Import data…',
     'settings.data.format.title': 'File format',
     /** The file name pattern is literal: keep it as is. */
     'settings.data.format.description':
-        'A plain-week-export-YYYY-MM-DD.json file with a format marker, a version and the list of tasks: text, date or Someday column, position, done state, color, time, notes, subtasks and repeat rules. Deleted tasks are left out.',
+        'A plain-week-export-YYYY-MM-DD.json file with a version and planner data. It includes recurring tasks and archived lists and notes.',
     /** `{formatted}` is `{count}` formatted for the language. */
     'settings.data.tasks': {
         one: '{formatted} task',
         other: '{formatted} tasks',
     },
-    /** `{tasks}` is a count such as "12 tasks". */
+    'settings.data.lists': {
+        one: '{formatted} list',
+        other: '{formatted} lists',
+    },
+    'settings.data.notes': {
+        one: '{formatted} note',
+        other: '{formatted} notes',
+    },
+    'settings.data.labels': {
+        one: '{formatted} label name',
+        other: '{formatted} label names',
+    },
     'settings.data.preview':
-        '{tasks} will be added. Your existing tasks will stay unchanged.',
-    'settings.data.previewRecurring':
-        '{tasks} ({recurring} recurring) will be added. Your existing tasks will stay unchanged.',
-    'settings.data.importing': 'Importing {tasks}…',
+        '{items} will be added. Your existing tasks will stay unchanged.',
+    'settings.data.recurringTasks': '{tasks} ({recurring} recurring)',
+    'settings.data.importing': 'Importing {items}…',
     'settings.data.importingButton': 'Importing…',
     'settings.data.importButton': 'Import',
     'settings.data.progress': 'Import progress',
-    'settings.data.exported': 'Exported {tasks}',
+    'settings.data.exported': 'Exported {items}',
     'settings.data.exportedNotSynced':
         'Not synced with your account right now, so changes made on other devices may be missing.',
-    'settings.data.imported': 'Imported {tasks}',
-    'settings.data.nothingToExport': 'There are no tasks to export.',
-    'settings.data.nothingInFile': 'There are no tasks in this file.',
+    'settings.data.imported': 'Imported {items}',
+    'settings.data.nothingToExport': 'There are no planner items to export.',
+    'settings.data.nothingInFile': 'There are no planner items in this file.',
+    'settings.data.noItemsAdded': 'No new items were added.',
     'settings.data.exportFailed': 'Could not export your data.',
     'settings.data.readFailed': 'Could not read this file.',
     'settings.data.importFailed': 'Could not import this file.',

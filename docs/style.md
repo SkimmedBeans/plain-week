@@ -720,11 +720,13 @@ description).
 
 "Export data" downloads `plain-week-export-YYYY-MM-DD.json` and confirms with a toast ("Exported 12 tasks", with a
 "may be missing changes from other devices" description when the page could not sync first); the button shows a
-`Spinner` while the file is built, and an empty planner gets "There are no tasks to export." instead of a file. The
+`Spinner` while the file is built, and an empty planner gets "There are no planner items to export." instead of a file. The
 Import button shows a `Spinner` while the chosen file is read. "Import data…" opens the file picker (`.json`), then an `AlertDialog`
 previews the file ("12 tasks (2 recurring) will be added. Your existing tasks will stay unchanged.") with Cancel /
 Import. While importing, a `Progress` bar fills and the dialog cannot be dismissed; it closes with a toast ("Imported 12
-tasks"). The rows are planned when Import is pressed, so positions follow any task added while the preview was open; a
+tasks"). The preview counts tasks, lists, notes and custom label names. Backups can contain any of these without
+tasks. Note picture IDs are recorded in JSON, and the picture files remain in their original storage.
+The rows are planned when Import is pressed, so positions follow any task added while the preview was open; a
 second click does nothing. An invalid file never opens the dialog: a `toast.error` says why ("This is not a Plain Week
 export file."). The hook and dialog live in `components/data-transfer.tsx` (`useDataTransfer`); behaviour is in
 [architecture.md](./architecture.md#export-format).

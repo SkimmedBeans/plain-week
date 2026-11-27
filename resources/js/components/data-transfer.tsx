@@ -36,13 +36,54 @@ function tasksLabel(count: number): string {
     return t('settings.data.tasks', { count, formatted: formatCount(count) });
 }
 
-function previewText({ taskCount, recurringCount }: ImportSummary): string {
-    return recurringCount > 0
-        ? t('settings.data.previewRecurring', {
-              tasks: tasksLabel(taskCount),
-              recurring: formatCount(recurringCount),
-          })
-        : t('settings.data.preview', { tasks: tasksLabel(taskCount) });
+function hasImportableItems(summary: ImportSummary): boolean {
+    return summary.taskCount + summary.listCount + summary.labelCount > 0;
+}
+
+function itemsLabel(summary: ImportSummary, showRecurring = false): string {
+    const { taskCount, recurringCount, listCount, noteCount, labelCount } =
+        summary;
+    const labels = [];
+    if (taskCount > 0) {
+        const tasks = tasksLabel(taskCount);
+        labels.push(
+            showRecurring && recurringCount > 0
+                ? t('settings.data.recurringTasks', {
+                      tasks,
+                      recurring: formatCount(recurringCount),
+                  })
+                : tasks,
+        );
+    }
+    const taskLists = listCount - noteCount;
+    if (taskLists > 0) {
+        labels.push(
+            t('settings.data.lists', {
+                count: taskLists,
+                formatted: formatCount(taskLists),
+            }),
+        );
+    }
+    if (noteCount > 0) {
+        labels.push(
+            t('settings.data.notes', {
+                count: noteCount,
+                formatted: formatCount(noteCount),
+            }),
+        );
+    }
+    if (labelCount > 0) {
+        labels.push(
+            t('settings.data.labels', {
+                count: labelCount,
+                formatted: formatCount(labelCount),
+            }),
+        );
+    }
+    return new Intl.ListFormat(intlLocale(), {
+        style: 'long',
+        type: 'conjunction',
+    }).format(labels);
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -60,9 +101,9 @@ async function exportData(prepare: () => Promise<boolean>): Promise<void> {
     try {
         const upToDate = await prepare();
         const file = await buildExport();
-        const { taskCount } = summarizeImport(file);
+        const summary = summarizeImport(file);
 
-        if (taskCount === 0) {
+        if (!hasImportableItems(summary)) {
             toast.info(t('settings.data.nothingToExport'));
 
             return;
@@ -81,7 +122,7 @@ async function exportData(prepare: () => Promise<boolean>): Promise<void> {
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_LIFETIME_MS);
         toast.success(
-            t('settings.data.exported', { tasks: tasksLabel(taskCount) }),
+            t('settings.data.exported', { items: itemsLabel(summary) }),
             {
                 description: upToDate
                     ? undefined
@@ -154,7 +195,7 @@ export function useDataTransfer({
             const file = await parseImport(chosen);
             const summary = summarizeImport(file);
 
-            if (summary.taskCount === 0) {
+            if (!hasImportableItems(summary)) {
                 toast.info(t('settings.data.nothingInFile'));
                 setState({ phase: 'closed' });
 
@@ -195,11 +236,16 @@ export function useDataTransfer({
                     });
                 },
             });
-            toast.success(
-                t('settings.data.imported', {
-                    tasks: tasksLabel(summary.taskCount),
-                }),
-            );
+            const imported = { ...summary, labelCount: plan.labels.length };
+            if (hasImportableItems(imported)) {
+                toast.success(
+                    t('settings.data.imported', {
+                        items: itemsLabel(imported),
+                    }),
+                );
+            } else {
+                toast.info(t('settings.data.noItemsAdded'));
+            }
         } catch (error) {
             toast.error(
                 written > 0
@@ -249,12 +295,18 @@ export function useDataTransfer({
                         <AlertDialogDescription>
                             {state.phase === 'importing'
                                 ? t('settings.data.importing', {
-                                      tasks: tasksLabel(
-                                          state.summary.taskCount,
-                                      ),
+                                      items: itemsLabel(state.summary),
                                   })
                                 : state.phase === 'preview' &&
-                                  previewText(state.summary)}
+                                  t('settings.data.preview', {
+                                      items: itemsLabel(state.summary, true),
+                                  })}
+                            {state.phase === 'preview' &&
+                                state.summary.hasNotePictures && (
+                                    <span className="mt-2 block">
+                                        {t('settings.data.notePictures')}
+                                    </span>
+                                )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     {state.phase === 'importing' && (

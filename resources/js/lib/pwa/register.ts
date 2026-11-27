@@ -60,11 +60,19 @@ export function registerServiceWorker(): void {
 function refreshShellOnSessionChange(): void {
     const sessionChanged = createSessionChangeDetector();
     const check = (user: unknown) => {
-        if (sessionChanged(user)) {
-            navigator.serviceWorker?.controller?.postMessage({
-                type: REFRESH_SHELL_MESSAGE,
-            });
+        const worker = navigator.serviceWorker;
+        if (!sessionChanged(user) || !worker) {
+            return;
         }
+        const message = { type: REFRESH_SHELL_MESSAGE };
+        if (worker.controller) {
+            worker.controller.postMessage(message);
+            return;
+        }
+        // A fast sign-in can finish before the new worker controls the page.
+        void worker.ready.then((registration) =>
+            registration.active?.postMessage(message),
+        );
     };
 
     // `navigate` covers the first page and history; `success` also covers

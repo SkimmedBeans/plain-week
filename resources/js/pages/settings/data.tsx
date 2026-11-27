@@ -33,6 +33,9 @@ export default function Data() {
                     title={t('settings.data.export.title')}
                     description={t('settings.data.export.description')}
                 />
+                <p className="text-sm text-muted-foreground">
+                    {t('settings.data.notePictures')}
+                </p>
                 <Button
                     onClick={transfer.exportData}
                     disabled={transfer.exporting}

@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
     ChevronDown,
     CloudUpload,
@@ -33,6 +34,7 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { useVisibleSyncStatus } from '@/hooks/use-visible-sync-status';
 import { landingStore } from '@/lib/landing';
+import { db } from '@/lib/db/database';
 import { syncEngine } from '@/lib/sync';
 import type { SyncStatus } from '@/lib/sync';
 import { t } from '@/lib/i18n';
@@ -129,6 +131,17 @@ function UserAccountMenu({ user }: { user: User }) {
     const status: DotStatus =
         account?.hasAccess === false ? 'paused' : engineStatus;
     const statusLabel = t(STATUS_LABEL_KEYS[status]);
+    const hasSyncProblem = status === 'offline' || status === 'error';
+    const waitingToSync = useLiveQuery(async () => {
+        if (!hasSyncProblem) {
+            return false;
+        }
+        const [tasksAndLabels, lists] = await Promise.all([
+            db.outbox.count(),
+            db.list_outbox.count(),
+        ]);
+        return tasksAndLabels + lists > 0;
+    }, [hasSyncProblem]);
 
     return (
         <DropdownMenu>
@@ -154,6 +167,11 @@ function UserAccountMenu({ user }: { user: User }) {
                 </DropdownMenuTrigger>
             </WithTooltip>
             <DropdownMenuContent className="min-w-56" align="end">
+                {waitingToSync && (
+                    <DropdownMenuLabel className="max-w-64 py-1.5 text-xs font-normal text-muted-foreground">
+                        {t('planner.waitingToSync')}
+                    </DropdownMenuLabel>
+                )}
                 {status === 'error' && (
                     <>
                         <DropdownMenuItem
