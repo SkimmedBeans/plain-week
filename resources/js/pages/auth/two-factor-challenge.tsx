@@ -77,6 +77,8 @@ export default function TwoFactorChallenge() {
                                 <div className="flex flex-col items-center gap-3 text-center">
                                     <InputOTP
                                         name="code"
+                                        autoComplete="one-time-code"
+                                        inputMode="numeric"
                                         maxLength={OTP_MAX_LENGTH}
                                         value={code}
                                         onChange={(value) => setCode(value)}

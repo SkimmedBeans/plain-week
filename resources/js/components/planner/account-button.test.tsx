@@ -87,6 +87,14 @@ afterEach(() => {
 });
 
 describe('AccountButton', () => {
+    it('shows the client build version in the account menu', async () => {
+        renderButton();
+        await userEvent
+            .setup()
+            .click(screen.getByRole('button', { name: /^Account menu/ }));
+        expect(screen.getByText(`Version ${__APP_VERSION__}`)).toBeTruthy();
+    });
+
     it.each<[SyncStatus, string]>([
         ['idle', 'All changes synced'],
         ['syncing', 'Syncing…'],

@@ -206,7 +206,11 @@ function stubScreen(desktop: boolean) {
     vi.stubGlobal(
         'matchMedia',
         vi.fn((query: string) => ({
-            matches: query.includes('display-mode') ? false : desktop,
+            matches: query.includes('display-mode')
+                ? false
+                : query.includes('pointer: coarse')
+                  ? !desktop
+                  : desktop,
         })),
     );
 }

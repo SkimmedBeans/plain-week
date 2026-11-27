@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.43] - 2026-11-27
+
+### Added
+
+- **Phone setup and account version (F67, F72, F73).** The account menu shows the running
+  client version and offers installation in the phone browser. Notification setup links
+  to install help, and two-factor codes support phone autofill.
+
+### Changed
+
+- **Mobile settings (F66).** A section menu shows the current page and replaces the
+  horizontally scrolling settings links. The account menu explains how guest data and sync work.
+
 ## [0.4.42] - 2026-11-27
 
 ### Added
@@ -991,7 +1004,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.42...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.43...HEAD
+[0.4.43]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.42...v0.4.43
 [0.4.42]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.41...v0.4.42
 [0.4.41]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.40...v0.4.41
 [0.4.40]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.39...v0.4.40

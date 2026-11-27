@@ -3,6 +3,7 @@ import { BellOff, Smartphone } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
+import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { t } from '@/lib/i18n';
+import { isIos, isTouchBrowser, offerInstall } from '@/lib/install-app';
 import { deviceState, disable, enable } from '@/lib/notifications/device';
 import type { DeviceState } from '@/lib/notifications/device';
 import { update } from '@/routes/notifications';
@@ -59,6 +61,16 @@ function DeviceNotice({ state }: { state: DeviceState }) {
                 </AlertTitle>
                 <AlertDescription>
                     {t('settings.notifications.needsInstall')}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={offerInstall}
+                        className="mt-2"
+                    >
+                        {t('pwa.installThisApp')}
+                    </Button>
+                    <InstallAppDialog />
                 </AlertDescription>
             </Alert>
         );
@@ -86,7 +98,13 @@ function DeviceNotice({ state }: { state: DeviceState }) {
                     {t('settings.notifications.deniedTitle')}
                 </AlertTitle>
                 <AlertDescription>
-                    {t('settings.notifications.denied')}
+                    {t(
+                        isIos()
+                            ? 'settings.notifications.deniedIos'
+                            : isTouchBrowser()
+                              ? 'settings.notifications.deniedPhoneBrowser'
+                              : 'settings.notifications.denied',
+                    )}
                 </AlertDescription>
             </Alert>
         );

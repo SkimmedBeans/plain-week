@@ -1,7 +1,11 @@
 import { Smartphone } from 'lucide-react';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { t } from '@/lib/i18n';
-import { canOfferInstall, installAppStore } from '@/lib/install-app';
+import {
+    canOfferInstall,
+    isTouchBrowser,
+    offerInstall,
+} from '@/lib/install-app';
 
 /** "Install mobile app" for the account menus: opens the install card. */
 export function InstallAppMenuItem() {
@@ -12,11 +16,15 @@ export function InstallAppMenuItem() {
     return (
         <DropdownMenuItem
             className="cursor-pointer"
-            onSelect={installAppStore.open}
+            onSelect={offerInstall}
             data-test="install-mobile-app"
         >
             <Smartphone className="me-2" />
-            {t('pwa.installMobileApp')}
+            {t(
+                isTouchBrowser()
+                    ? 'pwa.installThisApp'
+                    : 'pwa.installMobileApp',
+            )}
         </DropdownMenuItem>
     );
 }

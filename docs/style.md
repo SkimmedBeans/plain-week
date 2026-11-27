@@ -268,9 +268,10 @@ on that plan.
 ### Install mobile app card
 
 `components/install-app/install-app-card.tsx`: how to install Plain Week on a phone (the PWA). "Install mobile app" in
-the planner's account menu opens it (`components/install-app/install-app-menu-item.tsx`, `Smartphone` icon): right
-below Send feedback for users and guests, and left out on touch screens (`(pointer: coarse)`), where you are already on
-the phone (`canOfferInstall()`). It also opens by itself once on a desktop's first visit (a 1024px+ window with a fine
+the planner's desktop account menu opens it (`components/install-app/install-app-menu-item.tsx`, `Smartphone` icon).
+On a phone browser, “Install this app” opens the native prompt when available and platform instructions otherwise.
+The installed app leaves out the install item. The account menu shows the build version in both modes.
+The desktop card also opens by itself once on a desktop's first visit (a 1024px+ window with a fine
 pointer, not the installed app; `isDesktopBrowser()`), for guests and signed-in users alike, except:
 
 - in a page load that showed the landing card or the MCP announcement card (`installAppStore.deferToNextLoad()`): it
@@ -698,14 +699,14 @@ press) and ignores `contextmenu` while a finger is on it (Android sends one on a
 a plain full-screen page on `bg-background`, with no app sidebar, header bar or breadcrumbs. The planner is the only
 way in and out.
 
-| Part        | Desktop (≥1024px, `lg:`)                                                                                                                                  | Phone and tablet                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Frame       | Centered column, at most 1024px (`max-w-5xl`), 32px side padding; the page scrolls as a whole                                                             | 16px side padding                                                                                  |
-| Top         | "Back to planner": ghost `sm` `Button` with `ArrowLeft` (`rtl:rotate-180`), links to `/`                                                                  | Same                                                                                               |
-| Heading     | `Heading` "Settings" with "Manage your profile and account settings"                                                                                      | Same                                                                                               |
-| Section nav | A 192px column of ghost `sm` buttons, the current one `bg-muted` and `aria-current="page"`                                                                | One row of the same buttons that scrolls sideways, scrolled to the current one, then a `Separator` |
-| Content     | The page, at most 576px wide (`max-w-xl`), sections 48px apart                                                                                            | Full width                                                                                         |
-| Footer      | After a `Separator`: "Back to planner" (outline) at the start; Send feedback, Repository, Documentation and Log out (muted ghost `sm` buttons) at the end | Wraps onto two lines                                                                               |
+| Part        | Desktop (≥1024px, `lg:`)                                                                                                                                  | Phone and tablet                                              |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Frame       | Centered column, at most 1024px (`max-w-5xl`), 32px side padding; the page scrolls as a whole                                                             | 16px side padding                                             |
+| Top         | "Back to planner": ghost `sm` `Button` with `ArrowLeft` (`rtl:rotate-180`), links to `/`                                                                  | Same                                                          |
+| Heading     | `Heading` "Settings" with "Manage your profile and account settings"                                                                                      | Same                                                          |
+| Section nav | A 192px column of ghost `sm` buttons, the current one `bg-muted` and `aria-current="page"`                                                                | A dropdown that shows the current section, then a `Separator` |
+| Content     | The page, at most 576px wide (`max-w-xl`), sections 48px apart                                                                                            | Full width                                                    |
+| Footer      | After a `Separator`: "Back to planner" (outline) at the start; Send feedback, Repository, Documentation and Log out (muted ghost `sm` buttons) at the end | Wraps onto two lines                                          |
 
 Hooks for browser checks: `[data-test="settings-back"]` (top), `[data-test="settings-back-bottom"]` (footer),
 `[data-test="send-feedback"]` and `[data-test="logout-button"]`.

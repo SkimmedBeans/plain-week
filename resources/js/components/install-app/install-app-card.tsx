@@ -7,7 +7,7 @@ import { FloatingCard } from '@/components/floating-card';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 import { tRich } from '@/lib/i18n/rich';
-import { installAppStore } from '@/lib/install-app';
+import { installAppStore, isIos, isTouchBrowser } from '@/lib/install-app';
 
 /** The planner's address as a QR code, drawn as one SVG path (black on white in both themes). */
 function QrCode({ value }: { value: string }) {
@@ -86,14 +86,18 @@ export function InstallAppCard() {
     const doneButton = useRef<HTMLButtonElement>(null);
     const url = `${window.location.origin}/`;
     const host = window.location.host;
+    const touch = isTouchBrowser();
+    const ios = isIos();
 
     return (
         <FloatingCard
-            title={t('pwa.installTitle')}
+            title={t(touch ? 'pwa.installThisApp' : 'pwa.installTitle')}
             description={
-                signedIn
-                    ? t('pwa.installDescriptionSignedIn')
-                    : t('pwa.installDescriptionGuest')
+                touch
+                    ? t('pwa.installHereDescription')
+                    : signedIn
+                      ? t('pwa.installDescriptionSignedIn')
+                      : t('pwa.installDescriptionGuest')
             }
             onClose={installAppStore.close}
             onOpenAutoFocus={(event) => {
@@ -101,59 +105,65 @@ export function InstallAppCard() {
                 doneButton.current?.focus();
             }}
         >
-            <div className="flex items-center gap-4">
-                <QrCode value={url} />
-                <p className="text-sm leading-normal text-muted-foreground">
-                    {tRich(
-                        'pwa.scanCode',
-                        {
-                            host: (text) => (
-                                <span className="font-semibold break-all text-foreground">
-                                    {text}
-                                </span>
-                            ),
-                        },
-                        { host },
-                    )}
-                </p>
-            </div>
+            {!touch && (
+                <div className="flex items-center gap-4">
+                    <QrCode value={url} />
+                    <p className="text-sm leading-normal text-muted-foreground">
+                        {tRich(
+                            'pwa.scanCode',
+                            {
+                                host: (text) => (
+                                    <span className="font-semibold break-all text-foreground">
+                                        {text}
+                                    </span>
+                                ),
+                            },
+                            { host },
+                        )}
+                    </p>
+                </div>
+            )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-                <Steps
-                    title={t('pwa.iphone')}
-                    steps={[
-                        t('pwa.iphoneOpenSafari'),
-                        tRich('pwa.iphoneShare', {
-                            shareIcon: () => (
-                                <StepIcon>
-                                    <Share aria-hidden />
-                                </StepIcon>
-                            ),
-                        }),
-                        tRich('pwa.iphoneAddToHome', {
-                            action: strong,
-                            addIcon: () => (
-                                <StepIcon>
-                                    <SquarePlus aria-hidden />
-                                </StepIcon>
-                            ),
-                        }),
-                    ]}
-                />
-                <Steps
-                    title={t('pwa.android')}
-                    steps={[
-                        t('pwa.androidOpenChrome'),
-                        tRich('pwa.androidMenu', {
-                            menuIcon: () => (
-                                <StepIcon>
-                                    <EllipsisVertical aria-hidden />
-                                </StepIcon>
-                            ),
-                        }),
-                        tRich('pwa.androidInstall', { action: strong }),
-                    ]}
-                />
+            <div className={touch ? 'grid gap-3' : 'grid gap-3 sm:grid-cols-2'}>
+                {(!touch || ios) && (
+                    <Steps
+                        title={t('pwa.iphone')}
+                        steps={[
+                            t('pwa.iphoneOpenSafari'),
+                            tRich('pwa.iphoneShare', {
+                                shareIcon: () => (
+                                    <StepIcon>
+                                        <Share aria-hidden />
+                                    </StepIcon>
+                                ),
+                            }),
+                            tRich('pwa.iphoneAddToHome', {
+                                action: strong,
+                                addIcon: () => (
+                                    <StepIcon>
+                                        <SquarePlus aria-hidden />
+                                    </StepIcon>
+                                ),
+                            }),
+                        ]}
+                    />
+                )}
+                {(!touch || !ios) && (
+                    <Steps
+                        title={t('pwa.android')}
+                        steps={[
+                            t('pwa.androidOpenChrome'),
+                            tRich('pwa.androidMenu', {
+                                menuIcon: () => (
+                                    <StepIcon>
+                                        <EllipsisVertical aria-hidden />
+                                    </StepIcon>
+                                ),
+                            }),
+                            tRich('pwa.androidInstall', { action: strong }),
+                        ]}
+                    />
+                )}
             </div>
 
             <Button
