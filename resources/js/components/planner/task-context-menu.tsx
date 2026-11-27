@@ -11,12 +11,14 @@ import {
     ListTree,
     Trash2,
 } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type {
     ComponentType,
     KeyboardEvent,
+    MouseEventHandler,
     ReactElement,
     ReactNode,
+    TouchEventHandler,
 } from 'react';
 import { ShortcutHint } from '@/components/planner/shortcut-hint';
 import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
@@ -422,25 +424,43 @@ export function TaskContextMenu({ task, children, ...actions }: Props) {
     );
 }
 
-/**
- * The row's quiet "more" button (⋮) at its end, opening the task menu's items
- * as a dropdown: the way to reach them on a touch screen, where a long press
- * drags the task instead. Also visible on desktop.
- *
- * Pressing it must not pick the task up: it stops the press from reaching
- * the row's drag listeners.
- */
+/** Opens task actions and doubles as the pointer drag handle in Move tasks mode. */
 export function TaskMenuButton({
     task,
     className,
+    showGrip = false,
+    onGripMouseDown,
+    onGripTouchStart,
     ...actions
-}: TaskContextMenuActions & { task: Task; className?: string }) {
+}: TaskContextMenuActions & {
+    task: Task;
+    className?: string;
+    showGrip?: boolean;
+    onGripMouseDown?: MouseEventHandler<HTMLButtonElement>;
+    onGripTouchStart?: TouchEventHandler<HTMLButtonElement>;
+}) {
     const { onOpenChange, ...focusProps } = useTaskMenuFocus(task);
     const handleShortcut = useMenuShortcuts(MENU_SHORTCUTS);
+    const [open, setOpen] = useState(false);
+    const changeOpen = (nextOpen: boolean) => {
+        onOpenChange(nextOpen);
+        setOpen(nextOpen);
+    };
 
     return (
-        <DropdownMenu onOpenChange={onOpenChange}>
-            <DropdownMenuTrigger asChild>
+        <DropdownMenu open={open} onOpenChange={changeOpen}>
+            <DropdownMenuTrigger
+                asChild
+                onPointerDown={(event) => {
+                    // Wait for a click so the drag sensor can claim a swipe.
+                    if (showGrip) {
+                        if (event.pointerType === 'mouse') {
+                            onGripMouseDown?.(event);
+                        }
+                        event.preventDefault();
+                    }
+                }}
+            >
                 <Button
                     type="button"
                     variant="ghost"
@@ -448,14 +468,26 @@ export function TaskMenuButton({
                     aria-label={t('planner.moreTaskActions', {
                         text: task.text,
                     })}
-                    onTouchStart={(event) => event.stopPropagation()}
+                    onClick={showGrip ? () => changeOpen(!open) : undefined}
+                    onTouchStart={(event) => {
+                        event.stopPropagation();
+                        if (showGrip) {
+                            onGripTouchStart?.(event);
+                        }
+                    }}
                     onMouseDown={(event) => event.stopPropagation()}
                     className={cn(
                         'mt-1 shrink-0 rounded-full text-muted-foreground hover:bg-transparent',
+                        showGrip && 'cursor-grab touch-none',
                         className,
                     )}
                 >
-                    <EllipsisVertical className="size-4" />
+                    <span aria-hidden className="relative">
+                        <EllipsisVertical className="size-4" />
+                        {showGrip && (
+                            <EllipsisVertical className="absolute end-1 top-0 size-4" />
+                        )}
+                    </span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent

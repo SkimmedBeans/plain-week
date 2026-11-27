@@ -358,8 +358,9 @@ Row behaviour:
   pink, "Gym now"); see [Smart title](#smart-title-in-the-new-task-row).
 - The row being typed in lifts with `shadow-md`, a background and extra horizontal padding.
 - A task row holds sibling `Button`s: the text, the move button for keyboard drag and drop (hidden until focused) and
-  the complete check. A single click or tap on the text turns it into an inline `Textarea` with the caret where it was
-  pressed (F19): Enter or leaving the field saves through `updateTask` (a recurring task asks its scope first), Esc
+  the complete check. A desktop mouse click or a tap in Move tasks mode turns the text into an inline `Textarea` with
+  the caret where it was pressed (F19). Other taps open task details. Enter or leaving the field saves through
+  `updateTask` (a recurring task asks its scope first), Esc
   cancels, and an emptied text keeps the old one. A second press within 350 ms (`DOUBLE_TAP_MS`), Enter or Space on
   the text button, and "Task details" in the task menu open the task dialog through `onOpen(taskId)`. The editor keeps
   presses and keys to itself, so selecting text never drags the task or opens the task menu. A web link in the text is
@@ -685,7 +686,7 @@ A press on a task row is interpreted by its timing and direction. The gesture va
 
 | Gesture                                          | Result                                                                 |
 | ------------------------------------------------ | ---------------------------------------------------------------------- |
-| Tap                                              | Edits the text in place; a double tap opens the task dialog            |
+| Tap                                              | Opens task details, or edits the text in place in Move tasks mode      |
 | Vertical movement in the first 250 ms            | Scrolls the page                                                       |
 | Holding 250 ms (`TOUCH_DRAG_DELAY_MS`)           | Picks the task up where it is; moving it then drags, however long held |
 | Swipe the task text at least 64 px left or right | Completes on a left swipe or deletes on a right swipe, with Undo       |
@@ -693,8 +694,8 @@ A press on a task row is interpreted by its timing and direction. The gesture va
 On phones, swipe a task left to reveal a green Done action and complete it. Swipe right to reveal a
 red Delete action with a trash icon. The row follows the finger, then animates out on a committed
 action or slides back on a short or cancelled gesture. Reduced motion shortens the animations.
-Turn on Move tasks to replace task and week swipes with task drag handles. Use the task menu or
-keyboard shortcuts when working with a mouse or keyboard.
+On phones, Move tasks pauses task and week swipes and adds a matching column of dots to each task menu button.
+Drag the six dots to move the task, tap them to open the menu, or tap the task text to rename it.
 
 After 250 ms the dnd-kit touch sensor activates: the task lifts at once (dragged pill, dimmed row, edge zones), so the
 finger knows it can move, and the page no longer scrolls under it. Until the finger has moved more than 8 px
