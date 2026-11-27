@@ -23,6 +23,20 @@ export type SearchResult = {
     where: string;
 };
 
+export type NamedSearchResult = {
+    kind: 'list' | 'note';
+    openId: string;
+    column: number;
+    text: string;
+    where: string;
+    color: TaskColor;
+    snippet?: string;
+};
+
+export type PlannerSearchResult =
+    | (SearchResult & { kind: 'task' })
+    | NamedSearchResult;
+
 /** Lower case, without accents, so "cafe" finds "Café". */
 export function normalizeForSearch(text: string): string {
     return text
@@ -159,4 +173,64 @@ export async function searchTasks(
     return found
         .slice(0, SEARCH_LIMIT)
         .map(({ sortDate: _sortDate, ...result }) => result);
+}
+
+/** Finds named lists and notes alongside the existing task results. */
+export async function searchPlanner(
+    query: string,
+): Promise<PlannerSearchResult[]> {
+    const words = normalizeForSearch(query).split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+        return [];
+    }
+
+    const [tasks, lists] = await Promise.all([
+        searchTasks(query),
+        db.someday_lists.toArray(),
+    ]);
+    const named: NamedSearchResult[] = [];
+    for (const list of lists) {
+        if (list.deleted_at !== null) {
+            continue;
+        }
+        const isNote = typeof list.note === 'string';
+        const body = list.note ?? '';
+        const haystack = normalizeForSearch(`${list.name}\n${body}`);
+        if (!words.every((word) => haystack.includes(word))) {
+            continue;
+        }
+
+        const line = body
+            .split('\n')
+            .find((text) =>
+                words.some((word) => normalizeForSearch(text).includes(word)),
+            );
+        const snippet = line?.trim();
+        named.push({
+            kind: isNote ? 'note' : 'list',
+            openId: list.id,
+            column: list.column,
+            text: list.name,
+            where: t(
+                list.archived
+                    ? isNote
+                        ? 'planner.archivedNotes'
+                        : 'planner.archivedLists'
+                    : isNote
+                      ? 'planner.viewNotes'
+                      : 'planner.viewLists',
+            ),
+            color: list.color ?? 'none',
+            snippet:
+                snippet && snippet.length > 110
+                    ? `${snippet.slice(0, 107)}…`
+                    : snippet,
+        });
+    }
+    named.sort((a, b) => a.text.localeCompare(b.text));
+
+    return [
+        ...named,
+        ...tasks.map((task) => ({ ...task, kind: 'task' as const })),
+    ].slice(0, SEARCH_LIMIT);
 }

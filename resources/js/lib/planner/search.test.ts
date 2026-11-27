@@ -1,17 +1,50 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { wipeLocalDatabase } from '@/lib/db/database';
-import { createList } from '@/lib/db/lists';
+import {
+    convertListToNote,
+    createList,
+    deleteList,
+    setListNote,
+    setListArchived,
+} from '@/lib/db/lists';
 import {
     createTask,
     deleteTask,
     setRecurrence,
     toggleDone,
 } from '@/lib/db/tasks';
-import { matchesQuery, searchTasks } from './search';
+import { matchesQuery, searchPlanner, searchTasks } from './search';
 
 beforeEach(async () => {
     await wipeLocalDatabase();
+});
+
+it('finds list names and the matching line of an archived note alongside tasks', async () => {
+    const list = await createList('Café supplies');
+    const note = await createList('Recipes');
+    await convertListToNote(note.id);
+    await setListNote(note.id, 'Breakfast\nCafé pastry\nDinner');
+    await setListArchived(note.id, true);
+    const removed = await createList('Café deleted');
+    await deleteList(removed.id);
+    const task = await createTask({
+        text: 'Café booking',
+        date: null,
+        list: 0,
+    });
+
+    const results = await searchPlanner('cafe');
+    expect(results).toMatchObject([
+        { kind: 'list', openId: list.id, where: 'Lists' },
+        {
+            kind: 'note',
+            openId: note.id,
+            snippet: 'Café pastry',
+            where: 'Archived notes',
+        },
+        { kind: 'task', openId: task.id, where: 'Someday' },
+    ]);
 });
 
 describe('matchesQuery', () => {

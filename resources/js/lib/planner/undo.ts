@@ -25,6 +25,7 @@ function forget(entry: PendingUndo) {
 export function toastWithUndo(
     message: string,
     onUndo: () => void,
+    openAction?: { label: string; onClick: () => void },
 ): string | number {
     let done = false;
     const run = () => {
@@ -37,6 +38,7 @@ export function toastWithUndo(
     };
     const toastId = toast(message, {
         action: { label: t('planner.undo'), onClick: run },
+        cancel: openAction,
         onDismiss: () => forget(entry),
         onAutoClose: () => forget(entry),
     });

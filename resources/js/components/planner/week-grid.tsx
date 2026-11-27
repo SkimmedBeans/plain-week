@@ -4,6 +4,7 @@ import {
     type CollapsibleList,
 } from '@/components/planner/collapsed-lists';
 import { AddList } from '@/components/planner/add-list';
+import { ArchivedListsDialog } from '@/components/planner/archived-lists';
 import { DayColumn } from '@/components/planner/day-column';
 import { ViewBar } from '@/components/planner/view-bar';
 import { SomedaySection } from '@/components/planner/someday-section';
@@ -20,7 +21,7 @@ import { weekDateKeys } from '@/lib/db/dates';
 import { collapseKey, setListsCollapsed } from '@/lib/planner/device-settings';
 import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import { Archive, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -108,6 +109,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     );
     const noteRows = view === 'notes' && belowLg;
     const [createdNoteId, setCreatedNoteId] = useState<string | null>(null);
+    const [archiveOpen, setArchiveOpen] = useState(false);
     const listsShown = noteRows
         ? viewLists
         : viewLists.filter((list) => !isCollapsed(list));
@@ -131,7 +133,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 <ViewBar />
             </div>
             {!showWeek && (
-                <div className="mb-6 flex shrink-0 gap-2 lg:mb-5">
+                <div className="mb-6 flex shrink-0 flex-wrap gap-2 lg:mb-5">
                     <AddList
                         key={view}
                         kind={view === 'notes' ? 'note' : 'list'}
@@ -157,6 +159,28 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                                 : t('planner.expandAll')}
                         </Button>
                     )}
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setArchiveOpen(true)}
+                    >
+                        <Archive />
+                        {t(
+                            view === 'notes'
+                                ? 'planner.archivedNotes'
+                                : 'planner.archivedLists',
+                        )}
+                    </Button>
+                    <ArchivedListsDialog
+                        kind={view === 'notes' ? 'note' : 'list'}
+                        open={archiveOpen}
+                        onOpenChange={setArchiveOpen}
+                        weekStart={weekStart}
+                        today={today}
+                        onOpenTask={onOpenTask}
+                    />
                 </div>
             )}
             {!showWeek && viewLists.length === 0 && (

@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { PointerEvent, ReactNode } from 'react';
 import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import { KeyboardCursorProvider } from '@/components/planner/keyboard-cursor';
+import { ListDialog } from '@/components/planner/list-dialog';
 import { SearchDialog } from '@/components/planner/search-dialog';
 import { PlannerDnd } from '@/components/planner/planner-dnd';
 import { PlannerHeader } from '@/components/planner/planner-header';
@@ -16,10 +17,13 @@ import { usePlannerView } from '@/hooks/use-carry-over-setting';
 import { useGuestOnboarding } from '@/hooks/use-guest-onboarding';
 import { useIsBelowLg } from '@/hooks/use-mobile';
 import { clearTaskParam, useTaskLink } from '@/hooks/use-task-link';
+import { useSomedayTasks } from '@/hooks/use-tasks';
 import { useToday } from '@/hooks/use-today';
 import { useWeekNavigation } from '@/hooks/use-week-navigation';
 import { parseDateKey } from '@/lib/db/dates';
+import type { NamedSearchResult } from '@/lib/planner/search';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
+import { t } from '@/lib/i18n';
 import { edit as settings } from '@/routes/profile';
 
 /**
@@ -33,6 +37,7 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
     const today = useToday();
     const navigation = useWeekNavigation(today);
     const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+    const [openList, setOpenList] = useState<NamedSearchResult | null>(null);
     const returnToSearch = useRef(false);
     const belowLg = useIsBelowLg();
     const weekShown = usePlannerView() === 'week';
@@ -168,15 +173,69 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                     <TaskDialog taskId={openTaskId} onClose={closeTask} />
                     <ShortcutsDialog canOpenSettings={signedIn} />
                     <SearchDialog
-                        onOpenTask={(id) => {
-                            returnToSearch.current = belowLg;
-                            setOpenTaskId(id);
+                        onOpenResult={(result) => {
+                            if (result.kind === 'task') {
+                                returnToSearch.current = belowLg;
+                                setOpenTaskId(result.openId);
+                            } else {
+                                setOpenList(result);
+                            }
                         }}
                     />
+                    {openList !== null && (
+                        <SearchListCard
+                            result={openList}
+                            weekStart={navigation.weekStart}
+                            today={today}
+                            phone={belowLg}
+                            onOpenTask={(id) => {
+                                searchDialogStore.close();
+                                returnToSearch.current = belowLg;
+                                setOpenTaskId(id);
+                            }}
+                            onClose={() => {
+                                setOpenList(null);
+                                if (belowLg) {
+                                    searchDialogStore.open();
+                                }
+                            }}
+                        />
+                    )}
                     <InstallAppDialog />
                     {children}
                 </KeyboardCursorProvider>
             </ScopePromptProvider>
         </SyncProvider>
+    );
+}
+
+function SearchListCard({
+    result,
+    weekStart,
+    today,
+    phone,
+    onOpenTask,
+    onClose,
+}: {
+    result: NamedSearchResult;
+    weekStart: Date;
+    today: string;
+    phone: boolean;
+    onOpenTask: (id: string) => void;
+    onClose: () => void;
+}) {
+    const tasks = useSomedayTasks(weekStart, today, result.column);
+
+    return (
+        <ListDialog
+            identity={{ kind: 'named', id: result.openId }}
+            weekStart={weekStart}
+            placement={{ date: null, list: result.column }}
+            tasks={tasks}
+            newTaskLabel={t('planner.newTaskInList', { name: result.text })}
+            showNoteMenu={phone}
+            onOpenTask={onOpenTask}
+            onClose={onClose}
+        />
     );
 }
