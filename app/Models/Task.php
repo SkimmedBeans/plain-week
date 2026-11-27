@@ -27,7 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property TaskColor $color
  * @property string|null $time
  * @property string $notes
- * @property list<array{id: string, text: string, done: bool}> $subtasks
+ * @property list<array{id: string, text: string, done: bool, week_slot?: array{date: string, position: string}|null}> $subtasks
+ * @property array{date: string, position: string}|null $week_slot
  * @property array{type: 'daily'|'weekly'|'monthly', every?: int, weekdays?: list<int>, day?: int, until?: string|null}|null $recurrence
  * @property string|null $series_id
  * @property string|null $occurrence_date
@@ -40,7 +41,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'id', 'text', 'date', 'someday_column', 'position', 'done', 'done_at', 'color', 'time', 'notes', 'subtasks',
-    'recurrence', 'series_id', 'occurrence_date', 'created_at', 'updated_at', 'deleted_at',
+    'recurrence', 'series_id', 'occurrence_date', 'week_slot', 'created_at', 'updated_at', 'deleted_at',
 ])]
 class Task extends Model
 {
@@ -67,6 +68,7 @@ class Task extends Model
             'done_at' => UtcMillisDateTime::class,
             'color' => TaskColor::class,
             'subtasks' => 'array',
+            'week_slot' => 'array',
             'recurrence' => 'array',
             'created_at' => UtcMillisDateTime::class,
             'updated_at' => UtcMillisDateTime::class,
@@ -102,6 +104,7 @@ class Task extends Model
             'time' => $this->time,
             'notes' => $this->notes,
             'subtasks' => $this->subtasks,
+            ...($this->week_slot !== null ? ['week_slot' => $this->week_slot] : []),
             'recurrence' => $this->recurrence,
             'series_id' => $this->series_id,
             'occurrence_date' => $this->occurrence_date,

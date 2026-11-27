@@ -1,3 +1,4 @@
+import { toggleDoneWithUndo } from '@/lib/planner/task-actions';
 import {
     createContext,
     use,
@@ -19,7 +20,6 @@ import { useSomedayLists } from '@/hooks/use-tasks';
 import type { ShortcutHandlers } from '@/hooks/use-planner-shortcuts';
 import { parseDateKey, toDateKey, weekDateKeys } from '@/lib/db/dates';
 import { placementOf } from '@/lib/db/queries';
-import { moveTask, toggleDone } from '@/lib/db/tasks';
 import type { MoveTaskInput, TaskPlacement } from '@/lib/db/tasks';
 import {
     CURSOR_ROW_STOP_SELECTOR,
@@ -435,15 +435,15 @@ export function KeyboardCursorProvider({
     /** Moves the task and keeps the cursor on it. */
     const moveAndFollow = (task: PlannerTask, input: MoveTaskInput) =>
         once(task, () =>
-            moveTask(task.id, input).then(
-                (moved) =>
+            moveWithUndo(task.id, input, undefined, false).then((moved) => {
+                if (moved) {
                     show({
                         listKey: placementKey(placementOf(moved)),
                         taskId: moved.id,
                         index: 0,
-                    }),
-                () => toast.error(t('planner.moveTaskFailed')),
-            ),
+                    });
+                }
+            }),
         );
 
     const reorder = (direction: -1 | 1) =>
@@ -550,7 +550,7 @@ export function KeyboardCursorProvider({
             return at !== null && focusNewTaskInput(at.listKey);
         },
         'task.toggleDone': onTask((task) => {
-            toggleDone(task.id).then(
+            toggleDoneWithUndo(task.id).then(
                 (toggled) => follow(task.id, toggled.id),
                 () => toast.error(t('planner.updateTaskFailed')),
             );

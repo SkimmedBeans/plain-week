@@ -1,3 +1,4 @@
+import { toggleDoneWithUndo } from '@/lib/planner/task-actions';
 import { Dialog } from '@/components/back-closable-dialog';
 import { CircleCheck, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useTaskDialogShortcuts } from '@/hooks/use-task-dialog-shortcuts';
 import { useBackToClose } from '@/hooks/use-back-to-close';
-import { toggleDone, updateTask } from '@/lib/db/tasks';
+import { updateTask } from '@/lib/db/tasks';
 import { t } from '@/lib/i18n';
 import { deleteWithUndo } from '@/lib/planner/task-actions';
 import { cn } from '@/lib/utils';
@@ -121,7 +122,7 @@ function TaskDialogContent({ onClose }: { onClose: () => void }) {
                 ) ?? null,
             ),
         'dialog.toggleDone': () =>
-            write((id) => toggleDone(id), { follow: true }),
+            write((id) => toggleDoneWithUndo(id), { follow: true }),
         'dialog.nextDay': () => (quick.canMove ? quick.tomorrow() : false),
         'dialog.nextWeek': () => (quick.canMove ? quick.nextWeek() : false),
         'dialog.someday': () =>
@@ -277,7 +278,9 @@ function TaskDialogContent({ onClose }: { onClose: () => void }) {
                         }
                         aria-pressed={task.done}
                         onClick={() =>
-                            write((id) => toggleDone(id), { follow: true })
+                            write((id) => toggleDoneWithUndo(id), {
+                                follow: true,
+                            })
                         }
                         className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
                     >

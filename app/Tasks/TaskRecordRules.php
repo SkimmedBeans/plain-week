@@ -49,6 +49,12 @@ final class TaskRecordRules
             "{$p}subtasks.*.id" => ['required', 'string', 'max:255'],
             "{$p}subtasks.*.text" => ['present', 'string'],
             "{$p}subtasks.*.done" => ['required', 'boolean:strict'],
+            "{$p}week_slot" => ['sometimes', 'nullable', 'array:date,position', 'required_array_keys:date,position'],
+            "{$p}week_slot.date" => ['date_format:Y-m-d'],
+            "{$p}week_slot.position" => ['required_with:'.$p.'week_slot', 'string', 'max:255'],
+            "{$p}subtasks.*.week_slot" => ['sometimes', 'nullable', 'array:date,position', 'required_array_keys:date,position'],
+            "{$p}subtasks.*.week_slot.date" => ['date_format:Y-m-d'],
+            "{$p}subtasks.*.week_slot.position" => ['required_with:'.$p.'subtasks.*.week_slot', 'string', 'max:255'],
             // The recurrence keys are optional (all three or none) so clients from before v0.0.2 keep syncing plain
             // tasks; PushTasks refuses their writes to a series or an exception. Cross-field invariants are in
             // violations().

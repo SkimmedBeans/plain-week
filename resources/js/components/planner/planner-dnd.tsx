@@ -28,10 +28,9 @@ import { toast } from 'sonner';
 import { EdgeZone } from '@/components/planner/edge-zone';
 import { TaskLabel } from '@/components/planner/task-row';
 import { moveListTo } from '@/lib/db/lists';
-import { moveTask } from '@/lib/db/tasks';
+import { moveWithUndo } from '@/lib/planner/task-actions';
 import type { MoveTaskInput } from '@/lib/db/tasks';
 import {
-    originalSpot,
     placementKey,
     placementLabel,
     resolveDrop,
@@ -47,7 +46,6 @@ import type {
     WeekDirection,
 } from '@/lib/planner/drop';
 import { t } from '@/lib/i18n';
-import { toastWithUndo } from '@/lib/planner/undo';
 
 /** A mouse drag starts after this much movement, so a click still opens. */
 const MOUSE_DRAG_DISTANCE_PX = 5;
@@ -588,21 +586,19 @@ export function PlannerDnd({
         setListIndicator(null);
     };
 
-    const write = (id: string, move: MoveTaskInput) => {
+    const write = (
+        id: string,
+        move: MoveTaskInput,
+        name?: string,
+        announce = false,
+    ) => {
         setSettlingId(id);
 
-        return moveTask(id, move)
-            .catch((error: unknown) => {
-                toast.error(t('planner.moveTaskFailed'));
-                throw error;
-            })
-            .finally(() =>
-                requestAnimationFrame(() =>
-                    setSettlingId((current) =>
-                        current === id ? null : current,
-                    ),
-                ),
-            );
+        return moveWithUndo(id, move, name, announce).finally(() =>
+            requestAnimationFrame(() =>
+                setSettlingId((current) => (current === id ? null : current)),
+            ),
+        );
     };
 
     const writeList = (listId: string, toIndex: number) => {
@@ -642,21 +638,12 @@ export function PlannerDnd({
 
             if (dragged && drop) {
                 const { task } = dragged;
-                const undo = originalSpot(task, dragged);
-
-                write(task.id, drop.move)
-                    .then(() => {
-                        // The task left the screen: say where it went.
-                        if (drop.indicator === null) {
-                            toastWithUndo(
-                                t('planner.movedTo', {
-                                    place: placementLabel(drop.move, drop.name),
-                                }),
-                                () => void write(task.id, undo),
-                            );
-                        }
-                    })
-                    .catch(() => {});
+                void write(
+                    task.id,
+                    drop.move,
+                    drop.name,
+                    drop.indicator === null,
+                );
             }
         }
 
@@ -909,21 +896,19 @@ export function ListCardDnd({ weekStart, children }: ListCardDndProps) {
         setResult(null);
     };
 
-    const write = (id: string, move: MoveTaskInput) => {
+    const write = (
+        id: string,
+        move: MoveTaskInput,
+        name?: string,
+        announce = false,
+    ) => {
         setSettlingId(id);
 
-        return moveTask(id, move)
-            .catch((error: unknown) => {
-                toast.error(t('planner.moveTaskFailed'));
-                throw error;
-            })
-            .finally(() =>
-                requestAnimationFrame(() =>
-                    setSettlingId((current) =>
-                        current === id ? null : current,
-                    ),
-                ),
-            );
+        return moveWithUndo(id, move, name, announce).finally(() =>
+            requestAnimationFrame(() =>
+                setSettlingId((current) => (current === id ? null : current)),
+            ),
+        );
     };
 
     const handleDragEnd = ({ collisions, activatorEvent }: DragEndEvent) => {

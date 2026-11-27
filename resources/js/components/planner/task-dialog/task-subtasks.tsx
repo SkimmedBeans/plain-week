@@ -1,8 +1,20 @@
-import { Plus, X } from 'lucide-react';
-import { useEffect, useId, useRef } from 'react';
+import { CalendarDays, Plus, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { v7 as uuidv7 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { parseDateKey, toDateKey } from '@/lib/db/dates';
+import {
+    changeSubtasksWithUndo,
+    scheduleWithUndo,
+} from '@/lib/planner/task-actions';
+import { formatLongDate } from '@/lib/planner/format';
 import { Input } from '@/components/ui/input';
 import { updateSubtasks } from '@/lib/db/tasks';
 import type { Subtask } from '@/lib/db/types';
@@ -22,16 +34,24 @@ const FIELD_CLASS =
  * stored order stays as it was, so an unticked subtask returns to its place.
  */
 export function TaskSubtasks() {
-    const { task, edit: editTask } = useTaskEditor();
+    const { task, write, edit: editTask } = useTaskEditor();
     const addInputRef = useRef<HTMLInputElement>(null);
     const completedId = useId();
+    const [scheduling, setScheduling] = useState<string | null>(null);
     const change = (
         update: (subtasks: Subtask[]) => Subtask[],
         onCancel?: () => void,
+        record = true,
     ) =>
-        editTask((id, scope) => updateSubtasks(id, update, { scope }), {
-            onCancel,
-        });
+        editTask(
+            (id, scope) =>
+                record
+                    ? changeSubtasksWithUndo(id, update, scope)
+                    : updateSubtasks(id, update, { scope }),
+            {
+                onCancel,
+            },
+        );
 
     const edit = (
         id: string,
@@ -44,6 +64,7 @@ export function TaskSubtasks() {
                     subtask.id === id ? { ...subtask, ...patch } : subtask,
                 ),
             onCancel,
+            patch.done !== undefined,
         );
 
     const remove = (id: string) =>
@@ -122,6 +143,58 @@ export function TaskSubtasks() {
                     subtask.done && 'text-muted-foreground line-through',
                 )}
             />
+            {task.kind === 'task' && task.date === null && (
+                <Popover
+                    open={scheduling === subtask.id}
+                    onOpenChange={(open) =>
+                        setScheduling(open ? subtask.id : null)
+                    }
+                >
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={t('planner.addToDay')}
+                            title={
+                                subtask.week_slot
+                                    ? formatLongDate(subtask.week_slot.date)
+                                    : t('planner.addToDay')
+                            }
+                        >
+                            <CalendarDays />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                            mode="single"
+                            weekStartsOn={1}
+                            defaultMonth={
+                                subtask.week_slot
+                                    ? parseDateKey(subtask.week_slot.date)
+                                    : undefined
+                            }
+                            selected={
+                                subtask.week_slot
+                                    ? parseDateKey(subtask.week_slot.date)
+                                    : undefined
+                            }
+                            onSelect={(date) => {
+                                if (date) {
+                                    setScheduling(null);
+                                    write((id) =>
+                                        scheduleWithUndo(
+                                            id,
+                                            toDateKey(date),
+                                            subtask.id,
+                                        ),
+                                    );
+                                }
+                            }}
+                        />
+                    </PopoverContent>
+                </Popover>
+            )}
             <Button
                 type="button"
                 variant="ghost"

@@ -31,7 +31,8 @@ import {
     queryTask,
 } from './queries';
 import type { TaskPlacement } from './queries';
-import type { Recurrence, Subtask, Task, TaskColor } from './types';
+import type { Recurrence, Subtask, Task, TaskColor, WeekSlot } from './types';
+import { weekEntryId, weekEntrySource } from './week-slots';
 
 /**
  * The task repository. Every function only touches IndexedDB: none of them
@@ -87,7 +88,10 @@ export type Scope = 'this' | 'future';
  * Records what a mutation overwrote, so `undoChanges` can put it back. Pass
  * the same log to one or more mutations, then undo them all at once.
  */
-export type UndoLog = { before: Map<string, Task | null> };
+export type UndoLog = {
+    before: Map<string, Task | null>;
+    after: Map<string, Task>;
+};
 
 export type MutationOptions = {
     undo?: UndoLog;
@@ -103,6 +107,7 @@ export type ScopedMutationOptions = MutationOptions & { scope?: Scope };
 /** Keeps only the stored fields (drops the view-model ones). */
 function toRow(task: Task): Task {
     return {
+        ...(task.week_slot !== undefined && { week_slot: task.week_slot }),
         id: task.id,
         text: task.text,
         date: task.date,
@@ -160,6 +165,7 @@ async function write<T>(
             if (options.undo && !options.undo.before.has(row.id)) {
                 options.undo.before.set(row.id, previous[i] ?? null);
             }
+            options.undo?.after.set(row.id, row);
         });
 
         await db.tasks.bulkPut(rows);
@@ -169,7 +175,11 @@ async function write<T>(
                 revision: (entries[i]?.revision ?? 0) + 1,
             })),
         );
-        await trackDemoRows(rows, subjectId, options.demo ? 'seed' : mode);
+        await trackDemoRows(
+            rows,
+            subjectId && (weekEntrySource(subjectId)?.taskId ?? subjectId),
+            options.demo ? 'seed' : mode,
+        );
 
         written = rows.length;
 
@@ -484,6 +494,26 @@ function edit(
         async () => {
             const item = await getLive(id);
             const patch = change(item);
+            const source = weekEntrySource(id);
+            if (source) {
+                const parent = await getLive(source.taskId);
+                const row =
+                    source.subtaskId === undefined
+                        ? patched(parent, patch)
+                        : patched(parent, {
+                              color: patch.color,
+                              subtasks: parent.subtasks.map((subtask) =>
+                                  subtask.id === source.subtaskId
+                                      ? {
+                                            ...subtask,
+                                            text: patch.text ?? subtask.text,
+                                            done: patch.done ?? subtask.done,
+                                        }
+                                      : subtask,
+                              ),
+                          });
+                return { rows: [row], result: { ...item, ...patch } };
+            }
             const linked = await liveSeriesOf(item);
 
             if (linked && scope === 'future') {
@@ -568,6 +598,15 @@ export function deleteTask(
     return write(
         async () => {
             const item = await getLive(id);
+            const source = weekEntrySource(id);
+            if (source) {
+                const row = withWeekSlot(
+                    await getLive(source.taskId),
+                    source.subtaskId,
+                    null,
+                );
+                return { rows: [row], result: item };
+            }
             const linked = await liveSeriesOf(item);
 
             if (linked && scope === 'future') {
@@ -682,6 +721,22 @@ export function moveTask(
             }
 
             const slot = await slotIn(input, input, new Set([id, item.id]));
+            const source = weekEntrySource(id);
+            if (source) {
+                const parent = await getLive(source.taskId);
+                const row = withWeekSlot(
+                    parent,
+                    source.subtaskId,
+                    slot.date === null
+                        ? null
+                        : { date: slot.date, position: slot.position },
+                );
+                return {
+                    rows: [row],
+                    result:
+                        slot.date === null ? toItem(row) : { ...item, ...slot },
+                };
+            }
             const base =
                 item.kind === 'occurrence'
                     ? materialize(
@@ -692,6 +747,15 @@ export function moveTask(
             const row: Task = {
                 ...toRow(base),
                 ...slot,
+                ...(slot.date !== null &&
+                    base.date === null && {
+                        week_slot: null,
+                        subtasks: base.subtasks.map((subtask) =>
+                            subtask.week_slot
+                                ? { ...subtask, week_slot: null }
+                                : subtask,
+                        ),
+                    }),
                 updated_at: nextTimestamp(base.updated_at),
             };
 
@@ -763,9 +827,11 @@ export function duplicateTask(
             const copy: Task = {
                 ...plainCopy(source),
                 ...slotBetween(placementOf(item), item, next),
+                week_slot: null,
                 subtasks: item.subtasks.map((subtask) => ({
                     ...subtask,
                     id: uuidv7(),
+                    ...(subtask.week_slot !== undefined && { week_slot: null }),
                 })),
             };
 
@@ -902,41 +968,50 @@ export function setRecurrence(
     );
 }
 
-/**
- * A check, taken right after the mutations logged in `log`: whether every row
- * they touched is still exactly as they left them (same `updated_at`, or
- * still absent). Lets a late undo refuse to overwrite newer changes.
- */
-export async function unchangedSince(
-    log: UndoLog,
-): Promise<() => Promise<boolean>> {
-    const ids = [...log.before.keys()];
-    const stamps = (await db.tasks.bulkGet(ids)).map(
-        (row) => row?.updated_at ?? null,
-    );
-
-    return async () => {
-        const now = await db.tasks.bulkGet(ids);
-
-        return now.every((row, i) => (row?.updated_at ?? null) === stamps[i]);
-    };
+export function createUndoLog(): UndoLog {
+    return { before: new Map(), after: new Map() };
 }
 
-export function createUndoLog(): UndoLog {
-    return { before: new Map() };
+function normalizeWeekSlot(slot: WeekSlot | null | undefined): WeekSlot | null {
+    return slot ? { date: slot.date, position: slot.position } : null;
+}
+
+function comparableTask(task: Task | undefined): string | undefined {
+    if (!task) {
+        return undefined;
+    }
+
+    return JSON.stringify({
+        ...toRow({ ...task, week_slot: null }),
+        updated_at: undefined,
+        week_slot: normalizeWeekSlot(task.week_slot),
+        subtasks: task.subtasks.map(({ id, text, done, week_slot }) => ({
+            id,
+            text,
+            done,
+            week_slot: normalizeWeekSlot(week_slot),
+        })),
+    });
 }
 
 /**
  * Puts back every row the mutations logged in `log` overwrote, and deletes
  * the rows they created, as newer changes so the undo also syncs.
  */
-export function undoChanges(log: UndoLog): Promise<void> {
+export function undoChanges(log: UndoLog, guard = false): Promise<void> {
     return write(
         async () => {
             const rows: Task[] = [];
 
             for (const [id, before] of log.before) {
                 const now = await db.tasks.get(id);
+
+                if (
+                    guard &&
+                    comparableTask(now) !== comparableTask(log.after.get(id))
+                ) {
+                    throw new Error('Task changed since this action.');
+                }
 
                 if (!now) {
                     continue;
@@ -951,8 +1026,6 @@ export function undoChanges(log: UndoLog): Promise<void> {
                     rows.push(...(await unwritten(now)));
                 }
             }
-
-            log.before.clear();
 
             return { rows, result: undefined };
         },
@@ -984,4 +1057,59 @@ async function unwritten(row: Task): Promise<Task[]> {
     }
 
     return row.deleted_at === null ? [tombstone(row)] : [];
+}
+
+function withWeekSlot(
+    task: Task,
+    subtaskId: string | undefined,
+    slot: WeekSlot | null,
+): Task {
+    const row = patched(
+        task,
+        subtaskId === undefined
+            ? {}
+            : {
+                  subtasks: task.subtasks.map((subtask) =>
+                      subtask.id === subtaskId
+                          ? { ...subtask, week_slot: slot }
+                          : subtask,
+                  ),
+              },
+    );
+    if (subtaskId === undefined) {
+        row.week_slot = slot;
+    }
+    return row;
+}
+
+export function scheduleSomedayTask(
+    id: string,
+    date: string,
+    subtaskId?: string,
+    options: MutationOptions = {},
+): Promise<PlannerTask> {
+    return write(
+        async () => {
+            const task = await getLive(id);
+            if (
+                task.kind !== 'task' ||
+                task.date !== null ||
+                (subtaskId !== undefined &&
+                    !task.subtasks.some((subtask) => subtask.id === subtaskId))
+            ) {
+                throw new Error(
+                    'Only Someday tasks and their subtasks can be added to a day.',
+                );
+            }
+            const { position } = await slotIn(
+                { date },
+                {},
+                new Set([weekEntryId(id, subtaskId)]),
+            );
+            const row = withWeekSlot(task, subtaskId, { date, position });
+            return { rows: [row], result: toItem(row) };
+        },
+        options,
+        { subjectId: id },
+    );
 }

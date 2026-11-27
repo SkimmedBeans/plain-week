@@ -2,174 +2,94 @@ import { useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 
-/**
- * The toasts that offer "Undo" (a move, a delete), and the `u` shortcut that
- * presses the newest one still on screen. A toast that was dismissed or timed
- * out cannot be undone with `u`: restoring its old snapshot could overwrite
- * later edits.
- */
+type PendingUndo = {
+    toastId?: string | number;
+    run: () => void | Promise<void>;
+    label?: string;
+};
 
-type PendingUndo = { toastId: string | number; run: () => void };
-
-/** Undo toasts on screen, oldest first. */
+export const UNDO_HISTORY_LIMIT = 50;
 let pending: PendingUndo[] = [];
+const historyListeners = new Set<() => void>();
+let latestUndo: PendingUndo | undefined;
+let undoing: Promise<void> | undefined;
 
-function forget(entry: PendingUndo) {
-    pending = pending.filter((other) => other !== entry);
+function updateHistory() {
+    latestUndo = pending.at(-1);
+    historyListeners.forEach((listener) => listener());
 }
 
-/**
- * Shows `message` with an "Undo" action that runs `onUndo` once. Returns the
- * toast's id (see `dismissUndoToast`).
- */
+function subscribeHistory(listener: () => void) {
+    historyListeners.add(listener);
+    return () => {
+        historyListeners.delete(listener);
+    };
+}
+
+export function useLatestUndo() {
+    return useSyncExternalStore(subscribeHistory, () => latestUndo);
+}
+
+export function recordUndo(run: PendingUndo['run'], label?: string): void {
+    pending = [...pending, { run, label }].slice(-UNDO_HISTORY_LIMIT);
+    updateHistory();
+}
+
 export function toastWithUndo(
     message: string,
-    onUndo: () => void,
+    onUndo: PendingUndo['run'],
     openAction?: { label: string; onClick: () => void },
+    historyLabel = message,
 ): string | number {
-    let done = false;
-    const run = () => {
-        forget(entry);
-
-        if (!done) {
-            done = true;
-            onUndo();
-        }
-    };
+    const entry: PendingUndo = { run: onUndo, label: historyLabel };
     const toastId = toast(message, {
-        action: { label: t('planner.undo'), onClick: run },
+        action: { label: t('planner.undo'), onClick: () => undoEntry(entry) },
         cancel: openAction,
-        onDismiss: () => forget(entry),
-        onAutoClose: () => forget(entry),
     });
-    const entry: PendingUndo = { toastId, run };
-
-    pending.push(entry);
+    entry.toastId = toastId;
+    pending = [...pending, entry].slice(-UNDO_HISTORY_LIMIT);
+    updateHistory();
 
     return toastId;
 }
 
-/** Closes an "Undo" toast without running it (its change was undone elsewhere). */
-export function dismissUndoToast(toastId: string | number): void {
-    pending = pending.filter((entry) => entry.toastId !== toastId);
-    toast.dismiss(toastId);
+function undoEntry(entry: PendingUndo) {
+    if (!pending.includes(entry)) {
+        return;
+    }
+    if (undoing) {
+        void undoing.then(() => undoEntry(entry));
+        return;
+    }
+    pending = pending.filter((other) => other !== entry);
+    updateHistory();
+    if (entry.toastId !== undefined) {
+        toast.dismiss(entry.toastId);
+    }
+    undoing = Promise.resolve()
+        .then(entry.run)
+        .catch(() => {
+            toast.error(t('planner.undoChangeFailed'));
+        })
+        .finally(() => {
+            undoing = undefined;
+        });
 }
 
-/**
- * Undoes what the newest "Undo" toast on screen offers and closes it.
- * Returns whether there was one.
- */
 export function undoLatest(): boolean {
-    const entry = pending.at(-1);
-
-    if (!entry) {
+    if (!latestUndo) {
         return false;
     }
-
-    entry.run();
-    toast.dismiss(entry.toastId);
-
+    if (undoing) {
+        void undoing.then(undoLatest);
+    } else {
+        undoEntry(latestUndo);
+    }
     return true;
 }
 
-/**
- * The session's recent deletes, for the header's "Undo delete" button. Unlike
- * the toasts they stay until the page reloads, so a restore first checks that
- * nothing touched the deleted rows since (`canRestore`). Only deletes are kept:
- * a delete can be put back safely, an old move could overwrite later edits.
- */
-
-export const DELETE_HISTORY_LIMIT = 20;
-
-type DeleteEntry = {
-    title: string;
-    /** Puts the task back; the delete leaves the history first. */
-    undo: () => void;
-    /** Whether the rows are still exactly as the delete left them. */
-    canRestore: () => Promise<boolean>;
-};
-
-let deletes: DeleteEntry[] = [];
-const listeners = new Set<() => void>();
-let snapshot = { count: 0, latestTitle: null as string | null };
-
-function changed() {
-    snapshot = {
-        count: deletes.length,
-        latestTitle: deletes.at(-1)?.title ?? null,
-    };
-    listeners.forEach((listener) => listener());
-}
-
-/**
- * Records a delete. Returns the function every route (toast, `u`, header)
- * calls to undo it: it runs `restore` at most once and drops the entry.
- */
-export function recordDelete(
-    title: string,
-    restore: () => void,
-    canRestore: () => Promise<boolean>,
-): () => void {
-    let done = false;
-    const entry: DeleteEntry = {
-        title,
-        canRestore,
-        undo: () => {
-            if (done) {
-                return;
-            }
-
-            done = true;
-            deletes = deletes.filter((other) => other !== entry);
-            changed();
-            restore();
-        },
-    };
-
-    deletes = [...deletes, entry].slice(-DELETE_HISTORY_LIMIT);
-    changed();
-
-    return entry.undo;
-}
-
-/** Undoes the newest recorded delete, if its rows were not changed since. */
-export async function undoLastDelete(): Promise<void> {
-    const entry = deletes.at(-1);
-
-    if (!entry) {
-        return;
-    }
-
-    if (!(await entry.canRestore())) {
-        deletes = deletes.filter((other) => other !== entry);
-        changed();
-        toast('Already restored or changed since, so not undone.');
-
-        return;
-    }
-
-    entry.undo();
-    toast(`Restored "${entry.title}".`);
-}
-
-function subscribe(listener: () => void) {
-    listeners.add(listener);
-
-    return () => {
-        listeners.delete(listener);
-    };
-}
-
-/** How many deletes can be undone, and the newest one's title. */
-export function useDeleteHistory(): {
-    count: number;
-    latestTitle: string | null;
-} {
-    return useSyncExternalStore(subscribe, () => snapshot);
-}
-
-/** Test helper: forgets the history. */
-export function clearDeleteHistory(): void {
-    deletes = [];
-    changed();
+/** Test helper. */
+export function clearUndoHistory(): void {
+    pending = [];
+    updateHistory();
 }

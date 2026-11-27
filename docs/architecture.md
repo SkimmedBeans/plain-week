@@ -39,6 +39,13 @@ Same shape on the client and on the wire. Keys are `snake_case` both on the wire
 | `updated_at`      | ISO-8601 string (UTC, ms)                                                                                                                              | Set by the client on every change; drives last-write-wins                                                                                                                              |
 | `deleted_at`      | ISO-8601 string \| `null`                                                                                                                              | Soft delete (tombstone). Never hard-delete through sync                                                                                                                                |
 
+A plain Someday task and each of its subtasks can carry an optional `week_slot` with a date and position.
+The weekday entry is projected from that row in Dexie. Completion is shared with Someday, and moving or
+removing the weekday entry edits the slot. This metadata syncs on the parent row and is included in backups.
+
+The planner keeps up to 50 undoable actions for the current page session. Undo restores local records and writes
+new outbox entries so the reversal syncs. The transaction checks for intervening changes before restoring a snapshot.
+
 Server-only columns: `user_id` (foreign key) and `version` (unsigned bigint, monotonically increasing, assigned on every
 accepted write).
 

@@ -9,7 +9,8 @@ namespace App\Tasks;
  *
  * @phpstan-import-type Recurrence from TaskOccurrences
  *
- * @phpstan-type Subtask array{id: string, text: string, done: bool}
+ * @phpstan-type WeekSlot array{date: string, position: string}
+ * @phpstan-type Subtask array{id: string, text: string, done: bool, week_slot?: WeekSlot|null}
  * @phpstan-type TaskRecord array{
  *     id: string,
  *     text: string,
@@ -22,6 +23,7 @@ namespace App\Tasks;
  *     time: string|null,
  *     notes: string,
  *     subtasks: list<Subtask>,
+ *     week_slot?: WeekSlot,
  *     recurrence: Recurrence|null,
  *     series_id: string|null,
  *     occurrence_date: string|null,

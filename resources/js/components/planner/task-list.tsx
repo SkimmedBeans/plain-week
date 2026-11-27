@@ -1,3 +1,7 @@
+import {
+    createTaskWithUndo,
+    toggleDoneWithUndo,
+} from '@/lib/planner/task-actions';
 import { useDroppable } from '@dnd-kit/core';
 import {
     SortableContext,
@@ -25,7 +29,6 @@ import {
 } from '@/components/planner/planner-dnd';
 import { TaskRow } from '@/components/planner/task-row';
 import { toDateKey } from '@/lib/db/dates';
-import { createTask, toggleDone } from '@/lib/db/tasks';
 import type { TaskPlacement } from '@/lib/db/tasks';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 import { placementKey } from '@/lib/planner/drop';
@@ -186,7 +189,7 @@ export function TaskList({
         // A task dated elsewhere leaves this list: say where it went.
         const leavesList = date !== null && date !== placement.date;
 
-        createTask({ ...target, text, time, ...(color && { color }) })
+        createTaskWithUndo({ ...target, text, time, ...(color && { color }) })
             .then(() => {
                 if (leavesList) {
                     toast(
@@ -204,7 +207,7 @@ export function TaskList({
     const handleCancel = () => returnToList(listKey);
 
     const handleToggleDone = (taskId: string) => {
-        toggleDone(taskId).catch(() =>
+        toggleDoneWithUndo(taskId).catch(() =>
             toast.error(t('planner.updateTaskFailed')),
         );
     };

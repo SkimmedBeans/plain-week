@@ -8,9 +8,12 @@ import {
     listTasksIn,
     moveTask,
     restoreTask,
+    scheduleSomedayTask,
     toggleDone,
     updateSubtasks,
     updateTask,
+    createUndoLog,
+    undoChanges,
 } from './tasks';
 
 const DAY = '2026-10-12';
@@ -403,5 +406,56 @@ describe('positions', () => {
         expect(
             listed.filter((t) => t.id.length === 1).map((t) => t.text),
         ).toEqual(['first', 'second']);
+    });
+});
+
+describe('Someday entries on a weekday', () => {
+    it('shares completion and changes the weekday placement independently', async () => {
+        const task = await createTask({
+            text: 'Parent',
+            date: null,
+            list: 0,
+            subtasks: [{ id: 'subtask', text: 'Child', done: false }],
+        });
+        await scheduleSomedayTask(task.id, DAY);
+        await scheduleSomedayTask(task.id, DAY, 'subtask');
+
+        const [parent, child] = await listTasksIn({ date: DAY });
+        expect([parent.text, child.text]).toEqual(['Parent', 'Child']);
+        await toggleDone(child.id);
+        expect((await db.tasks.get(task.id))?.subtasks[0].done).toBe(true);
+        await updateSubtasks(task.id, (subtasks) =>
+            subtasks.map((subtask) => ({ ...subtask, done: false })),
+        );
+        expect((await listTasksIn({ date: DAY }))[1].done).toBe(false);
+
+        await toggleDone(parent.id);
+        expect((await listTasksIn({ date: null, list: 0 }))[0].done).toBe(true);
+        await toggleDone(task.id);
+        expect((await listTasksIn({ date: DAY }))[0].done).toBe(false);
+        await moveTask(parent.id, { date: OTHER_DAY });
+        await deleteTask(child.id);
+        expect(await texts(DAY)).toEqual([]);
+        expect(await texts(OTHER_DAY)).toEqual(['Parent']);
+        expect((await db.tasks.get(task.id))?.subtasks[0].text).toBe('Child');
+    });
+
+    it('undoes a chain of mutations on the same task', async () => {
+        const added = createUndoLog();
+        const task = await createTask(
+            { text: 'Chore', date: DAY },
+            { undo: added },
+        );
+        const moved = createUndoLog();
+        await moveTask(task.id, { date: OTHER_DAY }, { undo: moved });
+        const completed = createUndoLog();
+        await toggleDone(task.id, { undo: completed });
+
+        await undoChanges(completed, true);
+        await undoChanges(moved, true);
+        expect((await listTasksIn({ date: DAY }))[0].done).toBe(false);
+        await undoChanges(added, true);
+        expect(await texts(DAY)).toEqual([]);
+        expect(await texts(OTHER_DAY)).toEqual([]);
     });
 });

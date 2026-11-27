@@ -170,6 +170,23 @@ class RowValidator {
     }
 }
 
+function parseWeekSlot(v: RowValidator, field: string, value: unknown) {
+    if (value === undefined || value === null) {
+        return value;
+    }
+    if (
+        !isObject(value) ||
+        typeof value.date !== 'string' ||
+        !isDateKey(value.date) ||
+        typeof value.position !== 'string' ||
+        value.position.length === 0 ||
+        value.position.length > MAX_POSITION_LENGTH
+    ) {
+        v.fail(field, t('settings.transfer.rule.object'));
+    }
+    return { date: value.date, position: value.position };
+}
+
 function parseSubtasks(v: RowValidator, value: unknown): Subtask[] {
     if (!Array.isArray(value)) {
         v.fail('subtasks', t('settings.transfer.rule.list'));
@@ -205,7 +222,17 @@ function parseSubtasks(v: RowValidator, value: unknown): Subtask[] {
             v.fail(`${field}.done`, t('settings.transfer.rule.boolean'));
         }
 
-        return { id, text, done };
+        const weekSlot = parseWeekSlot(
+            v,
+            field + '.week_slot',
+            subtask.week_slot,
+        );
+        return {
+            id,
+            text,
+            done,
+            ...(weekSlot !== undefined && { week_slot: weekSlot }),
+        };
     });
 }
 
@@ -325,6 +352,7 @@ export function validateTask(value: unknown, index: number): Task {
     }
 
     const v: RowValidator = new RowValidator(value, label);
+    const weekSlot = parseWeekSlot(v, 'week_slot', value.week_slot);
     const date = v.nullable(
         'date',
         isDateKey,
@@ -417,6 +445,7 @@ export function validateTask(value: unknown, index: number): Task {
         id,
         text: v.string('text'),
         date,
+        ...(weekSlot !== undefined && { week_slot: weekSlot }),
         someday_column: date === null ? somedayColumn : null,
         position,
         done: v.boolean('done'),

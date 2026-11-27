@@ -7,7 +7,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { parseDateKey, toDateKey } from '@/lib/db/dates';
-import { moveTask } from '@/lib/db/tasks';
+import { moveWithUndo } from '@/lib/planner/task-actions';
 import { formatLongDate, formatShortDate } from '@/lib/planner/format';
 import { t } from '@/lib/i18n';
 import { focusCalendarDay } from './calendar-focus';
@@ -36,7 +36,7 @@ export function TaskDatePicker() {
         onOpenChange(false);
 
         if (date && toDateKey(date) !== task.date) {
-            write((id) => moveTask(id, { date: toDateKey(date) }), {
+            write((id) => moveWithUndo(id, { date: toDateKey(date) }), {
                 follow: true,
                 error: t('task.moveFailed'),
             });

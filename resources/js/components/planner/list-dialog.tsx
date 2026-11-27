@@ -1,3 +1,7 @@
+import {
+    createTaskWithUndo,
+    toggleDoneWithUndo,
+} from '@/lib/planner/task-actions';
 import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
 import { ClipboardCopy, Ellipsis, ImagePlus, Trash2, X } from 'lucide-react';
 import {
@@ -54,7 +58,7 @@ import {
     setListArchived,
     LIST_NAME_MAX,
 } from '@/lib/db/lists';
-import { createTask, toggleDone, type TaskPlacement } from '@/lib/db/tasks';
+import { type TaskPlacement } from '@/lib/db/tasks';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 import { t } from '@/lib/i18n';
 import { placementKey, type ListDropData } from '@/lib/planner/drop';
@@ -620,7 +624,7 @@ function ListCardTaskList({
         // A task dated elsewhere leaves this list: say where it went.
         const leavesList = date !== null && date !== placement.date;
 
-        createTask({ ...target, text, time, ...(color && { color }) })
+        createTaskWithUndo({ ...target, text, time, ...(color && { color }) })
             .then(() => {
                 if (leavesList) {
                     toast(
@@ -635,7 +639,7 @@ function ListCardTaskList({
     };
 
     const handleToggleDone = (taskId: string) => {
-        toggleDone(taskId).catch(() =>
+        toggleDoneWithUndo(taskId).catch(() =>
             toast.error(t('planner.updateTaskFailed')),
         );
     };
@@ -684,6 +688,7 @@ function ListCardTaskList({
                             name={name}
                             onOpen={onOpenTask}
                             onToggleDone={handleToggleDone}
+                            listCardSwipes
                         />
                         {indicatorBefore === null &&
                             index === taskCount - 1 && <DropIndicator />}
