@@ -273,7 +273,11 @@ function ListDialogSession({
                         ),
                     } as CSSProperties
                 }
-                className="top-4 max-h-[calc(100dvh-2rem)] translate-y-0 gap-4 overflow-y-auto bg-secondary p-4 text-secondary-foreground sm:top-16 sm:max-h-[calc(100dvh-8rem)] sm:max-w-md sm:p-6"
+                className={cn(
+                    'top-4 max-h-[calc(100dvh-2rem)] translate-y-0 gap-4 overflow-y-auto bg-secondary p-4 text-secondary-foreground sm:top-16 sm:max-h-[calc(100dvh-8rem)] sm:max-w-md sm:p-6',
+                    typeof list?.note === 'string' &&
+                        'lg:top-8 lg:max-h-[calc(100dvh-4rem)] lg:max-w-5xl',
+                )}
             >
                 <DialogTitle className="sr-only">{srTitle}</DialogTitle>
                 {isNamed ? (
@@ -470,7 +474,11 @@ function ListDialogSession({
                                 size="icon-sm"
                                 aria-label={t('common.close')}
                                 onClick={onClose}
-                                className="lg:hidden"
+                                className={
+                                    typeof list?.note === 'string'
+                                        ? undefined
+                                        : 'lg:hidden'
+                                }
                             >
                                 <X />
                             </Button>

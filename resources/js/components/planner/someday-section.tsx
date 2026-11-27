@@ -11,7 +11,7 @@ import { ArchivedListsDialog } from '@/components/planner/archived-lists';
 import { ListNote } from '@/components/planner/list-note';
 import { requestAddPicture } from '@/lib/notes/picture-requests';
 import { listToNoteWithUndo, noteToTasks } from '@/lib/planner/note-actions';
-import { useId, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { TaskColorSwatch } from '@/components/planner/task-color-swatch';
 import { TaskList } from '@/components/planner/task-list';
@@ -98,6 +98,7 @@ type Props = {
     canMoveEarlier?: boolean;
     canMoveLater?: boolean;
     compactNoteRow?: boolean;
+    packDesktop?: boolean;
     onCloseNewNote?: () => void;
 };
 
@@ -145,6 +146,7 @@ export function SomedaySection({
     canMoveEarlier = false,
     canMoveLater = false,
     compactNoteRow = false,
+    packDesktop = false,
     onCloseNewNote,
 }: Props) {
     const titleId = useId();
@@ -283,9 +285,31 @@ export function SomedaySection({
             ? listIndicator.edge
             : null;
 
+    const setSectionRef = useCallback(
+        (node: HTMLElement | null) => {
+            setColumnRef(node);
+            if (!node || !packDesktop) {
+                return;
+            }
+            const fit = () => {
+                // The grid uses 4px tracks with a 24px gap after each card.
+                node.style.gridRowEnd = `span ${Math.ceil((node.offsetHeight + 24) / 4)}`;
+            };
+            fit();
+            const observer = new ResizeObserver(fit);
+            observer.observe(node);
+            return () => {
+                observer.disconnect();
+                node.style.gridRowEnd = '';
+                setColumnRef(null);
+            };
+        },
+        [packDesktop, setColumnRef],
+    );
+
     return (
         <section
-            ref={isNamed ? setColumnRef : undefined}
+            ref={isNamed ? setSectionRef : undefined}
             aria-labelledby={titleId}
             data-someday-list
             data-planner-jump={list.column === 0 ? 'someday' : undefined}

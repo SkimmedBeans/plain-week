@@ -408,9 +408,12 @@ Row behaviour:
   after the grid. A collapsed list renders no task list, so the keyboard cursor skips it.
 - Desktop Notes cards follow the width of their longest text line with a minimum where space permits.
   The width cap leaves room for three cards per row, or five when the viewport is at least 21:9.
-  Pictures scale down within the card. Phone Notes uses compact, reorderable rows.
+  With one or two cards, long notes can use more width. Short notes have a lower minimum height,
+  and pictures scale down within the card. The desktop note editor opens in a wider, taller card.
+  Phone Notes uses compact, reorderable rows.
   Tapping a note opens its card with a note actions menu,
   and creating a note opens the card with the text field focused.
+- Desktop Lists packs cards beneath shorter lists to reduce gaps while retaining the existing list order.
 - On phones, Week, Lists and Notes each remember their scroll position while the planner is mounted.
   Task and list cards keep their controls visible while scrolling. Closing a task opened from search
   restores the query and result position.

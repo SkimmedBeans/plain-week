@@ -142,7 +142,11 @@ export function ListNote({
                         timer.current = window.setTimeout(save, SAVE_DELAY_MS);
                     }}
                     onBlur={save}
-                    className="col-start-1 row-start-1 min-h-40 min-w-0 shrink-0 resize-none rounded-none border-0 bg-transparent px-1.5 py-2 leading-6 shadow-none focus-visible:ring-0 lg:text-sm dark:bg-transparent"
+                    className={cn(
+                        'col-start-1 row-start-1 min-h-40 min-w-0 shrink-0 resize-none rounded-none border-0 bg-transparent px-1.5 py-2 leading-6 shadow-none focus-visible:ring-0 lg:text-sm dark:bg-transparent',
+                        measureWidth && 'lg:min-h-12',
+                        !measureWidth && 'lg:min-h-80',
+                    )}
                 />
             </div>
             {saveFailed && (
