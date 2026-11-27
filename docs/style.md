@@ -420,8 +420,9 @@ Row behaviour:
   Task and list cards keep their controls visible while scrolling. Closing a task opened from search
   restores the query and result position.
 - The phone Week heading shows the date range and has a menu for jumping to any day or Someday.
-  Swipe horizontally across the heading, blank planner space, or an unfinished task title to change
-  weeks. Editable controls, completed tasks, and open cards keep their own gestures.
+  Swipe horizontally across the heading or planner background to pull the week sideways. A short swipe
+  snaps back and a longer swipe slides to the adjacent week. In Move tasks mode, week swipes pause and
+  task drag handles appear.
 - Planner search includes task content, list names and note text from local storage. A result opens
   the matching card. Lists and Notes each link to their archive and use the same restore dialog.
 - A list that scrolls inside its desktop cell gets a 2rem `mask-image` fade at the bottom while more is below and at the
@@ -682,17 +683,18 @@ the last loaded item while the next id loads, so it never closes or flashes in b
 A press on a task row is interpreted by its timing and direction. The gesture values live in
 `planner-dnd.tsx` and `task-row.tsx`.
 
-| Gesture                                                             | Result                                                                 |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Tap                                                                 | Edits the text in place; a double tap opens the task dialog            |
-| Vertical movement in the first 250 ms                               | Scrolls the page                                                       |
-| Holding 250 ms (`TOUCH_DRAG_DELAY_MS`)                              | Picks the task up where it is; moving it then drags, however long held |
-| Swipe the completed task's text at least 72 px toward the row start | Deletes that task or recurring occurrence on release, with Undo        |
+| Gesture                                          | Result                                                                 |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| Tap                                              | Edits the text in place; a double tap opens the task dialog            |
+| Vertical movement in the first 250 ms            | Scrolls the page                                                       |
+| Holding 250 ms (`TOUCH_DRAG_DELAY_MS`)           | Picks the task up where it is; moving it then drags, however long held |
+| Swipe the task text at least 64 px left or right | Completes on a left swipe or deletes on a right swipe, with Undo       |
 
-Start the swipe before the long-press drag activates. In Week, swipe left in LTR and right in RTL to delete a completed task.
-In a list card, swipe left to complete a task or right to delete it. The row follows the finger and reveals a tinted strip. A short or cancelled swipe slides the row
-back. A committed swipe slides the row out before removing it. Reduced motion skips the release animations.
-Use the task menu to delete with a mouse or keyboard.
+On phones, swipe a task left to reveal a green Done action and complete it. Swipe right to reveal a
+red Delete action with a trash icon. The row follows the finger, then animates out on a committed
+action or slides back on a short or cancelled gesture. Reduced motion shortens the animations.
+Turn on Move tasks to replace task and week swipes with task drag handles. Use the task menu or
+keyboard shortcuts when working with a mouse or keyboard.
 
 After 250 ms the dnd-kit touch sensor activates: the task lifts at once (dragged pill, dimmed row, edge zones), so the
 finger knows it can move, and the page no longer scrolls under it. Until the finger has moved more than 8 px

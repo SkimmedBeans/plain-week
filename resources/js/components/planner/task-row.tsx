@@ -1,5 +1,11 @@
 import { useSortable } from '@dnd-kit/sortable';
-import { CircleCheck, GripVertical, ListChecks, Repeat } from 'lucide-react';
+import {
+    CircleCheck,
+    GripVertical,
+    ListChecks,
+    Repeat,
+    Trash2,
+} from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
@@ -35,6 +41,8 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useIsBelowLg } from '@/hooks/use-mobile';
+import { useMobileTaskMove } from '@/hooks/use-mobile-task-move';
 import { useSeries } from '@/hooks/use-tasks';
 import { parseDateKey, toDateKey } from '@/lib/db/dates';
 import { updateTask } from '@/lib/db/tasks';
@@ -51,6 +59,7 @@ import {
     setTaskColor,
     todayMove,
 } from '@/lib/planner/task-actions';
+import { animateSwipe } from '@/lib/planner/swipe';
 import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { t } from '@/lib/i18n';
 import { isRecurring } from '@/lib/recurrence/expand';
@@ -75,8 +84,7 @@ type Props = {
      * edits the text in place instead (F19).
      */
     onOpen: (taskId: string) => void;
-    onToggleDone: (taskId: string) => void;
-    listCardSwipes?: boolean;
+    onToggleDone: (taskId: string) => void | Promise<void>;
     className?: string;
 };
 
@@ -87,39 +95,16 @@ type TaskRepeat = {
     summary: string | null;
 };
 
-const DELETE_SWIPE_DISTANCE_PX = 72;
+const TASK_SWIPE_DISTANCE_PX = 64;
 /** A second tap this soon after the first opens the card instead (F19). */
 export const DOUBLE_TAP_MS = 350;
 const SWIPE_SETTLE_MS = 170;
 
-function slideTo(row: HTMLDivElement, offset: string): Animation | undefined {
-    const from = row.style.translate || '0px';
-    row.style.translate = offset;
-
-    if (
-        from !== offset &&
-        typeof row.animate === 'function' &&
-        !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-        const animation = row.animate(
-            [{ translate: from }, { translate: offset }],
-            {
-                duration: SWIPE_SETTLE_MS,
-                easing: 'ease-out',
-            },
-        );
-        // Another press can interrupt the slide back to rest.
-        void animation.finished.catch(() => {});
-        return animation;
-    }
-}
-
-type DeleteSwipe = {
+type TaskSwipe = {
     pointerId: number;
     x: number;
     y: number;
     startedAt: number;
-    direction: -1 | 1;
     engaged: boolean;
 };
 
@@ -389,7 +374,6 @@ export function TaskRow({
     stripe = false,
     onOpen,
     onToggleDone,
-    listCardSwipes = false,
     className,
 }: Props) {
     const openRef = useCursorFocus<HTMLButtonElement>(isCursor);
@@ -429,11 +413,14 @@ export function TaskRow({
     // A finger is pressing the row: a long press must not open the
     // context menu (it is a drag), however the browser or Radix sends it.
     const touchPressed = useRef(false);
-    const deleteSwipe = useRef<DeleteSwipe | null>(null);
+    const belowLg = useIsBelowLg();
+    const { movingTasks } = useMobileTaskMove();
+    const showGrip = belowLg && movingTasks;
+    const taskSwipe = useRef<TaskSwipe | null>(null);
     const swallowSwipeClick = useRef(false);
     const swipeSurface = useRef<HTMLDivElement>(null);
     const swipeAnimation = useRef<Animation | undefined>(undefined);
-    const deletingBySwipe = useRef(false);
+    const committingSwipe = useRef(false);
     // The inline editor (F19): where its caret starts and when it opened.
     const [editing, setEditing] = useState<{
         caret: number;
@@ -532,28 +519,38 @@ export function TaskRow({
             void scoped('delete', (scope) => deleteWithUndo(task.id, scope)),
     };
 
-    const settleSwipe = async (swipe: DeleteSwipe, remove: boolean) => {
+    const settleSwipe = async (action?: 'complete' | 'delete') => {
         const row = swipeSurface.current;
         if (!row) {
             return;
         }
 
-        deletingBySwipe.current = remove;
-        const animation = slideTo(
-            row,
-            remove ? `${swipe.direction * 100}%` : '0px',
-        );
-        swipeAnimation.current = animation;
-        if (!remove) {
+        committingSwipe.current = Boolean(action);
+        const offset =
+            action === 'delete'
+                ? row.offsetWidth
+                : action === 'complete'
+                  ? -row.offsetWidth
+                  : 0;
+        swipeAnimation.current = animateSwipe(row, offset, SWIPE_SETTLE_MS);
+        if (!action) {
             return;
         }
 
-        // Keep the row in IndexedDB until its exit finishes so the live query
-        // cannot remove it halfway through the slide.
-        await animation?.finished.catch(() => {});
-        if (!(await deleteWithUndo(task.id, 'this'))) {
-            swipeAnimation.current = slideTo(row, '0px');
-            deletingBySwipe.current = false;
+        try {
+            await swipeAnimation.current?.finished;
+            if (
+                action === 'delete' &&
+                (await deleteWithUndo(task.id, 'this'))
+            ) {
+                return;
+            }
+            if (action === 'complete' && !task.done) {
+                await onToggleDone(task.id);
+            }
+            swipeAnimation.current = animateSwipe(row, 0, SWIPE_SETTLE_MS);
+        } finally {
+            committingSwipe.current = false;
         }
     };
 
@@ -562,10 +559,9 @@ export function TaskRow({
             <div
                 ref={setNodeRef}
                 data-task-id={task.id}
-                data-week-swipe-block={task.done || listCardSwipes || undefined}
                 data-stripe={stripe || undefined}
                 data-cursor={isCursor || undefined}
-                {...listeners}
+                {...(!showGrip && listeners)}
                 onPointerDown={(event) => {
                     // Only presses on the row itself, not ones bubbling up
                     // the React tree from a portalled menu.
@@ -573,7 +569,7 @@ export function TaskRow({
                         return;
                     }
 
-                    if (deletingBySwipe.current) {
+                    if (committingSwipe.current) {
                         event.preventDefault();
                         return;
                     }
@@ -581,8 +577,8 @@ export function TaskRow({
                     touchPressed.current = event.pointerType === 'touch';
                     swallowSwipeClick.current = false;
                     const target = event.target as Element;
-                    deleteSwipe.current =
-                        (task.done || listCardSwipes) &&
+                    taskSwipe.current =
+                        !showGrip &&
                         touchPressed.current &&
                         event.isPrimary &&
                         target.closest('[data-task-open]') &&
@@ -593,12 +589,6 @@ export function TaskRow({
                                   x: event.clientX,
                                   y: event.clientY,
                                   startedAt: event.timeStamp,
-                                  direction: listCardSwipes
-                                      ? 1
-                                      : getComputedStyle(event.currentTarget)
-                                              .direction === 'rtl'
-                                        ? 1
-                                        : -1,
                                   engaged: false,
                               }
                             : null;
@@ -614,26 +604,25 @@ export function TaskRow({
                     }
                 }}
                 onPointerMove={(event) => {
-                    const swipe = deleteSwipe.current;
+                    const swipe = taskSwipe.current;
                     if (!swipe || swipe.pointerId !== event.pointerId) {
                         return;
                     }
 
                     const delta = event.clientX - swipe.x;
-                    const x = listCardSwipes
-                        ? Math.abs(delta)
-                        : delta * swipe.direction;
+                    const x = Math.abs(delta);
                     const y = Math.abs(event.clientY - swipe.y);
                     if (!swipe.engaged) {
                         if (Math.hypot(x, y) <= TOUCH_DRAG_TOLERANCE_PX) {
                             return;
                         }
                         if (
-                            event.timeStamp - swipe.startedAt >=
-                                TOUCH_DRAG_DELAY_MS ||
-                            x <= 2 * y
+                            (!belowLg &&
+                                event.timeStamp - swipe.startedAt >=
+                                    TOUCH_DRAG_DELAY_MS) ||
+                            x <= 1.3 * y
                         ) {
-                            deleteSwipe.current = null;
+                            taskSwipe.current = null;
                             return;
                         }
                         swipe.engaged = true;
@@ -641,13 +630,13 @@ export function TaskRow({
 
                     const row = swipeSurface.current;
                     if (row) {
-                        row.style.translate = `${listCardSwipes ? delta : Math.max(0, x) * swipe.direction}px`;
+                        row.style.translate = `${delta}px`;
                     }
                 }}
                 onPointerUp={(event) => {
                     touchPressed.current = false;
-                    const swipe = deleteSwipe.current;
-                    deleteSwipe.current = null;
+                    const swipe = taskSwipe.current;
+                    taskSwipe.current = null;
                     if (
                         !swipe?.engaged ||
                         swipe.pointerId !== event.pointerId
@@ -656,30 +645,27 @@ export function TaskRow({
                     }
 
                     const delta = event.clientX - swipe.x;
-                    const x = listCardSwipes
-                        ? Math.abs(delta)
-                        : delta * swipe.direction;
+                    const x = Math.abs(delta);
                     const y = Math.abs(event.clientY - swipe.y);
                     swallowSwipeClick.current = true;
                     const triggered =
                         !isDragging &&
-                        x >= DELETE_SWIPE_DISTANCE_PX &&
-                        x > 2 * y;
-                    if (listCardSwipes && triggered && delta < 0) {
-                        void settleSwipe(swipe, false);
-                        if (!task.done) {
-                            onToggleDone(task.id);
-                        }
-                    } else {
-                        void settleSwipe(swipe, triggered);
-                    }
+                        x >= TASK_SWIPE_DISTANCE_PX &&
+                        x > 1.3 * y;
+                    void settleSwipe(
+                        triggered
+                            ? delta < 0
+                                ? 'complete'
+                                : 'delete'
+                            : undefined,
+                    );
                 }}
                 onPointerCancel={() => {
                     touchPressed.current = false;
-                    const swipe = deleteSwipe.current;
-                    deleteSwipe.current = null;
+                    const swipe = taskSwipe.current;
+                    taskSwipe.current = null;
                     if (swipe?.engaged) {
-                        void settleSwipe(swipe, false);
+                        void settleSwipe();
                     }
                 }}
                 onClickCapture={(event) => {
@@ -712,8 +698,24 @@ export function TaskRow({
                 <div
                     ref={swipeSurface}
                     data-task-swipe-surface
-                    className="relative flex min-w-0 flex-1 items-start gap-1 after:pointer-events-none after:absolute after:inset-y-0 after:start-full after:w-full after:bg-destructive/15"
+                    className="relative flex min-w-0 flex-1 items-start gap-1"
                 >
+                    <div
+                        aria-hidden="true"
+                        data-task-swipe-delete
+                        className="pointer-events-none absolute inset-y-0 right-full flex w-full items-center justify-end gap-2 bg-destructive px-4 text-sm font-medium text-white dark:text-background"
+                    >
+                        <span>{t('common.delete')}</span>
+                        <Trash2 className="size-5" />
+                    </div>
+                    <div
+                        aria-hidden="true"
+                        data-task-swipe-complete
+                        className="pointer-events-none absolute inset-y-0 left-full flex w-full items-center gap-2 bg-task-green px-4 text-sm font-medium text-task-green-foreground"
+                    >
+                        <CircleCheck className="size-5" />
+                        <span>{t('planner.swipeDone')}</span>
+                    </div>
                     {editing !== null ? (
                         <div className="flex min-w-0 flex-1 items-start self-stretch">
                             {task.time && (
@@ -777,8 +779,14 @@ export function TaskRow({
                         variant="ghost"
                         size="icon-sm"
                         {...attributes}
+                        {...(showGrip && listeners)}
                         aria-label={t('planner.moveTask', { text: task.text })}
-                        className="sr-only mt-1 shrink-0 rounded-full hover:bg-transparent focus-visible:not-sr-only"
+                        className={cn(
+                            'mt-1 shrink-0 rounded-full hover:bg-transparent',
+                            showGrip
+                                ? 'cursor-grab touch-none'
+                                : 'sr-only focus-visible:not-sr-only',
+                        )}
                     >
                         <GripVertical className="size-5" />
                     </Button>
@@ -792,7 +800,7 @@ export function TaskRow({
                                 : t('planner.markDone')
                         }
                         aria-pressed={task.done}
-                        onClick={() => onToggleDone(task.id)}
+                        onClick={() => void onToggleDone(task.id)}
                         className={cn(
                             // Hidden until hover only for mouse users on desktop; touch
                             // screens of any size always show it.

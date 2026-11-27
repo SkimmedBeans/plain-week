@@ -23,12 +23,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { queryTask } from '@/lib/db/queries';
-import {
-    createTask,
-    listTasksIn,
-    setRecurrence,
-    toggleDone,
-} from '@/lib/db/tasks';
+import { createTask, listTasksIn, setRecurrence } from '@/lib/db/tasks';
 import { occurrenceId } from '@/lib/recurrence/expand';
 import { toastAction } from '@/test/toasts';
 
@@ -97,7 +92,7 @@ afterEach(() => {
 });
 
 describe('Recurring task rows', () => {
-    it('swipes only the completed occurrence and offers Undo', async () => {
+    it('completes an occurrence with a left swipe and deletes it with a right swipe', async () => {
         const { button, id, seriesId, user } = await setup();
         const touch = { pointerType: 'touch', pointerId: 1, isPrimary: true };
         const swipe = (target: HTMLElement, endX: number, endY: number) => {
@@ -119,9 +114,9 @@ describe('Recurring task rows', () => {
         };
 
         swipe(button, 60, 20);
-        expect(await queryTask(id)).not.toBeNull();
-
-        await toggleDone(id);
+        await waitFor(async () =>
+            expect((await queryTask(id))?.done).toBe(true),
+        );
         const done = await screen.findByRole('button', {
             name: 'Gym (repeats) (done)',
         });
@@ -130,7 +125,7 @@ describe('Recurring task rows', () => {
         swipe(done, 110, 20);
         expect(await queryTask(id)).not.toBeNull();
 
-        swipe(done, 60, 20);
+        swipe(done, 260, 20);
         await waitFor(async () => expect(await queryTask(id)).toBeNull());
         expect(
             await queryTask(occurrenceId(seriesId, '2026-10-16')),

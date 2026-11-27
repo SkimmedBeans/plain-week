@@ -1,15 +1,11 @@
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
-import type { PointerEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import { KeyboardCursorProvider } from '@/components/planner/keyboard-cursor';
 import { ListDialog } from '@/components/planner/list-dialog';
 import { SearchDialog } from '@/components/planner/search-dialog';
-import {
-    PlannerDnd,
-    TOUCH_DRAG_DELAY_MS,
-    TOUCH_DRAG_TOLERANCE_PX,
-} from '@/components/planner/planner-dnd';
+import { PlannerDnd } from '@/components/planner/planner-dnd';
 import { PlannerHeader } from '@/components/planner/planner-header';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { ShortcutsDialog } from '@/components/planner/shortcuts-dialog';
@@ -20,10 +16,12 @@ import { useCarryOver } from '@/hooks/use-carry-over';
 import { usePlannerView } from '@/hooks/use-carry-over-setting';
 import { useGuestOnboarding } from '@/hooks/use-guest-onboarding';
 import { useIsBelowLg } from '@/hooks/use-mobile';
+import { MobileTaskMoveContext } from '@/hooks/use-mobile-task-move';
 import { clearTaskParam, useTaskLink } from '@/hooks/use-task-link';
 import { useSomedayTasks } from '@/hooks/use-tasks';
 import { useToday } from '@/hooks/use-today';
 import { useWeekNavigation } from '@/hooks/use-week-navigation';
+import { useWeekSwipe } from '@/hooks/use-week-swipe';
 import { weekEntrySource } from '@/lib/db/week-slots';
 import { parseDateKey } from '@/lib/db/dates';
 import type { NamedSearchResult } from '@/lib/planner/search';
@@ -45,90 +43,13 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
     const [openList, setOpenList] = useState<NamedSearchResult | null>(null);
     const returnToSearch = useRef(false);
     const belowLg = useIsBelowLg();
+    const [movingTasks, setMovingTasks] = useState(false);
     const weekShown = usePlannerView() === 'week';
-    const weekSwipe = useRef<{
-        id: number;
-        x: number;
-        y: number;
-        time: number;
-        waitsForDrag: boolean;
-    } | null>(null);
-    const swallowWeekSwipeClick = useRef(false);
-    const startWeekSwipe = (event: PointerEvent) => {
-        weekSwipe.current = null;
-        swallowWeekSwipeClick.current = false;
-        if (
-            !belowLg ||
-            !weekShown ||
-            event.pointerType !== 'touch' ||
-            !event.isPrimary
-        ) {
-            return;
-        }
-        const { clientX: x, clientY: y, target } = event;
-        if (!(target instanceof Element)) {
-            return;
-        }
-
-        const onHeading = target.closest('[data-week-swipe-heading]');
-        const onTaskTitle = target.closest('[data-task-open]');
-        if (
-            (!onHeading && !target.closest('[data-planner-content]')) ||
-            target.closest(
-                'input, textarea, a, select, [contenteditable], [data-week-swipe-block], [role="dialog"], [role="menu"]',
-            ) ||
-            (!onHeading &&
-                !onTaskTitle &&
-                target.closest('button, [data-task-id]'))
-        ) {
-            return;
-        }
-        weekSwipe.current = {
-            id: event.pointerId,
-            x,
-            y,
-            time: event.timeStamp,
-            waitsForDrag: Boolean(onTaskTitle),
-        };
-    };
-    const trackWeekSwipe = (event: PointerEvent) => {
-        const start = weekSwipe.current;
-        if (
-            start?.waitsForDrag &&
-            start.id === event.pointerId &&
-            Math.hypot(event.clientX - start.x, event.clientY - start.y) >
-                TOUCH_DRAG_TOLERANCE_PX
-        ) {
-            if (event.timeStamp - start.time >= TOUCH_DRAG_DELAY_MS) {
-                weekSwipe.current = null;
-            } else {
-                start.waitsForDrag = false;
-            }
-        }
-    };
-    const finishWeekSwipe = (event: PointerEvent) => {
-        const start = weekSwipe.current;
-        weekSwipe.current = null;
-        if (start === null || event.pointerId !== start.id) {
-            return;
-        }
-        const horizontal = event.clientX - start.x;
-        const vertical = Math.abs(event.clientY - start.y);
-        if (
-            event.timeStamp - start.time > 600 ||
-            Math.abs(horizontal) < 64 ||
-            Math.abs(horizontal) < vertical * 1.5
-        ) {
-            return;
-        }
-        const rtl = getComputedStyle(event.currentTarget).direction === 'rtl';
-        swallowWeekSwipeClick.current = true;
-        if (horizontal < 0 !== rtl) {
-            navigation.nextWeek();
-        } else {
-            navigation.previousWeek();
-        }
-    };
+    const weekSwipe = useWeekSwipe(
+        belowLg && weekShown && !movingTasks,
+        navigation.previousWeek,
+        navigation.nextWeek,
+    );
     const closeTask = useCallback(() => {
         setOpenTaskId(null);
         clearTaskParam();
@@ -162,107 +83,101 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
     });
 
     return (
-        <SyncProvider>
-            <ScopePromptProvider>
-                <KeyboardCursorProvider
-                    today={today}
-                    navigation={navigation}
-                    onOpenTask={setOpenTaskId}
-                    onOpenSettings={signedIn ? openSettings : undefined}
-                >
-                    {/* On desktop the page is exactly the window: the header, then the
-                        week filling the rest. */}
-                    <div
-                        className="flex min-h-screen flex-col bg-background text-foreground lg:h-dvh"
-                        onPointerDownCapture={startWeekSwipe}
-                        onPointerMoveCapture={trackWeekSwipe}
-                        onPointerUpCapture={finishWeekSwipe}
-                        onClickCapture={(event) => {
-                            if (
-                                swallowWeekSwipeClick.current &&
-                                event.detail > 0
-                            ) {
-                                swallowWeekSwipeClick.current = false;
-                                event.preventDefault();
-                                event.stopPropagation();
-                            }
-                        }}
-                        onPointerCancelCapture={() => {
-                            weekSwipe.current = null;
-                        }}
+        <MobileTaskMoveContext
+            value={{
+                movingTasks,
+                toggleMovingTasks: () => setMovingTasks((moving) => !moving),
+            }}
+        >
+            <SyncProvider>
+                <ScopePromptProvider>
+                    <KeyboardCursorProvider
+                        today={today}
+                        navigation={navigation}
+                        onOpenTask={setOpenTaskId}
+                        onOpenSettings={signedIn ? openSettings : undefined}
                     >
-                        <PlannerHeader
-                            weekStart={navigation.weekStart}
-                            isCurrentWeek={navigation.isCurrentWeek}
-                            onPreviousWeek={navigation.previousWeek}
-                            onNextWeek={navigation.nextWeek}
-                            onToday={navigation.goToToday}
-                        />
-                        <main
-                            tabIndex={-1}
-                            data-planner-content
-                            className="flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6"
-                            style={
-                                belowLg && weekShown
-                                    ? { touchAction: 'pan-y pinch-zoom' }
-                                    : undefined
-                            }
+                        {/* On desktop the page is exactly the window: the header, then the
+                        week filling the rest. */}
+                        <div
+                            className="flex min-h-screen flex-col overflow-x-clip bg-background text-foreground lg:h-dvh"
+                            {...weekSwipe.handlers}
                         >
-                            <PlannerDnd
+                            <PlannerHeader
                                 weekStart={navigation.weekStart}
+                                isCurrentWeek={navigation.isCurrentWeek}
                                 onPreviousWeek={navigation.previousWeek}
                                 onNextWeek={navigation.nextWeek}
+                                onToday={navigation.goToToday}
+                            />
+                            <main
+                                ref={weekSwipe.surface}
+                                tabIndex={-1}
+                                data-planner-content
+                                className="flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6"
+                                style={
+                                    belowLg && weekShown
+                                        ? { touchAction: 'pan-y pinch-zoom' }
+                                        : undefined
+                                }
                             >
-                                <WeekGrid
+                                <PlannerDnd
                                     weekStart={navigation.weekStart}
-                                    today={today}
-                                    onOpenTask={setOpenTaskId}
-                                />
-                            </PlannerDnd>
-                        </main>
-                    </div>
-                    <TaskDialog
-                        taskId={
-                            openTaskId &&
-                            (weekEntrySource(openTaskId)?.taskId ?? openTaskId)
-                        }
-                        onClose={closeTask}
-                    />
-                    <ShortcutsDialog canOpenSettings={signedIn} />
-                    <SearchDialog
-                        onOpenResult={(result) => {
-                            if (result.kind === 'task') {
-                                returnToSearch.current = belowLg;
-                                setOpenTaskId(result.openId);
-                            } else {
-                                setOpenList(result);
+                                    onPreviousWeek={navigation.previousWeek}
+                                    onNextWeek={navigation.nextWeek}
+                                >
+                                    <WeekGrid
+                                        weekStart={navigation.weekStart}
+                                        today={today}
+                                        onOpenTask={setOpenTaskId}
+                                    />
+                                </PlannerDnd>
+                            </main>
+                        </div>
+                        <TaskDialog
+                            taskId={
+                                openTaskId &&
+                                (weekEntrySource(openTaskId)?.taskId ??
+                                    openTaskId)
                             }
-                        }}
-                    />
-                    {openList !== null && (
-                        <SearchListCard
-                            result={openList}
-                            weekStart={navigation.weekStart}
-                            today={today}
-                            phone={belowLg}
-                            onOpenTask={(id) => {
-                                searchDialogStore.close();
-                                returnToSearch.current = belowLg;
-                                setOpenTaskId(id);
-                            }}
-                            onClose={() => {
-                                setOpenList(null);
-                                if (belowLg) {
-                                    searchDialogStore.open();
+                            onClose={closeTask}
+                        />
+                        <ShortcutsDialog canOpenSettings={signedIn} />
+                        <SearchDialog
+                            onOpenResult={(result) => {
+                                if (result.kind === 'task') {
+                                    returnToSearch.current = belowLg;
+                                    setOpenTaskId(result.openId);
+                                } else {
+                                    setOpenList(result);
                                 }
                             }}
                         />
-                    )}
-                    <InstallAppDialog />
-                    {children}
-                </KeyboardCursorProvider>
-            </ScopePromptProvider>
-        </SyncProvider>
+                        {openList !== null && (
+                            <SearchListCard
+                                result={openList}
+                                weekStart={navigation.weekStart}
+                                today={today}
+                                phone={belowLg}
+                                onOpenTask={(id) => {
+                                    searchDialogStore.close();
+                                    returnToSearch.current = belowLg;
+                                    setOpenTaskId(id);
+                                }}
+                                onClose={() => {
+                                    setOpenList(null);
+                                    if (belowLg) {
+                                        searchDialogStore.open();
+                                    }
+                                }}
+                            />
+                        )}
+                        <InstallAppDialog />
+                        {children}
+                    </KeyboardCursorProvider>
+                </ScopePromptProvider>
+            </SyncProvider>
+        </MobileTaskMoveContext>
     );
 }
 

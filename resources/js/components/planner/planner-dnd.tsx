@@ -46,6 +46,8 @@ import type {
     WeekDirection,
 } from '@/lib/planner/drop';
 import { t } from '@/lib/i18n';
+import { useIsBelowLg } from '@/hooks/use-mobile';
+import { useMobileTaskMove } from '@/hooks/use-mobile-task-move';
 
 /** A mouse drag starts after this much movement, so a click still opens. */
 const MOUSE_DRAG_DISTANCE_PX = 5;
@@ -470,6 +472,31 @@ type Props = {
     children: ReactNode;
 };
 
+function usePlannerSensors() {
+    const belowLg = useIsBelowLg();
+    const { movingTasks } = useMobileTaskMove();
+    const mouse = useSensor(MouseSensor, {
+        activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX },
+    });
+    const touch = useSensor(TouchSensor, {
+        activationConstraint: belowLg
+            ? { distance: MOUSE_DRAG_DISTANCE_PX }
+            : {
+                  delay: TOUCH_DRAG_DELAY_MS,
+                  tolerance: TOUCH_DRAG_TOLERANCE_PX,
+              },
+    });
+    const keyboard = useSensor(KeyboardSensor, {
+        coordinateGetter: sortableKeyboardCoordinates,
+    });
+
+    return useSensors(
+        mouse,
+        !belowLg || movingTasks ? touch : undefined,
+        keyboard,
+    );
+}
+
 /**
  * Drag and drop for the planner: tasks move within a day, across days, to and
  * from Someday, and to the previous / next week through the screen-edge zones
@@ -489,20 +516,7 @@ export function PlannerDnd({
     onNextWeek,
     children,
 }: Props) {
-    const sensors = useSensors(
-        useSensor(MouseSensor, {
-            activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX },
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: TOUCH_DRAG_DELAY_MS,
-                tolerance: TOUCH_DRAG_TOLERANCE_PX,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        }),
-    );
+    const sensors = usePlannerSensors();
     // The drag data is kept in state: the source row unmounts when hovering
     // an edge zone changes the shown week, and the drag goes on.
     const [dragged, setDragged] = useState<TaskDragData | ListDragData | null>(
@@ -834,20 +848,7 @@ type ListCardDndProps = {
  * list) and no list drag (F5 stays a page action).
  */
 export function ListCardDnd({ weekStart, children }: ListCardDndProps) {
-    const sensors = useSensors(
-        useSensor(MouseSensor, {
-            activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX },
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: TOUCH_DRAG_DELAY_MS,
-                tolerance: TOUCH_DRAG_TOLERANCE_PX,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        }),
-    );
+    const sensors = usePlannerSensors();
     const [dragged, setDragged] = useState<TaskDragData | null>(null);
     const [result, setResult] = useState<DropResult | null>(null);
     const [settlingId, setSettlingId] = useState<string | null>(null);

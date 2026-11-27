@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.49] - 2026-11-27
+
+- Week swipes follow your finger and animate to the adjacent week or back into place.
+- Phone Move tasks mode pauses week and task swipes and shows drag handles.
+- Task swipes show a green Done action on the left swipe and a red trash action on the right swipe.
+
 ## [0.4.48] - 2026-11-27
 
 - Add Someday tasks and individual subtasks to a weekday while keeping completion shared.
@@ -1051,7 +1057,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.48...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.49...HEAD
+[0.4.49]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.48...v0.4.49
 [0.4.48]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.47...v0.4.48
 [0.4.47]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.46...v0.4.47
 [0.4.46]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.45...v0.4.46
