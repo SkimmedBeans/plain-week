@@ -213,7 +213,12 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     className="grid grid-cols-1 content-start items-start gap-6 max-lg:order-2 lg:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))]"
                 >
                     {listsShown.map((list) => {
-                        const index = (namedLists ?? []).indexOf(list);
+                        const namedIndex = (namedLists ?? []).indexOf(list);
+                        // The droppable carries the list's index in the live
+                        // order (every list, archived included) — the index
+                        // `moveListTo` writes against: the Notes view below
+                        // `lg` (F56) reorders the notes against the full order.
+                        const index = (lists ?? []).indexOf(list);
                         // Below `lg` the note is one row of a list (F55),
                         // collapsed to its heading until pressed. The id is
                         // narrowed once: property narrowing does not survive
@@ -233,9 +238,9 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                                 onOpenTask={onOpenTask}
                                 paper
                                 index={index}
-                                canMoveEarlier={index > 0}
+                                canMoveEarlier={namedIndex > 0}
                                 canMoveLater={
-                                    index < (namedLists ?? []).length - 1
+                                    namedIndex < (namedLists ?? []).length - 1
                                 }
                                 noteCollapsed={noteCollapsed}
                                 onToggleNote={

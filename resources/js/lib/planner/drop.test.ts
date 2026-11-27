@@ -364,10 +364,16 @@ describe('originalSpot', () => {
 });
 
 describe('resolveListReorder', () => {
-    const lists = [{ listId: 'a' }, { listId: 'b' }, { listId: 'c' }];
+    // Each column carries its own live index (its place in the full order,
+    // archived lists included) — not its place in the view.
+    const lists = [
+        { listId: 'a', index: 0 },
+        { listId: 'b', index: 1 },
+        { listId: 'c', index: 2 },
+    ];
 
     it("maps a column hit to the dragged list's target index", () => {
-        // A to after C: lands last (index 2 of 3).
+        // A to after C: lands last (live index 3 of 3).
         expect(resolveListReorder(lists, 'a', 'c', false)).toEqual({
             toIndex: 3,
         });
@@ -392,5 +398,29 @@ describe('resolveListReorder', () => {
     it('returns null for a missing dragged or hit list', () => {
         expect(resolveListReorder(lists, 'missing', 'a', true)).toBeNull();
         expect(resolveListReorder(lists, 'a', 'missing', true)).toBeNull();
+    });
+
+    it('reorders the Notes view against the live order (F56)', () => {
+        // Notes N1 and N2 in a live order that also holds task lists T0 and
+        // T1: [T0(0), N1(1), T1(2), N2(3)]. The view shows only the notes,
+        // but each carries its own live index.
+        const notes = [
+            { listId: 'n1', index: 1 },
+            { listId: 'n2', index: 3 },
+        ];
+
+        // N2 to before N1: lands before N1 (live index 1), past T0.
+        expect(resolveListReorder(notes, 'n2', 'n1', true)).toEqual({
+            toIndex: 1,
+        });
+        // N1 to after N2: lands after N2 (live index 4), past T1.
+        expect(resolveListReorder(notes, 'n1', 'n2', false)).toEqual({
+            toIndex: 4,
+        });
+        // N1 is already before N2 in the view (T1 sits between them in the
+        // live order): the notes order is unchanged, so it is a no-op.
+        expect(resolveListReorder(notes, 'n1', 'n2', true)).toBeNull();
+        // N2 is already after N1 in the view: a no-op too.
+        expect(resolveListReorder(notes, 'n2', 'n1', false)).toBeNull();
     });
 });
