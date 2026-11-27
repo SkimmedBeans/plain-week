@@ -230,15 +230,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     data-stripes={stripes || undefined}
                     data-lists-view
                     data-notes-view={view === 'notes' ? '' : undefined}
-                    data-packed-lists={
-                        view === 'lists' && !belowLg ? '' : undefined
-                    }
-                    className={cn(
-                        'grid grid-cols-1 content-start items-start gap-6 max-lg:order-2',
-                        view === 'notes'
-                            ? 'lg:flex lg:flex-wrap'
-                            : 'lg:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))]',
-                    )}
+                    className="grid grid-cols-1 content-start items-start gap-6 max-lg:order-2 lg:flex lg:flex-wrap"
                 >
                     {listsShown.map((list) => {
                         const namedIndex = (namedLists ?? []).indexOf(list);
@@ -261,7 +253,7 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                                     namedIndex < (namedLists ?? []).length - 1
                                 }
                                 compactNoteRow={noteRows}
-                                packDesktop={view === 'lists' && !belowLg}
+                                measureTaskWidth={view === 'lists' && !belowLg}
                                 onCloseNewNote={
                                     noteRows && list.id === createdNoteId
                                         ? () => setCreatedNoteId(null)

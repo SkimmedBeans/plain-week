@@ -413,7 +413,9 @@ Row behaviour:
   Phone Notes uses compact, reorderable rows.
   Tapping a note opens its card with a note actions menu,
   and creating a note opens the card with the text field focused.
-- Desktop Lists packs cards beneath shorter lists to reduce gaps while retaining the existing list order.
+- Desktop Lists uses the same wrapping layout and width caps as Notes, with a 26rem
+  minimum where space permits. Open task text determines the content width. Named
+  list fly-outs use the same larger desktop dimensions as note fly-outs.
 - On phones, Week, Lists and Notes each remember their scroll position while the planner is mounted.
   Task and list cards keep their controls visible while scrolling. Closing a task opened from search
   restores the query and result position.
