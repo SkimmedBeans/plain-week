@@ -14,7 +14,7 @@ import { ScopePromptProvider } from '@/components/planner/scope-prompt';
 import { SomedaySection } from '@/components/planner/someday-section';
 import { Toaster } from '@/components/ui/sonner';
 import { wipeLocalDatabase } from '@/lib/db/database';
-import { createList, queryLists } from '@/lib/db/lists';
+import { convertListToNote, createList, queryLists } from '@/lib/db/lists';
 import { createTask, listTasksIn } from '@/lib/db/tasks';
 import type { SomedayList } from '@/lib/db/types';
 
@@ -29,10 +29,14 @@ function Section({
     list,
     canMoveEarlier,
     canMoveLater,
+    noteCollapsed,
+    onToggleNote,
 }: {
     list: SectionList;
     canMoveEarlier?: boolean;
     canMoveLater?: boolean;
+    noteCollapsed?: boolean;
+    onToggleNote?: () => void;
 }) {
     return (
         <ScopePromptProvider>
@@ -40,6 +44,8 @@ function Section({
                 list={list}
                 canMoveEarlier={canMoveEarlier}
                 canMoveLater={canMoveLater}
+                noteCollapsed={noteCollapsed}
+                onToggleNote={onToggleNote}
                 weekStart={WEEK_START}
                 today={TODAY}
                 onOpenTask={() => {}}
@@ -378,5 +384,61 @@ describe('SomedaySection', () => {
         somedayButton.focus();
         await user.keyboard('{Enter}');
         await screen.findByRole('dialog');
+    });
+
+    it('keeps a collapsed note row to its heading, toggled by press (F55)', async () => {
+        const list = await createList('Ideas');
+        await convertListToNote(list.id);
+        const user = userEvent.setup();
+        const toggles: number[] = [];
+
+        render(
+            <Section
+                list={sectionProps(list)}
+                noteCollapsed
+                onToggleNote={() => toggles.push(1)}
+            />,
+        );
+
+        // Heading only: the note's text and the task list stay out of the
+        // DOM, and the control offers the row's expansion.
+        expect(screen.queryByRole('textbox')).toBeNull();
+        expect(
+            screen.getByRole('button', { name: 'Expand the Ideas note' }),
+        ).toBeTruthy();
+
+        // Pressing the heading toggles the row; no card opens from it.
+        await user.click(screen.getByRole('button', { name: 'Ideas' }));
+        expect(toggles).toEqual([1]);
+        expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('shows the note under an expanded note row, toggled by press (F55)', async () => {
+        const list = await createList('Ideas');
+        await convertListToNote(list.id);
+        const user = userEvent.setup();
+        const toggles: number[] = [];
+
+        render(
+            <Section
+                list={sectionProps(list)}
+                noteCollapsed={false}
+                onToggleNote={() => toggles.push(1)}
+            />,
+        );
+
+        // The note's text shows directly under the heading, and the control
+        // offers the row's collapse.
+        expect(
+            await screen.findByRole('textbox', { name: 'Note: Ideas' }),
+        ).toBeTruthy();
+        expect(
+            screen.getByRole('button', { name: 'Collapse the Ideas note' }),
+        ).toBeTruthy();
+
+        // Pressing the heading toggles the row; no card opens from it.
+        await user.click(screen.getByRole('button', { name: 'Ideas' }));
+        expect(toggles).toEqual([1]);
+        expect(screen.queryByRole('dialog')).toBeNull();
     });
 });
