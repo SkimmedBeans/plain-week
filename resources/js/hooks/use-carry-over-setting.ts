@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import {
     collapsedLists,
     compactDensity,
+    expandedNotes,
     plannerView,
     stripedRows,
     todayColor,
@@ -43,6 +44,15 @@ export function usePlannerView(): PlannerView {
         plannerView.subscribe,
         plannerView.get,
         plannerView.get,
+    );
+}
+
+/** The notes expanded in the Notes view on this device (F55). */
+export function useExpandedNotes(): readonly string[] {
+    return useSyncExternalStore(
+        expandedNotes.subscribe,
+        expandedNotes.get,
+        expandedNotes.get,
     );
 }
 

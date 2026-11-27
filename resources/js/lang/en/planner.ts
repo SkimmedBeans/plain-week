@@ -224,6 +224,8 @@ export const planner = {
     'planner.collapsedListChip': '{name}, {count} open',
     'planner.collapseList': 'Collapse the {name} list',
     'planner.expandList': 'Expand the {name} list',
+    'planner.collapseNote': 'Collapse the {name} note',
+    'planner.expandNote': 'Expand the {name} note',
     'planner.openCount': '{count} open',
     'planner.showCompleted': 'Show completed tasks',
     'planner.hideCompleted': 'Hide completed tasks',

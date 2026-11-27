@@ -97,6 +97,29 @@ export function collapseKey(list: { id?: string }): string {
     return list.id ?? 'someday';
 }
 
+/**
+ * The notes expanded in the Notes view on this device (F55): the ids of
+ * the notes whose text and pictures show below `lg`; every other note sits
+ * collapsed to its heading.
+ */
+export const expandedNotes = deviceSetting<readonly string[]>(
+    'plain-week.notes-expanded',
+    readKeys,
+    (keys) => (keys.length === 0 ? null : JSON.stringify(keys)),
+);
+
+/** Expands or collapses one note (F55). */
+export function setNoteExpanded(key: string, expanded: boolean): void {
+    const keys = expandedNotes.get().filter((item) => item !== key);
+    expandedNotes.set(expanded ? [...keys, key] : keys);
+}
+
+/** Expands or collapses several notes at once (F55, the F45 bar). */
+export function setNotesExpanded(keys: string[], expanded: boolean): void {
+    const rest = expandedNotes.get().filter((item) => !keys.includes(item));
+    expandedNotes.set(expanded ? [...rest, ...keys] : rest);
+}
+
 /** Compact rows (F32): shorter rows, named-list tasks clamped to two lines. */
 export const compactDensity = deviceSetting<boolean>(
     'plain-week.compact',

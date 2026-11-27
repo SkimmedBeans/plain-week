@@ -10,6 +10,7 @@ import { SomedaySection } from '@/components/planner/someday-section';
 import {
     useCollapsedLists,
     useCompactDensity,
+    useExpandedNotes,
     usePlannerView,
     useStripedRows,
 } from '@/hooks/use-carry-over-setting';
@@ -17,7 +18,13 @@ import { t } from '@/lib/i18n';
 import { useScrollToToday } from '@/hooks/use-scroll-to-today';
 import { useSomedayLists, useWeekTasks } from '@/hooks/use-tasks';
 import { weekDateKeys } from '@/lib/db/dates';
-import { collapseKey, setListsCollapsed } from '@/lib/planner/device-settings';
+import {
+    collapseKey,
+    setListsCollapsed,
+    setNoteExpanded,
+    setNotesExpanded,
+} from '@/lib/planner/device-settings';
+import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -83,10 +90,31 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
     const viewLists = (namedLists ?? []).filter(
         (list) => (typeof list.note === 'string') === (view === 'notes'),
     );
-    const listsShown = viewLists.filter((list) => !isCollapsed(list));
-    const chips = (
-        showWeek ? (isCollapsed(someday) ? [someday] : []) : viewLists
-    ).filter(isCollapsed);
+    const belowLg = useIsBelowLg();
+    // The Notes view below `lg` (F55): one note per row, collapsed to its
+    // heading until pressed; the Lists view and the desktop keep the chip
+    // behaviour there.
+    const noteRows = view === 'notes' && belowLg;
+    const expanded = useExpandedNotes();
+    const listsShown = noteRows
+        ? viewLists
+        : viewLists.filter((list) => !isCollapsed(list));
+    // Below `lg` the Notes view is one note per row (F55): no chips, every
+    // note stays in the list, collapsed to its heading until pressed.
+    const chips = noteRows
+        ? []
+        : (showWeek
+              ? isCollapsed(someday)
+                  ? [someday]
+                  : []
+              : viewLists
+          ).filter(isCollapsed);
+    // The F45 bar: whether anything of this view is open — the chip
+    // columns on desktop, the expanded note rows below `lg` (F55).
+    const expandedCount = viewLists.filter(
+        (list) => list.id !== undefined && expanded.includes(list.id),
+    ).length;
+    const anyShown = noteRows ? expandedCount > 0 : listsShown.length > 0;
 
     return (
         <>
@@ -103,26 +131,33 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     />
                     {viewLists.length > 0 && (
                         // Collapse every list of this view to a chip, or
-                        // expand them all again (F45).
+                        // expand them all again (F45); below `lg` the Notes
+                        // view expands and collapses its note rows instead
+                        // (F55).
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             data-test="collapse-all"
                             onClick={() =>
-                                setListsCollapsed(
-                                    viewLists.map((list) => collapseKey(list)),
-                                    listsShown.length > 0,
-                                )
+                                noteRows
+                                    ? setNotesExpanded(
+                                          viewLists.map((list) =>
+                                              collapseKey(list),
+                                          ),
+                                          !anyShown,
+                                      )
+                                    : setListsCollapsed(
+                                          viewLists.map((list) =>
+                                              collapseKey(list),
+                                          ),
+                                          listsShown.length > 0,
+                                      )
                             }
                             className="rounded-full"
                         >
-                            {listsShown.length > 0 ? (
-                                <ChevronsDownUp />
-                            ) : (
-                                <ChevronsUpDown />
-                            )}
-                            {listsShown.length > 0
+                            {anyShown ? <ChevronsDownUp /> : <ChevronsUpDown />}
+                            {anyShown
                                 ? t('planner.collapseAll')
                                 : t('planner.expandAll')}
                         </Button>
@@ -179,6 +214,15 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                 >
                     {listsShown.map((list) => {
                         const index = (namedLists ?? []).indexOf(list);
+                        // Below `lg` the note is one row of a list (F55),
+                        // collapsed to its heading until pressed. The id is
+                        // narrowed once: property narrowing does not survive
+                        // into closures.
+                        const noteId = noteRows ? list.id : undefined;
+                        const noteCollapsed =
+                            noteId !== undefined
+                                ? !expanded.includes(noteId)
+                                : undefined;
 
                         return (
                             <SomedaySection
@@ -192,6 +236,16 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                                 canMoveEarlier={index > 0}
                                 canMoveLater={
                                     index < (namedLists ?? []).length - 1
+                                }
+                                noteCollapsed={noteCollapsed}
+                                onToggleNote={
+                                    noteId !== undefined
+                                        ? () =>
+                                              setNoteExpanded(
+                                                  noteId,
+                                                  !expanded.includes(noteId),
+                                              )
+                                        : undefined
                                 }
                             />
                         );

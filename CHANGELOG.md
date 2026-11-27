@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.37] - 2026-11-27
+
+### Added
+
+- **Notes list on phones (F55).** Below the desktop breakpoint, the Notes view is now a single vertical list with one
+  note per row. Each note is collapsed to its heading (name and notebook icon); tapping the heading expands the note's
+  text and pictures in place, pushing the next note down, and tapping again collapses it. The expanded note is
+  remembered per device, and a note's title no longer opens the fly-out card on phones. The desktop multi-column grid
+  of notes is unchanged.
+
 ## [0.4.36] - 2026-11-27
 
 ### Changed
@@ -926,7 +936,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.36...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.37...HEAD
+[0.4.37]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.36...v0.4.37
 [0.4.36]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.35...v0.4.36
 [0.4.35]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.34...v0.4.35
 [0.4.34]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.33...v0.4.34

@@ -14,10 +14,30 @@ import { db, wipeLocalDatabase } from '@/lib/db/database';
 import { convertListToNote, createList, setListArchived } from '@/lib/db/lists';
 import { createTask } from '@/lib/db/tasks';
 
+// In vitest's happy-dom environment `window.innerWidth = n` only shadows the
+// global; the real window that `matchMedia` evaluates against stays put.
+// Reach that window through the prototype `defaultView` getter and resize it.
+function setViewportWidth(width: number): void {
+    let proto = Object.getPrototypeOf(document) as object | null;
+    while (proto && proto !== Object.prototype) {
+        const desc = Object.getOwnPropertyDescriptor(proto, 'defaultView');
+        if (desc?.get) {
+            (
+                desc.get.call(document) as unknown as { innerWidth: number }
+            ).innerWidth = width;
+            return;
+        }
+        proto = Object.getPrototypeOf(proto);
+    }
+    throw new Error('happy-dom defaultView getter not found');
+}
+
 describe('WeekGrid', () => {
     beforeEach(async () => {
         localStorage.clear();
         await wipeLocalDatabase();
+        // Desktop by default; the F55 phone test sets its own width.
+        setViewportWidth(1024);
     });
     afterEach(cleanup);
 
@@ -301,5 +321,83 @@ describe('WeekGrid', () => {
         // The row still opens the list card by tap.
         await user.click(screen.getByRole('button', { name: 'Shed, 0 open' }));
         await screen.findByRole('dialog');
+    });
+
+    it('opens the note card from its title at lg, without note rows (F55)', async () => {
+        const note = await createList('Ideas');
+        await convertListToNote(note.id);
+        localStorage.setItem('plain-week.view', 'notes');
+        const user = userEvent.setup();
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        // At `lg` the note stays a grid cell: the title opens the list
+        // card, and its text shows all the time.
+        await screen.findByRole('textbox', { name: 'Note: Ideas' });
+        await user.click(await screen.findByRole('button', { name: 'Ideas' }));
+        await screen.findByRole('dialog');
+    });
+
+    it('shows one note per row below lg, expanded in place (F55)', async () => {
+        const first = await createList('Ideas');
+        await convertListToNote(first.id);
+        const second = await createList('Travel');
+        await convertListToNote(second.id);
+        localStorage.setItem('plain-week.view', 'notes');
+        setViewportWidth(412); // Below the planner's desktop breakpoint.
+        const user = userEvent.setup();
+
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
+        );
+
+        // Both notes are rows, collapsed to their headings: no note text in
+        // the DOM, no chips.
+        await waitFor(() =>
+            expect(screen.getAllByRole('region')).toHaveLength(2),
+        );
+        expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+        expect(document.querySelector('[data-collapsed-lists]')).toBeNull();
+
+        // Pressing a heading expands its note in place; the other stays
+        // closed, and the choice is remembered per device.
+        await user.click(screen.getByRole('button', { name: 'Ideas' }));
+        await screen.findByRole('textbox', { name: 'Note: Ideas' });
+        expect(screen.getAllByRole('textbox')).toHaveLength(1);
+        expect(localStorage.getItem('plain-week.notes-expanded')).toBe(
+            JSON.stringify([first.id]),
+        );
+
+        // Pressing it again collapses it back to its heading.
+        await user.click(screen.getByRole('button', { name: 'Ideas' }));
+        await waitFor(() =>
+            expect(screen.queryAllByRole('textbox')).toHaveLength(0),
+        );
+        expect(localStorage.getItem('plain-week.notes-expanded')).toBeNull();
+
+        // The F45 bar expands and collapses every note row.
+        await user.click(screen.getByRole('button', { name: 'Expand all' }));
+        await waitFor(() =>
+            expect(screen.getAllByRole('textbox')).toHaveLength(2),
+        );
+        await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+        await waitFor(() =>
+            expect(screen.queryAllByRole('textbox')).toHaveLength(0),
+        );
+        setViewportWidth(1024);
     });
 });
