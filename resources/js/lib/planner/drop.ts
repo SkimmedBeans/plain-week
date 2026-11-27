@@ -45,14 +45,17 @@ export type ColumnDropData = {
     listId: string;
     /** The list's name (for screen-reader announcements). */
     name: string;
-    /** The column's index among the named lists, in display order. */
+    /**
+     * The list's index in the live order (every list, archived included) —
+     * the index `moveListTo` writes against.
+     */
     index: number;
 };
 
 /**
  * dnd-kit `data` of a named list's header while it is being dragged to
  * reorder the named lists (F5): the list it belongs to, its name (for
- * announcements) and its index among the named lists when the drag started.
+ * announcements) and its index in the live order when the drag started.
  */
 export type ListDragData = {
     type: 'listDrag';
@@ -249,13 +252,16 @@ export function originalSpot(
 /**
  * Where a dragged list lands when dropped on the `before` or `after`
  * boundary of the column of the list `hitId`: the index to hand to
- * `moveListTo` (insert before the list at that index of the current order;
- * `lists.length` is after the last one). `null` when a list is missing, or
- * the drop would leave the list where it is (its own slot, or the gap right
- * after it).
+ * `moveListTo` (insert before the list at that index of the live order —
+ * every named list, not only the ones on screen). `lists` is the columns in
+ * the view's order; each carries its own index in the live order, so the
+ * Notes view below `lg` (F56) reorders the notes against it: the target is
+ * the hit's live index (or just after it), and a drop that would leave the
+ * view's order unchanged — the list is already in the slot it was dropped
+ * into — is a no-op. `null` for a missing list, too.
  */
 export function resolveListReorder(
-    lists: { listId: string }[],
+    lists: { listId: string; index: number }[],
     draggedId: string,
     hitId: string,
     before: boolean,
@@ -263,17 +269,20 @@ export function resolveListReorder(
     const fromIndex = lists.findIndex((list) => list.listId === draggedId);
     const hitIndex = lists.findIndex((list) => list.listId === hitId);
 
-    if (fromIndex === -1 || hitIndex === -1) {
+    if (fromIndex === -1 || hitIndex === -1 || fromIndex === hitIndex) {
         return null;
     }
 
-    const toIndex = before ? hitIndex : hitIndex + 1;
-
-    if (toIndex === fromIndex || toIndex === fromIndex + 1) {
+    if (
+        (before && fromIndex === hitIndex - 1) ||
+        (!before && fromIndex === hitIndex + 1)
+    ) {
         return null;
     }
 
-    return { toIndex };
+    return {
+        toIndex: before ? lists[hitIndex].index : lists[hitIndex].index + 1,
+    };
 }
 
 /** Where `active` lands when dropped on `target` (`null`: nowhere new). */

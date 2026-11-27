@@ -90,7 +90,10 @@ type Props = {
     /** 'YYYY-MM-DD' of today. */
     today: string;
     onOpenTask: (taskId: string) => void;
-    /** The named list's index among the named lists (drag reorder, F5). */
+    /**
+     * The named list's index in the live order (every list, archived
+     * included) — the index `moveListTo` writes against (drag reorder, F5).
+     */
     index?: number;
     /** A named list can move one place earlier / later among the lists. */
     canMoveEarlier?: boolean;

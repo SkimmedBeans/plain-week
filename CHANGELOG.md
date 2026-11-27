@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.38] - 2026-11-27
+
+### Fixed
+
+- **Reordering the Notes list (F56).** In the phone Notes list (F55), dragging a note row (or its
+  handle) to a new spot among the notes now lands it where the insertion bar showed, on collapsed
+  and expanded rows alike. The reorder resolved the drop against the lists on screen instead of the
+  full order that stores the position, so a note could land in the wrong place whenever task lists
+  or archived lists sat between notes in the saved order. Notes now reorder against the full order —
+  the same one `moveList` writes — and the ⋮ "Move up / Move down" items keep working as the
+  keyboard/touch fallback; the order persists across reload, syncs and exports like any list order.
+
 ## [0.4.37] - 2026-11-27
 
 ### Added
@@ -936,7 +948,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.37...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.38...HEAD
+[0.4.38]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.37...v0.4.38
 [0.4.37]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.36...v0.4.37
 [0.4.36]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.35...v0.4.36
 [0.4.35]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.34...v0.4.35
