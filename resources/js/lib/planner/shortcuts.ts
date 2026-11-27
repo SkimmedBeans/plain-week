@@ -162,7 +162,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
     },
     {
         id: 'task.open',
-        // On a new-task row, Enter starts typing (the row's hint shows it).
+        // On a new-task row, Enter starts typing.
         keys: [['Enter']],
         get label() {
             return t('planner.shortcutTaskOpen');

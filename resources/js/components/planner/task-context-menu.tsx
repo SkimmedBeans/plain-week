@@ -1,3 +1,4 @@
+import { CircleCheck } from 'lucide-react';
 import { weekEntrySource } from '@/lib/db/week-slots';
 import {
     ArrowDownToLine,
@@ -59,6 +60,7 @@ import { cn } from '@/lib/utils';
 export type TaskContextMenuActions = {
     /** Opens the task details card. */
     onOpenCard: () => void;
+    onToggleDone?: () => void;
     /** Copies the task's text to the clipboard (F22). */
     onCopyText: () => void;
     onColorChange: (color: TaskColor) => void;
@@ -213,6 +215,7 @@ function TaskMenuItems({
         SubContent,
     },
     onOpenCard,
+    onToggleDone,
     onCopyText,
     onColorChange,
     onMoveToToday,
@@ -249,6 +252,13 @@ function TaskMenuItems({
                 <Shortcut>{null}</Shortcut>
                 <ListPlus />
             </Item>
+            {onToggleDone && (
+                <Item onSelect={onToggleDone}>
+                    {t(task.done ? 'planner.markNotDone' : 'planner.markDone')}
+                    <Shortcut>{null}</Shortcut>
+                    <CircleCheck />
+                </Item>
+            )}
             <Separator />
             <RadioGroup
                 aria-label={t('planner.taskColor')}

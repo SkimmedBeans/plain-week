@@ -1,4 +1,5 @@
 import {
+    CalendarDays,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -10,8 +11,13 @@ import { AccountButton } from '@/components/planner/account-button';
 import { HintedLabel } from '@/components/planner/shortcut-hint';
 import { ViewBar } from '@/components/planner/view-bar';
 import { usePlannerView } from '@/hooks/use-carry-over-setting';
-import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -42,10 +48,8 @@ type Props = {
     onPreviousWeek: () => void;
     onNextWeek: () => void;
     onToday: () => void;
+    onGoToWeekOf: (date: Date) => void;
 };
-
-const navButton =
-    'size-10 touch-manipulation rounded-full bg-foreground text-background hover:bg-foreground/80';
 
 /**
  * "October 2026 W42" (plus a "Today" pill when another week is shown) with
@@ -58,6 +62,7 @@ export function PlannerHeader({
     onPreviousWeek,
     onNextWeek,
     onToday,
+    onGoToWeekOf,
 }: Props) {
     // ISO weeks belong to the month and year of their Thursday.
     const thursday = weekThursday(weekStart);
@@ -73,12 +78,12 @@ export function PlannerHeader({
 
     // The week arrows only change the Week view (F39).
     const view = usePlannerView();
-    const belowLg = useIsBelowLg();
     const weekShown = view === 'week';
     const days = weekDateKeys(weekStart);
     const jumpDestination = useRef<string | null>(null);
     const jumpTouch = useRef<{ x: number; y: number } | null>(null);
     const [jumpOpen, setJumpOpen] = useState(false);
+    const [weekPickerOpen, setWeekPickerOpen] = useState(false);
     const range = dateFormat({ day: 'numeric', month: 'short' }).formatRange(
         weekStart,
         parseDateKey(days[6]),
@@ -97,7 +102,7 @@ export function PlannerHeader({
             variant="outline"
             size="sm"
             onClick={onToday}
-            className="touch-manipulation rounded-full border-planner-accent px-3 font-semibold text-planner-accent hover:bg-planner-accent/10 hover:text-planner-accent max-lg:active:not-aria-[haspopup]:translate-y-0 max-sm:h-7 max-sm:px-2.5 max-sm:text-xs dark:bg-transparent dark:hover:bg-planner-accent/15"
+            className="touch-manipulation rounded-full border-planner-accent px-3 font-semibold text-planner-accent hover:bg-planner-accent/10 hover:text-planner-accent max-lg:active:not-aria-[haspopup]:translate-y-0 max-sm:h-7 max-sm:px-2.5 max-sm:text-xs lg:hidden dark:bg-transparent dark:hover:bg-planner-accent/15"
             data-test="today-button"
         >
             {t('planner.today')}
@@ -108,7 +113,7 @@ export function PlannerHeader({
         // On phones the header sticks to the top with the view switch as its
         // second row (F38); on desktop the switch sits above the grid.
         <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm lg:static lg:backdrop-blur-none">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 lg:px-6 lg:pt-5 lg:pb-0">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-6 lg:pt-5 lg:pb-0">
                 <div className="flex min-w-0 items-center gap-2.5">
                     <h1 className="flex min-w-0 items-baseline gap-2.5 text-3xl leading-tight font-bold tracking-tighter max-lg:hidden lg:text-4xl">
                         <Tooltip>
@@ -159,10 +164,7 @@ export function PlannerHeader({
                             </abbr>
                         </span>
                     </h1>
-                    <h1
-                        data-week-swipe-heading={weekShown ? '' : undefined}
-                        className="flex min-w-0 touch-pan-y items-center gap-1 text-xl font-bold tracking-tight lg:hidden"
-                    >
+                    <h1 className="flex min-w-0 touch-pan-y items-center gap-1 text-xl font-bold tracking-tight lg:hidden">
                         {weekShown ? (
                             <>
                                 <span className="truncate text-base">
@@ -177,7 +179,7 @@ export function PlannerHeader({
                                             variant="ghost"
                                             aria-label={`${range}. ${t('planner.jumpToDay')}`}
                                             onPointerDown={(event) => {
-                                                // Let a touch swipe begin here without opening the menu.
+                                                // Open the day list after a touch tap finishes.
                                                 if (
                                                     event.pointerType ===
                                                     'touch'
@@ -256,35 +258,81 @@ export function PlannerHeader({
                             )
                         )}
                     </h1>
-                    {!isCurrentWeek &&
-                        (belowLg ? (
-                            weekShown && todayButton
-                        ) : (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    {todayButton}
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                    {todayHint}
-                                </TooltipContent>
-                            </Tooltip>
-                        ))}
+                    {!isCurrentWeek && weekShown && todayButton}
+                </div>
+                <div className="hidden lg:block">
                     {weekShown && (
                         <nav
                             aria-label={t('planner.weekNav')}
-                            className="ms-2 hidden items-center gap-2 lg:flex"
+                            className="flex items-center gap-2"
                         >
                             <Button
                                 variant="outline"
-                                className="h-11 rounded-full px-4"
+                                className="h-11 w-36 rounded-full"
                                 onClick={onPreviousWeek}
                             >
                                 <ChevronLeft className="size-5 rtl:rotate-180" />
                                 {t('planner.previousWeek')}
                             </Button>
+                            <Popover
+                                open={weekPickerOpen}
+                                onOpenChange={setWeekPickerOpen}
+                            >
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className="h-11 w-40 rounded-full"
+                                        aria-label={t('planner.jumpToWeek', {
+                                            range,
+                                        })}
+                                    >
+                                        <CalendarDays />
+                                        <span className="truncate">
+                                            {range}
+                                        </span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    className="w-auto p-0"
+                                    align="center"
+                                >
+                                    <Calendar
+                                        mode="single"
+                                        weekStartsOn={1}
+                                        captionLayout="dropdown"
+                                        defaultMonth={weekStart}
+                                        startMonth={
+                                            new Date(
+                                                weekStart.getFullYear() - 20,
+                                                0,
+                                            )
+                                        }
+                                        endMonth={
+                                            new Date(
+                                                weekStart.getFullYear() + 20,
+                                                11,
+                                            )
+                                        }
+                                        selected={weekStart}
+                                        onSelect={(_, date) => {
+                                            onGoToWeekOf(date);
+                                            setWeekPickerOpen(false);
+                                        }}
+                                    />
+                                </PopoverContent>
+                            </Popover>
                             <Button
                                 variant="outline"
-                                className="h-11 rounded-full px-4"
+                                data-test="desktop-today-button"
+                                className="h-11 w-20 rounded-full"
+                                onClick={onToday}
+                                disabled={isCurrentWeek}
+                            >
+                                {t('planner.today')}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="h-11 w-36 rounded-full"
                                 onClick={onNextWeek}
                             >
                                 {t('planner.nextWeek')}
@@ -295,7 +343,7 @@ export function PlannerHeader({
                 </div>
                 <nav
                     aria-label={t('planner.weekNav')}
-                    className="flex shrink-0 items-center gap-1.5"
+                    className="flex shrink-0 items-center gap-1.5 lg:justify-self-end"
                 >
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -344,54 +392,6 @@ export function PlannerHeader({
                     <div className="max-lg:order-last">
                         <AccountButton />
                     </div>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                size="icon-lg"
-                                className={cn(
-                                    navButton,
-                                    'lg:hidden',
-                                    !weekShown && 'max-lg:hidden',
-                                )}
-                                onClick={onPreviousWeek}
-                                disabled={!weekShown}
-                                aria-label={t('planner.previousWeek')}
-                            >
-                                <ChevronLeft className="size-5 rtl:rotate-180" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                            <HintedLabel
-                                label={t('planner.previousWeek')}
-                                action="week.previous"
-                                all
-                            />
-                        </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                size="icon-lg"
-                                className={cn(
-                                    navButton,
-                                    'lg:hidden',
-                                    !weekShown && 'max-lg:hidden',
-                                )}
-                                onClick={onNextWeek}
-                                disabled={!weekShown}
-                                aria-label={t('planner.nextWeek')}
-                            >
-                                <ChevronRight className="size-5 rtl:rotate-180" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                            <HintedLabel
-                                label={t('planner.nextWeek')}
-                                action="week.next"
-                                all
-                            />
-                        </TooltipContent>
-                    </Tooltip>
                 </nav>
             </div>
             <div className="lg:hidden">

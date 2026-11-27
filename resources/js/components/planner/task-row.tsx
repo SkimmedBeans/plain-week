@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import {
     CURSOR_ROW_CLASS,
     useCursorFocus,
-    useKeyboardCursor,
 } from '@/components/planner/keyboard-cursor';
 import {
     TOUCH_DRAG_DELAY_MS,
@@ -21,7 +20,6 @@ import {
     usePlannerDnd,
 } from '@/components/planner/planner-dnd';
 import { useScopedAction } from '@/components/planner/scope-prompt';
-import { ShortcutHint } from '@/components/planner/shortcut-hint';
 import {
     TaskContextMenu,
     TaskMenuButton,
@@ -379,7 +377,6 @@ export function TaskRow({
     const openRef = useCursorFocus<HTMLButtonElement>(isCursor);
     // While the keyboard cursor is shown, keys act on its row, not on the
     // hovered one: only the cursor's row shows the hint then.
-    const cursorShown = useKeyboardCursor() !== null;
     const repeat = useTaskRepeat(task);
     const label = [
         task.time,
@@ -478,6 +475,7 @@ export function TaskRow({
     const pickerDate = addingToDay ? task.week_slot?.date : task.date;
     const actions: TaskContextMenuActions = {
         onOpenCard: () => onOpen(task.id),
+        onToggleDone: belowLg ? () => void onToggleDone(task.id) : undefined,
         onCopyText: () =>
             void copyWithToast(task.text, t('planner.textCopied')),
         onColorChange: (color) => {
@@ -760,17 +758,6 @@ export function TaskRow({
                             <span ref={textRef} className="contents">
                                 <TaskLabelView task={task} repeat={repeat} />
                             </span>
-                            {/* Grows in on hover: it takes no room until then, and
-                        a long text gives way to it instead of being covered. */}
-                            <ShortcutHint
-                                action="task.open"
-                                size="row"
-                                className={cn(
-                                    'ms-auto mt-0.5 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-data-cursor/task:max-w-8 group-data-cursor/task:opacity-100',
-                                    !cursorShown &&
-                                        'group-hover/task:max-w-8 group-hover/task:opacity-100',
-                                )}
-                            />
                         </Button>
                     )}
                     <Button
@@ -802,9 +789,8 @@ export function TaskRow({
                         aria-pressed={task.done}
                         onClick={() => void onToggleDone(task.id)}
                         className={cn(
-                            // Hidden until hover only for mouse users on desktop; touch
-                            // screens of any size always show it.
-                            'mt-1 shrink-0 rounded-full hover:bg-transparent lg:pointer-fine:opacity-0 lg:pointer-fine:group-hover/task:opacity-100 lg:pointer-fine:focus-visible:opacity-100',
+                            // Mouse users see it on hover, focus, or completed rows.
+                            'mt-1 shrink-0 rounded-full hover:bg-transparent max-lg:hidden lg:pointer-fine:opacity-0 lg:pointer-fine:group-hover/task:opacity-100 lg:pointer-fine:focus-visible:opacity-100',
                             task.done && 'lg:pointer-fine:opacity-100',
                         )}
                     >

@@ -10,9 +10,7 @@ import type { ChangeEvent, KeyboardEvent, Ref } from 'react';
 import {
     CURSOR_ROW_CLASS,
     useCursorFocus,
-    useKeyboardCursor,
 } from '@/components/planner/keyboard-cursor';
-import { ShortcutHint } from '@/components/planner/shortcut-hint';
 import {
     LabelSuggestions,
     SmartTitleChips,
@@ -78,7 +76,6 @@ export function NewTaskRow({
 }: Props) {
     const stopRef = useCursorFocus<HTMLDivElement>(isCursor);
     // Keys act on the cursor's row while it is shown, not the hovered one.
-    const cursorShown = useKeyboardCursor() !== null;
     const { labels } = useTaskLabels();
     const today = useToday();
     const chipsId = useId();
@@ -366,16 +363,6 @@ export function NewTaskRow({
                     />
                 </PopoverContent>
             </Popover>
-            {/* Enter starts typing here (`a` and `i` too); gone while
-                typing. */}
-            <ShortcutHint
-                action="task.open"
-                size="row"
-                className={cn(
-                    'pointer-events-none absolute end-1.5 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-200 group-data-cursor/new:opacity-100 peer-focus-within:hidden',
-                    !cursorShown && 'group-hover/new:opacity-100',
-                )}
-            />
         </div>
     );
 }

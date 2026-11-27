@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.50] - 2026-11-27
+
+- Put phone week arrows and the week swipe area in a bottom navigation control.
+- Keep phone task swipes separate from week navigation and offer completion in the task menu.
+- Keep desktop week buttons the same size and in fixed positions, with a calendar jump across weeks.
+- Outline day panels, shade alternating ruled lines, and give weekdays and weekend days equal height.
+- Remove the Enter badge from task and add-task rows.
+
 ## [0.4.49] - 2026-11-27
 
 - Week swipes follow your finger and animate to the adjacent week or back into place.
@@ -1057,7 +1065,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.49...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.50...HEAD
+[0.4.50]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.49...v0.4.50
 [0.4.49]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.48...v0.4.49
 [0.4.48]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.47...v0.4.48
 [0.4.47]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.46...v0.4.47
