@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.45] - 2026-11-27
+
+### Changed
+
+- **Desktop Notes sizing (F58).** Note cards follow their text width and wrap into rows, with
+  a maximum size that leaves space for three cards at 16:9 or five at 21:9. Pictures scale
+  to the card.
+
 ## [0.4.44] - 2026-11-27
 
 ### Changed
@@ -1019,7 +1027,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.44...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.45...HEAD
+[0.4.45]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.44...v0.4.45
 [0.4.44]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.43...v0.4.44
 [0.4.43]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.42...v0.4.43
 [0.4.42]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.41...v0.4.42

@@ -20,6 +20,29 @@
 @custom-variant week-square (@media (4/5 <= aspect-ratio < 6/5));
 @custom-variant week-tall (@media (aspect-ratio < 4/5));
 
+@media (width >= 64rem) {
+    [data-notes-view] {
+        --note-card-gap: calc(var(--spacing) * 6);
+        --note-card-limit: calc((100% - 2 * var(--note-card-gap)) / 3);
+    }
+
+    [data-notes-view] > [data-someday-list] {
+        inline-size: fit-content;
+        min-inline-size: min(14rem, var(--note-card-limit));
+        max-inline-size: var(--note-card-limit);
+    }
+
+    [data-notes-view] [data-note-width] {
+        display: block;
+    }
+}
+
+@media (width >= 64rem) and (min-aspect-ratio: 21/9) {
+    [data-notes-view] {
+        --note-card-limit: calc((100% - 4 * var(--note-card-gap)) / 5);
+    }
+}
+
 /* Ruled lines every row (42px), level with the 1px bottom border of the rows above. */
 @utility bg-ruled {
     background-image: repeating-linear-gradient(

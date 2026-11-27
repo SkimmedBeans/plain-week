@@ -406,7 +406,10 @@ Row behaviour:
   stacks the chips as one full-width row per list, directly under the New list / Expand all bar and above the
   grid (`max-lg:` classes in `week-grid.tsx` and `collapsed-lists.tsx`, F52); desktop keeps the wrapping chip row
   after the grid. A collapsed list renders no task list, so the keyboard cursor skips it.
-- Phone Notes uses compact, reorderable rows. Tapping a note opens its card with a note actions menu,
+- Desktop Notes cards follow the width of their longest text line with a minimum where space permits.
+  The width cap leaves room for three cards per row, or five when the viewport is at least 21:9.
+  Pictures scale down within the card. Phone Notes uses compact, reorderable rows.
+  Tapping a note opens its card with a note actions menu,
   and creating a note opens the card with the text field focused.
 - On phones, Week, Lists and Notes each remember their scroll position while the planner is mounted.
   Task and list cards keep their controls visible while scrolling. Closing a task opened from search

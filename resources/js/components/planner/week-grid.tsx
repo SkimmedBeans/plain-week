@@ -229,7 +229,13 @@ export function WeekGrid({ weekStart, today, onOpenTask }: Props) {
                     data-density={compact ? 'compact' : undefined}
                     data-stripes={stripes || undefined}
                     data-lists-view
-                    className="grid grid-cols-1 content-start items-start gap-6 max-lg:order-2 lg:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))]"
+                    data-notes-view={view === 'notes' ? '' : undefined}
+                    className={cn(
+                        'grid grid-cols-1 content-start items-start gap-6 max-lg:order-2',
+                        view === 'notes'
+                            ? 'lg:flex lg:flex-wrap'
+                            : 'lg:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))]',
+                    )}
                 >
                     {listsShown.map((list) => {
                         const namedIndex = (namedLists ?? []).indexOf(list);
