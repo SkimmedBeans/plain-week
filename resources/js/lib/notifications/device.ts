@@ -1,4 +1,5 @@
 import { SyncHttpError, send, timeZoneHeader } from '@/lib/sync/transport';
+import { isInstalledApp, isIos } from '@/lib/install-app';
 import {
     destroy,
     store as storeRoute,
@@ -29,26 +30,8 @@ export type DeviceState = {
 /** How long `enable()` waits for the service worker to be active. */
 export const WORKER_READY_TIMEOUT_MS = 10_000;
 
-function isIos(): boolean {
-    return (
-        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        // iPadOS reports itself as a Mac.
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-    );
-}
-
-/** Opened from the Home Screen (or any installed app window). */
-function isStandalone(): boolean {
-    return (
-        (navigator as Navigator & { standalone?: boolean }).standalone ===
-            true ||
-        (typeof window.matchMedia === 'function' &&
-            window.matchMedia('(display-mode: standalone)').matches)
-    );
-}
-
 export function pushSupport(): PushSupport {
-    if (isIos() && !isStandalone()) {
+    if (isIos() && !isInstalledApp()) {
         return 'needs-install';
     }
 

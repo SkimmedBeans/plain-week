@@ -2,15 +2,21 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     BookOpen,
+    ChevronDown,
     FolderGit2,
     LogOut,
     MessageSquare,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
 import type { PropsWithChildren } from 'react';
 import Heading from '@/components/heading';
 import { useFeedbackLink } from '@/components/send-feedback';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useLogout } from '@/hooks/use-logout';
@@ -116,50 +122,21 @@ function BackToPlanner({
 
 /**
  * The settings: a full-screen page with a way back to the planner at the top
- * and at the end, the section nav (a column on desktop, a scrolling row on
+ * and at the end, the section nav (a column on desktop, a menu on
  * phones) and the account and project links in the footer.
  */
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
-    const { props, url } = usePage();
-    const navRef = useRef<HTMLElement>(null);
+    const { props } = usePage();
     const navItems = sectionNavItems.filter(
         (item) => item.visible?.(props) ?? true,
     );
     const feedbackLink = useFeedbackLink();
     const logout = useLogout();
-
-    // On phones the nav is a row that scrolls sideways: keep the current
-    // section in view. Only the row scrolls, never the page. It waits for the
-    // fonts, which change how wide the buttons are.
-    useEffect(() => {
-        let cancelled = false;
-
-        void (document.fonts?.ready ?? Promise.resolve()).then(() => {
-            const nav = navRef.current;
-            const current = nav?.querySelector('[aria-current="page"]');
-
-            if (
-                cancelled ||
-                !nav ||
-                !current ||
-                nav.scrollWidth <= nav.clientWidth
-            ) {
-                return;
-            }
-
-            const navBox = nav.getBoundingClientRect();
-            const box = current.getBoundingClientRect();
-
-            nav.scrollBy({
-                left: box.left - navBox.left - (navBox.width - box.width) / 2,
-            });
-        });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [url]);
+    const currentSection = navItems.find((item) =>
+        isCurrentOrParentUrl(item.href),
+    );
+    const sectionName = t(currentSection?.title ?? 'settings.layout.title');
 
     return (
         <div className="min-h-svh bg-background">
@@ -176,9 +153,47 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
                     <div className="flex flex-col gap-6 lg:flex-row lg:gap-12">
                         <aside className="lg:w-48 lg:shrink-0">
+                            <div className="lg:hidden">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-between"
+                                            aria-label={t(
+                                                'settings.layout.sectionMenu',
+                                                { section: sectionName },
+                                            )}
+                                        >
+                                            {sectionName}
+                                            <ChevronDown />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        align="start"
+                                        className="w-(--radix-dropdown-menu-trigger-width)"
+                                    >
+                                        {navItems.map((item) => (
+                                            <DropdownMenuItem
+                                                key={toUrl(item.href)}
+                                                asChild
+                                            >
+                                                <Link
+                                                    href={item.href}
+                                                    aria-current={
+                                                        item === currentSection
+                                                            ? 'page'
+                                                            : undefined
+                                                    }
+                                                >
+                                                    {t(item.title)}
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                             <nav
-                                ref={navRef}
-                                className="-mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0"
+                                className="hidden flex-col gap-1 lg:flex"
                                 aria-label={t('settings.layout.title')}
                             >
                                 {navItems.map((item) => {

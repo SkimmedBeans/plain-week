@@ -19,6 +19,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuShortcut,
     DropdownMenuTrigger,
@@ -106,6 +107,20 @@ function ShortcutsMenuItem() {
     );
 }
 
+function AccountVersion() {
+    return (
+        <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel
+                className="text-xs font-normal text-muted-foreground"
+                data-test="account-version"
+            >
+                {t('planner.accountVersion', { version: __APP_VERSION__ })}
+            </DropdownMenuLabel>
+        </>
+    );
+}
+
 function UserAccountMenu({ user }: { user: User }) {
     const { account } = usePage().props;
     const engineStatus = useVisibleSyncStatus();
@@ -168,6 +183,7 @@ function UserAccountMenu({ user }: { user: User }) {
                 <UserMenuContent user={user} />
                 <DropdownMenuSeparator />
                 <ShortcutsMenuItem />
+                <AccountVersion />
             </DropdownMenuContent>
         </DropdownMenu>
     );
@@ -193,6 +209,9 @@ function GuestMenuItems({ withSignUp }: { withSignUp: boolean }) {
 
     return (
         <>
+            <DropdownMenuLabel className="max-w-64 px-2 py-1.5 text-xs font-normal text-muted-foreground">
+                {t('planner.guestTooltip')}
+            </DropdownMenuLabel>
             {withSignUp && canRegister && (
                 <DropdownMenuItem asChild>
                     <Link href={register()} className="cursor-pointer">
@@ -220,6 +239,7 @@ function GuestMenuItems({ withSignUp }: { withSignUp: boolean }) {
             <SendFeedbackMenuItem />
             <InstallAppMenuItem />
             <ShortcutsMenuItem />
+            <AccountVersion />
         </>
     );
 }

@@ -5,6 +5,7 @@ export const settings = {
     'settings.layout.description': 'Manage your profile and account settings',
     'settings.layout.sendFeedback': 'Send feedback',
     'settings.layout.backToPlanner': 'Back to planner',
+    'settings.layout.sectionMenu': 'Settings section, {section}',
     'settings.nav.profile': 'Profile',
     'settings.nav.security': 'Security',
     'settings.nav.appearance': 'Appearance',
@@ -150,6 +151,10 @@ export const settings = {
     'settings.notifications.deniedTitle': 'Notifications are blocked',
     'settings.notifications.denied':
         'This browser blocks notifications from Plain Week. Allow them in its settings for this site (usually behind the icon next to the address), then come back here and turn them on.',
+    'settings.notifications.deniedIos':
+        'Open the Settings app, find Plain Week under Notifications, and allow notifications. Then return here to turn them on.',
+    'settings.notifications.deniedPhoneBrowser':
+        'Open your browser’s settings for this site and allow notifications. If notifications are blocked for the browser itself, allow them in your phone’s system settings. Then return here.',
     'settings.notifications.turnedOn': 'Notifications are on for this device.',
     'settings.notifications.turnedOff':
         'Notifications are off for this device.',

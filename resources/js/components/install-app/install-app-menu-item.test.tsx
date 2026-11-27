@@ -77,10 +77,28 @@ describe('InstallAppMenuItem', () => {
         expect(item()).toBeNull();
     });
 
-    it('is left out on a touch screen: you are already on the phone', () => {
+    it('offers installation in the phone browser', () => {
         stubPointer(true);
         renderMenu();
 
         expect(item()).toBeNull();
+        expect(
+            screen.getByRole('menuitem', { name: 'Install this app' }),
+        ).toBeTruthy();
+    });
+
+    it('is left out in the installed app', () => {
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('display-mode: standalone'),
+            })),
+        );
+        renderMenu();
+
+        expect(item()).toBeNull();
+        expect(
+            screen.queryByRole('menuitem', { name: 'Install this app' }),
+        ).toBeNull();
     });
 });

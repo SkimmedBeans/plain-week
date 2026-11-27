@@ -90,11 +90,12 @@ export const planner = {
     'planner.syncError': 'Some changes could not be synced. Click to retry.',
     'planner.syncPaused': 'Sync paused. Renew your plan to sync again.',
     'planner.accountMenu': 'Account menu. {status}',
+    'planner.accountVersion': 'Version {version}',
     'planner.keyboardShortcuts': 'Keyboard shortcuts',
     'planner.retrySync': 'Retry sync',
     'planner.choosePlan': 'Choose a plan',
     'planner.guestTooltip':
-        'Only on this device. Sync your week across devices.',
+        'Your planner is saved on this device. Sign in to sync across devices.',
     'planner.syncYourWeek': 'Sync your week',
     'planner.logIn': 'Log in',
     'planner.aboutPlainWeek': 'About Plain Week',

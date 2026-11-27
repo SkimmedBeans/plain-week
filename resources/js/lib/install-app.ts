@@ -9,6 +9,50 @@ export const installAppStore = createOnceCardStore(
     'plain-week.install-app-seen',
 );
 
+type InstallPrompt = Event & { prompt: () => Promise<unknown> };
+let installPrompt: InstallPrompt | null = null;
+let installed = false;
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        installPrompt = event as InstallPrompt;
+    });
+    window.addEventListener('appinstalled', () => {
+        installPrompt = null;
+        installed = true;
+    });
+}
+
+export function isIos(): boolean {
+    return (
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+}
+
+export function isInstalledApp(): boolean {
+    return (
+        (navigator as Navigator & { standalone?: boolean }).standalone ===
+            true ||
+        (window.matchMedia?.('(display-mode: standalone)').matches ?? false)
+    );
+}
+
+export function isTouchBrowser(): boolean {
+    return window.matchMedia?.('(pointer: coarse)').matches ?? false;
+}
+
+export function offerInstall(): void {
+    if (isTouchBrowser() && installPrompt !== null) {
+        const prompt = installPrompt;
+        installPrompt = null;
+        void prompt.prompt().catch(() => installAppStore.open());
+        return;
+    }
+    installAppStore.open();
+}
+
 /**
  * A desktop browser, where the card makes sense: a wide screen with a mouse,
  * not the installed app.
@@ -20,7 +64,7 @@ export function isDesktopBrowser(): boolean {
 
     return (
         window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches &&
-        !window.matchMedia('(display-mode: standalone)').matches
+        !isInstalledApp()
     );
 }
 
@@ -40,13 +84,8 @@ export function isReachableFromPhone(): boolean {
 }
 
 /**
- * Whether the account menu offers "Install mobile app": a phone can open this
- * address and this is not a touch screen (there you are already on the phone).
+ * Keep install help available in the browser until the app is installed.
  */
 export function canOfferInstall(): boolean {
-    const coarse =
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(pointer: coarse)').matches;
-
-    return isReachableFromPhone() && !coarse;
+    return isReachableFromPhone() && !isInstalledApp() && !installed;
 }
