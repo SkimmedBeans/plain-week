@@ -21,6 +21,11 @@
 @custom-variant week-tall (@media (aspect-ratio < 4/5));
 
 @media (width >= 64rem) {
+    [data-packed-lists] {
+        grid-auto-rows: 4px;
+        row-gap: 0;
+    }
+
     [data-notes-view] {
         --note-card-gap: calc(var(--spacing) * 6);
         --note-card-limit: calc((100% - 2 * var(--note-card-gap)) / 3);
@@ -35,10 +40,14 @@
     [data-notes-view] [data-note-width] {
         display: block;
     }
+
+    [data-notes-view]:not(:has(> [data-someday-list]:nth-child(3))) {
+        --note-card-limit: min(100%, 64rem);
+    }
 }
 
 @media (width >= 64rem) and (min-aspect-ratio: 21/9) {
-    [data-notes-view] {
+    [data-notes-view]:has(> [data-someday-list]:nth-child(3)) {
         --note-card-limit: calc((100% - 4 * var(--note-card-gap)) / 5);
     }
 }

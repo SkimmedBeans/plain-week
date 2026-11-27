@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.46] - 2026-11-27
+
+### Changed
+
+- Desktop Lists packs cards into the space below shorter lists, so a tall card no longer
+  pushes the entire next row down. Short Notes take less vertical space, and long notes
+  can use more room when there are only one or two cards.
+- Desktop note fly-outs have a wider editor, more usable height, and a close button.
+
 ## [0.4.45] - 2026-11-27
 
 ### Changed
@@ -1027,7 +1036,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.45...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.46...HEAD
+[0.4.46]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.45...v0.4.46
 [0.4.45]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.44...v0.4.45
 [0.4.44]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.43...v0.4.44
 [0.4.43]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.42...v0.4.43
