@@ -438,6 +438,9 @@ describe('planImport', () => {
             taskCount: 0,
             recurringCount: 0,
             listCount: 0,
+            noteCount: 0,
+            labelCount: 0,
+            hasNotePictures: false,
         });
         expect(plan.tasks.map((task) => task.series_id)).toEqual([
             null,

@@ -93,6 +93,7 @@ export const planner = {
     'planner.accountVersion': 'Version {version}',
     'planner.keyboardShortcuts': 'Keyboard shortcuts',
     'planner.retrySync': 'Retry sync',
+    'planner.waitingToSync': 'Saved on this device. Waiting to sync.',
     'planner.choosePlan': 'Choose a plan',
     'planner.guestTooltip':
         'Your planner is saved on this device. Sign in to sync across devices.',

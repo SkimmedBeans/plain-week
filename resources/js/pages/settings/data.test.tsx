@@ -12,6 +12,12 @@ import {
 } from 'vite-plus/test';
 import { Toaster } from '@/components/ui/sonner';
 import { db, wipeLocalDatabase } from '@/lib/db/database';
+import {
+    convertListToNote,
+    createList,
+    setListImages,
+    setListNote,
+} from '@/lib/db/lists';
 import { createTask } from '@/lib/db/tasks';
 import { buildExport } from '@/lib/transfer/export';
 import { makeTask } from '@/test/fixtures';
@@ -133,9 +139,38 @@ describe('Settings › Data', () => {
         await user.click(screen.getByRole('button', { name: 'Export data' }));
 
         expect(
-            await screen.findByText('There are no tasks to export.'),
+            await screen.findByText('There are no planner items to export.'),
         ).toBeTruthy();
         expect(createObjectURL).not.toHaveBeenCalled();
+    });
+
+    it('exports and imports a note when there are no tasks', async () => {
+        const note = await createList('Plans');
+        await convertListToNote(note.id);
+        await setListNote(note.id, 'Bring a map');
+        await setListImages(note.id, ['be629db5-0fea-4104-810a-9df4496c3f52']);
+        const file = await buildExport();
+        const createObjectURL = vi.fn(() => 'blob:export');
+        URL.createObjectURL = createObjectURL;
+        URL.revokeObjectURL = vi.fn();
+        const user = renderPage();
+        await user.click(screen.getByRole('button', { name: 'Export data' }));
+        expect(await screen.findByText('Exported 1 note')).toBeTruthy();
+        expect(createObjectURL).toHaveBeenCalledOnce();
+
+        const input = document.querySelector<HTMLInputElement>(
+            '[data-test="import-file-input"]',
+        )!;
+        await user.upload(
+            input,
+            new File([JSON.stringify(file)], 'notes.json', {
+                type: 'application/json',
+            }),
+        );
+        expect(await screen.findByText(/1 note will be added/)).toBeTruthy();
+        await user.click(screen.getByRole('button', { name: 'Import' }));
+        expect(await screen.findByText('Imported 1 note')).toBeTruthy();
+        expect(await db.someday_lists.count()).toBe(2);
     });
 
     it('drops untouched demo tasks before exporting', async () => {
