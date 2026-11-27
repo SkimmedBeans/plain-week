@@ -63,6 +63,7 @@ export const planner = {
     'planner.duplicateTaskFailed': 'Could not duplicate the task.',
     'planner.taskDeleted': 'Task deleted.',
     'planner.clearCompleted': 'Clear completed',
+    'planner.addTaskPrompt': '+ Add task',
     'planner.completedCleared': 'Completed tasks cleared.',
     'planner.clearCompletedFailed': 'Could not clear completed tasks.',
     'planner.restoreCompletedFailed': 'Could not restore completed tasks.',

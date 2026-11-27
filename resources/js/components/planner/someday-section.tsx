@@ -78,6 +78,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type Props = {
+    paper?: boolean;
     /**
      * The list this column shows: Someday (column 0, no `id`) or a named
      * list (a row of the lists table).
@@ -130,6 +131,7 @@ function ListDropIndicator({
  * handle: drag it over another column's edge to reorder the lists (F5).
  */
 export function SomedaySection({
+    paper = false,
     list,
     weekStart,
     today,
@@ -264,6 +266,8 @@ export function SomedaySection({
             style={{ '--stripe': stripeColor(color) } as CSSProperties}
             className={cn(
                 'relative flex min-h-0 min-w-0 flex-col',
+                paper &&
+                    'rounded-lg border border-border bg-[color-mix(in_oklab,var(--stripe)_40%,var(--background))] p-3 lg:p-4',
                 activeListId === list.id && 'opacity-60',
             )}
         >
@@ -544,6 +548,7 @@ export function SomedaySection({
                     name={list.name}
                     tasks={tasks}
                     newTaskLabel={`New ${list.name} task`}
+                    paper={paper}
                     onOpenTask={onOpenTask}
                 />
             )}

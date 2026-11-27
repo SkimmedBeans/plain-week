@@ -368,9 +368,9 @@ Row behaviour:
   title, Today, account and week arrows, so the title never gets squeezed); task rows and today use `max-lg:scroll-mt-32`
   to clear that taller header. Off Week the week arrows are disabled and their shortcuts do nothing (F39).
 - Week / Lists (F30, per device `plain-week.view`): a `ToggleGroup` above the grid. Week renders the days and the
-  base Someday in the window-shape grid; Lists renders the expanded named lists in
-  `lg:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]` rows that share the window height (stacked on phones), with an
-  empty-state line when there are none. Collapsed chips follow the view (base Someday in Week, named lists in Lists).
+  base Someday in the window-shape grid. Lists uses content-height sheets with a thin outline, a subtle list tint,
+  and a visible inline **+ Add task** prompt. Sheets stack on phones and use tracks at least 22rem wide on desktop.
+  The title opens the list card. Collapsed chips follow the view (base Someday in Week, named lists in Lists).
   The task menu's "Move to list" submenu (Someday and every shown named list but the task's own) moves a task to a list
   that is not on screen; its toast names the list.
 - Search (F33, `search-dialog.tsx`, `lib/planner/search.ts`): the header's search button or `/` opens a dialog whose

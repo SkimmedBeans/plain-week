@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 type Props = {
     ref?: Ref<HTMLInputElement>;
     label: string;
+    showPrompt?: boolean;
     /** The keyboard cursor is on this row (the stop between the list's open
      *  and done tasks). */
     isCursor?: boolean;
@@ -69,6 +70,7 @@ const FIELD_TEXT =
 export function NewTaskRow({
     ref,
     label,
+    showPrompt = false,
     isCursor = false,
     onSubmit,
     onCancel,
@@ -305,6 +307,11 @@ export function NewTaskRow({
                             ref={setInputRef}
                             type="text"
                             aria-label={label}
+                            placeholder={
+                                showPrompt
+                                    ? t('planner.addTaskPrompt')
+                                    : undefined
+                            }
                             role="combobox"
                             aria-autocomplete="list"
                             aria-expanded={open}
@@ -324,6 +331,7 @@ export function NewTaskRow({
                             onSelect={syncScroll}
                             className={cn(
                                 FIELD_TEXT,
+                                'placeholder:text-muted-foreground focus:placeholder:text-transparent',
                                 'relative h-full rounded-none border-0 bg-transparent text-transparent caret-foreground shadow-none selection:bg-primary/25 selection:text-transparent focus-visible:ring-0',
                             )}
                         />
