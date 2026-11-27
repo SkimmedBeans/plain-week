@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.39] - 2026-11-27
+
+### Changed
+
+- **Notes and creation controls (F57, F59, F62).** On phones, note rows stay compact and open a card
+  with a note actions menu. New notes open ready to type. Notes use note-specific copy, archive and
+  delete labels, Lists and Notes have named creation buttons, and Week shows an add-task prompt.
+
 ## [0.4.38] - 2026-11-27
 
 ### Fixed
@@ -948,7 +956,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.38...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.39...HEAD
+[0.4.39]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.38...v0.4.39
 [0.4.38]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.37...v0.4.38
 [0.4.37]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.36...v0.4.37
 [0.4.36]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.35...v0.4.36

@@ -2,7 +2,6 @@ import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import {
     Archive,
-    ChevronDown,
     ChevronUp,
     GripVertical,
     NotebookText,
@@ -98,14 +97,8 @@ type Props = {
     /** A named list can move one place earlier / later among the lists. */
     canMoveEarlier?: boolean;
     canMoveLater?: boolean;
-    /**
-     * The Notes view below `lg` (F55): the note is one row of a list,
-     * collapsed to its heading unless expanded. `undefined` when the
-     * note's content always shows (desktop, the task lists).
-     */
-    noteCollapsed?: boolean;
-    /** Toggles the note's row (F55). */
-    onToggleNote?: () => void;
+    compactNoteRow?: boolean;
+    onCloseNewNote?: () => void;
 };
 
 /** The insertion bar shown while a dragged list is over this column edge. */
@@ -151,8 +144,8 @@ export function SomedaySection({
     index = 0,
     canMoveEarlier = false,
     canMoveLater = false,
-    noteCollapsed,
-    onToggleNote,
+    compactNoteRow = false,
+    onCloseNewNote,
 }: Props) {
     const titleId = useId();
     const instructionsId = useId();
@@ -169,10 +162,6 @@ export function SomedaySection({
             ? undefined
             : allLists?.find((item) => item.id === list.id);
     const isNote = typeof fullList?.note === 'string';
-    // The Notes view below `lg` (F55): the note is one row of a list, its
-    // content hidden until the heading is pressed. `undefined` elsewhere:
-    // the content always shows (desktop grid, task lists).
-    const noteRow = noteCollapsed !== undefined;
     // A note's header shows a notebook icon after its name. Task lists show
     // no count there (F44); collapsed chips keep theirs.
     const countBadge = isNote ? (
@@ -227,16 +216,34 @@ export function SomedaySection({
         void setListArchived(id, true).then(
             (updated) => {
                 if (updated === null) {
-                    toast.error(t('planner.listArchiveFailed'));
+                    toast.error(
+                        t(
+                            isNote
+                                ? 'planner.noteArchiveFailed'
+                                : 'planner.listArchiveFailed',
+                        ),
+                    );
 
                     return;
                 }
                 toastWithUndo(
-                    t('planner.listArchived', { name: list.name }),
+                    t(
+                        isNote
+                            ? 'planner.noteArchived'
+                            : 'planner.listArchived',
+                        { name: list.name },
+                    ),
                     () => void setListArchived(id, false),
                 );
             },
-            () => toast.error(t('planner.listArchiveFailed')),
+            () =>
+                toast.error(
+                    t(
+                        isNote
+                            ? 'planner.noteArchiveFailed'
+                            : 'planner.listArchiveFailed',
+                    ),
+                ),
         );
     };
     // The list card (F11): which list it is open on, null when closed.
@@ -297,20 +304,13 @@ export function SomedaySection({
                 {isNamed && namedListId !== undefined ? (
                     // The name opens the list card (F6); it is not a
                     // drag-stop: a click opens, a 5px move starts the drag.
-                    // In a phone note row (F55) it expands and collapses
-                    // the row instead.
                     <Button
                         type="button"
                         variant="ghost"
                         data-list-card-target={`named:${namedListId}`}
                         aria-label={list.name}
                         onClick={() =>
-                            noteRow
-                                ? onToggleNote?.()
-                                : setCardIdentity({
-                                      kind: 'named',
-                                      id: namedListId,
-                                  })
+                            setCardIdentity({ kind: 'named', id: namedListId })
                         }
                         className="h-auto min-w-0 flex-1 justify-start gap-0 self-stretch rounded-none border-0 px-0 py-0 text-lg leading-7 font-bold tracking-tight text-inherit hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0 lg:text-xl dark:hover:bg-transparent"
                     >
@@ -344,35 +344,22 @@ export function SomedaySection({
                     </Button>
                 )}
                 <span className="flex shrink-0 items-center gap-1">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground"
-                        aria-label={
-                            noteRow
-                                ? t(
-                                      noteCollapsed
-                                          ? 'planner.expandNote'
-                                          : 'planner.collapseNote',
-                                      { name: list.name },
-                                  )
-                                : t('planner.collapseList', {
-                                      name: list.name,
-                                  })
-                        }
-                        onClick={() =>
-                            noteRow
-                                ? onToggleNote?.()
-                                : setListCollapsed(collapseKey(list), true)
-                        }
-                    >
-                        {noteRow && noteCollapsed ? (
-                            <ChevronDown />
-                        ) : (
+                    {!compactNoteRow && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground"
+                            aria-label={t('planner.collapseList', {
+                                name: list.name,
+                            })}
+                            onClick={() =>
+                                setListCollapsed(collapseKey(list), true)
+                            }
+                        >
                             <ChevronUp />
-                        )}
-                    </Button>
+                        </Button>
+                    )}
                     {list.column === 0 && archivedCount > 0 && (
                         <Button
                             variant="ghost"
@@ -408,7 +395,13 @@ export function SomedaySection({
                                         variant="ghost"
                                         size="icon-sm"
                                         className="text-muted-foreground"
-                                        aria-label={`More options for the ${list.name} list`}
+                                        aria-label={
+                                            isNote
+                                                ? t('planner.noteOptions', {
+                                                      name: list.name,
+                                                  })
+                                                : `More options for the ${list.name} list`
+                                        }
                                     >
                                         <MoreHorizontal />
                                     </Button>
@@ -519,7 +512,11 @@ export function SomedaySection({
                                                 : copyListTasks(tasks ?? []))
                                         }
                                     >
-                                        {t('planner.copyAllTasks')}
+                                        {t(
+                                            isNote
+                                                ? 'planner.copyNoteText'
+                                                : 'planner.copyAllTasks',
+                                        )}
                                     </DropdownMenuItem>
                                     {/* Lists run left to right on desktop and top
                                     to bottom on phones. */}
@@ -561,13 +558,19 @@ export function SomedaySection({
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={archive}>
-                                        {t('planner.archiveList')}
+                                        {t(
+                                            isNote
+                                                ? 'planner.archiveNote'
+                                                : 'planner.archiveList',
+                                        )}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         variant="destructive"
                                         onClick={() => setDeleteOpen(true)}
                                     >
-                                        Delete list
+                                        {isNote
+                                            ? t('planner.deleteNote')
+                                            : 'Delete list'}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -581,10 +584,7 @@ export function SomedaySection({
                 </span>
             )}
             {isNote && fullList !== undefined ? (
-                // A note's row collapses to its heading below `lg` (F55);
-                // the note (and its keyboard-stop task list) is gone while
-                // it is collapsed.
-                noteRow && noteCollapsed ? null : (
+                compactNoteRow ? null : (
                     <ListNote list={fullList} />
                 )
             ) : (
@@ -654,7 +654,9 @@ export function SomedaySection({
                                     Delete “{list.name}”?
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Its tasks will move to Someday.
+                                    {isNote
+                                        ? t('planner.deleteNoteDescription')
+                                        : t('planner.deleteListDescription')}
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -668,13 +670,19 @@ export function SomedaySection({
                 </>
             )}
             <ListDialog
-                identity={cardIdentity}
+                identity={
+                    onCloseNewNote && namedListId !== undefined
+                        ? { kind: 'named', id: namedListId }
+                        : cardIdentity
+                }
+                focusNoteOnOpen={onCloseNewNote !== undefined}
+                showNoteMenu={compactNoteRow}
                 weekStart={weekStart}
                 placement={placement}
                 tasks={tasks}
                 newTaskLabel={`New ${list.name} task`}
                 onOpenTask={onOpenTask}
-                onClose={() => setCardIdentity(null)}
+                onClose={onCloseNewNote ?? (() => setCardIdentity(null))}
             />
         </section>
     );
