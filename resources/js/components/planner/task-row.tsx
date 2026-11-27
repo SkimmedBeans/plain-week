@@ -77,9 +77,8 @@ type Props = {
     /** Every other row is striped (F36, F37). */
     stripe?: boolean;
     /**
-     * Opens the task card: a double tap or double click on the text, Enter
-     * or Space on it, or "Task details" in its menu. A single tap or click
-     * edits the text in place instead (F19).
+     * Opens the task card from the text button or "Task details" in the menu.
+     * Desktop clicks and taps in Move tasks mode can edit the text in place.
      */
     onOpen: (taskId: string) => void;
     onToggleDone: (taskId: string) => void | Promise<void>;
@@ -355,8 +354,8 @@ export function TaskLabel({ task }: { task: PlannerTask }) {
  * check button at the end that toggles completion (on hover or focus with a
  * mouse on desktop, always on mobile and touch screens).
  *
- * The whole row is draggable (mouse: after 5px of movement, so a click still
- * opens the task; touch: press, hold and move). For keyboard users a move
+ * Move tasks mode puts pointer dragging on the task menu button.
+ * For keyboard users a move
  * button, visible only while focused, picks the task up with Space or Enter.
  *
  * Right click or Shift+F10 / the context menu key open the task's context
@@ -740,9 +739,13 @@ export function TaskRow({
                             data-task-open
                             aria-label={label}
                             onClick={(event) => {
-                                // Enter or Space (no pointer) open the card, as
-                                // does a double click; a tap or click edits.
-                                if (event.detail === 0 || event.detail > 1) {
+                                const isTouch =
+                                    'pointerType' in event.nativeEvent &&
+                                    event.nativeEvent.pointerType === 'touch';
+                                if (
+                                    event.detail !== 1 ||
+                                    (!showGrip && (belowLg || isTouch))
+                                ) {
                                     onOpen(task.id);
                                 } else {
                                     startEditing(event);
@@ -766,14 +769,9 @@ export function TaskRow({
                         variant="ghost"
                         size="icon-sm"
                         {...attributes}
-                        {...(showGrip && listeners)}
+                        onKeyDown={(event) => listeners?.onKeyDown?.(event)}
                         aria-label={t('planner.moveTask', { text: task.text })}
-                        className={cn(
-                            'mt-1 shrink-0 rounded-full hover:bg-transparent',
-                            showGrip
-                                ? 'cursor-grab touch-none'
-                                : 'sr-only focus-visible:not-sr-only',
-                        )}
+                        className="sr-only mt-1 shrink-0 rounded-full hover:bg-transparent focus-visible:not-sr-only"
                     >
                         <GripVertical className="size-5" />
                     </Button>
@@ -802,7 +800,17 @@ export function TaskRow({
                             )}
                         />
                     </Button>
-                    <TaskMenuButton task={task} {...actions} />
+                    <TaskMenuButton
+                        task={task}
+                        showGrip={showGrip}
+                        onGripMouseDown={(event) =>
+                            listeners?.onMouseDown?.(event)
+                        }
+                        onGripTouchStart={(event) =>
+                            listeners?.onTouchStart?.(event)
+                        }
+                        {...actions}
+                    />
                 </div>
                 <Popover
                     open={pickDateOpen}
