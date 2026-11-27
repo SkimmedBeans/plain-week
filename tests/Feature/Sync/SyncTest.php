@@ -41,6 +41,30 @@ test('push creates a someday task', function () {
     $this->getJson(route('sync.pull'))->assertJsonPath('tasks.0', $task);
 });
 
+test('weekday placements on someday tasks and their subtasks round-trip', function () {
+    $slot = ['date' => '2026-10-16', 'position' => 'a0'];
+    $task = wireTask([
+        'date' => null,
+        'someday_column' => 0,
+        'week_slot' => $slot,
+        'subtasks' => [['id' => 'step', 'text' => 'Step', 'done' => false, 'week_slot' => $slot]],
+    ]);
+
+    push([$task])->assertOk()->assertJsonPath('applied', [$task['id']]);
+    $this->getJson(route('sync.pull'))
+        ->assertJsonPath('tasks.0.week_slot', $slot)
+        ->assertJsonPath('tasks.0.subtasks.0.week_slot', $slot);
+
+    $task['week_slot'] = null;
+    $task['subtasks'][0]['week_slot'] = null;
+    $task['updated_at'] = '2026-10-16T00:00:00.000Z';
+
+    push([$task])->assertOk()->assertJsonPath('applied', [$task['id']]);
+    $this->getJson(route('sync.pull', ['cursor' => 1]))
+        ->assertJsonMissingPath('tasks.0.week_slot')
+        ->assertJsonPath('tasks.0.subtasks.0.week_slot', null);
+});
+
 test('push updates an existing task', function () {
     $task = wireTask();
     push([$task]);

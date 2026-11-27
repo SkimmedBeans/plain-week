@@ -4,23 +4,31 @@ import { getSeries } from '@/lib/db/queries';
 import {
     clearCompletedSomeday,
     createUndoLog,
+    createTask,
+    scheduleSomedayTask,
+    toggleDone,
     deleteTask,
     duplicateTask,
     moveTask,
     undoChanges,
-    unchangedSince,
     updateTask,
+    updateSubtasks,
 } from '@/lib/db/tasks';
-import type { MoveTaskInput, Scope } from '@/lib/db/tasks';
-import type { Task, TaskColor } from '@/lib/db/types';
+import type {
+    CreateTaskInput,
+    MoveTaskInput,
+    Scope,
+    UndoLog,
+} from '@/lib/db/tasks';
+import type { Subtask, Task, TaskColor } from '@/lib/db/types';
 import { isRecurring } from '@/lib/recurrence/expand';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 import { placementLabel } from './drop';
 import { asksScope } from './repeat';
 import { nextWeekOf, tomorrowOf } from './quick-moves';
-import { saveLocally } from './save-locally';
-import { dismissUndoToast, recordDelete, toastWithUndo } from './undo';
+import { recordUndo, toastWithUndo } from './undo';
 import { t } from '@/lib/i18n';
+import { weekEntrySource } from '@/lib/db/week-slots';
 
 /**
  * The task actions shared by the task dialog and the task context menu. They
@@ -88,17 +96,16 @@ export function moveWithUndo(
     move: MoveTaskInput,
     /** The named list's name, when `move` goes to one. */
     name?: string,
+    announce = true,
 ): Promise<PlannerTask | undefined> {
     const undo = createUndoLog();
 
     return settle(
         moveTask(id, move, { undo }).then((moved) => {
-            toastWithUndo(
+            rememberChange(
+                undo,
                 t('planner.movedTo', { place: placementLabel(move, name) }),
-                () =>
-                    saveLocally(undoChanges(undo), {
-                        error: t('planner.undoMoveFailed'),
-                    }),
+                announce,
             );
 
             return moved;
@@ -108,9 +115,10 @@ export function moveWithUndo(
 }
 
 export function duplicateWithToast(id: string): Promise<Task | undefined> {
+    const undo = createUndoLog();
     return settle(
-        duplicateTask(id).then((copy) => {
-            toast.success(t('planner.taskDuplicated'));
+        duplicateTask(id, { undo }).then((copy) => {
+            rememberChange(undo, t('planner.taskDuplicated'), true);
 
             return copy;
         }),
@@ -127,11 +135,7 @@ export function clearCompletedWithUndo(
     return settle(
         clearCompletedSomeday(list, taskIds, { undo }).then((count) => {
             if (count > 0) {
-                toastWithUndo(t('planner.completedCleared'), () =>
-                    saveLocally(undoChanges(undo), {
-                        error: t('planner.restoreCompletedFailed'),
-                    }),
-                );
+                rememberChange(undo, t('planner.completedCleared'), true);
             }
         }),
         t('planner.clearCompletedFailed'),
@@ -150,31 +154,80 @@ export function deleteWithUndo(
 
     return settle(
         deleteTask(id, { scope, undo }).then((deleted) => {
-            // The header's "Undo delete" can run long after the toast is
-            // gone, so it first checks nothing changed these rows since. The
-            // snapshot is read alongside the toast, not before it: the toast
-            // (and `u`) must be there as soon as the delete is written.
-            const check = unchangedSince(undo);
-            const canRestore = () => check.then((unchanged) => unchanged());
-            let toastId: string | number | undefined;
-            const undoDelete = recordDelete(
-                deleted.text,
-                () => {
-                    if (toastId !== undefined) {
-                        dismissUndoToast(toastId);
-                    }
-
-                    saveLocally(undoChanges(undo), {
-                        error: t('planner.restoreTaskFailed'),
-                    });
-                },
-                canRestore,
+            if (weekEntrySource(id)) {
+                rememberChange(undo, t('planner.removedFromDay'), true);
+                return deleted;
+            }
+            toastWithUndo(
+                t('planner.taskDeleted'),
+                () => undoChanges(undo, true),
+                undefined,
+                t('planner.deletedTaskTitle', { text: deleted.text }),
             );
-
-            toastId = toastWithUndo(t('planner.taskDeleted'), undoDelete);
 
             return deleted;
         }),
         t('planner.deleteTaskFailed'),
     );
+}
+
+function rememberChange(
+    undo: UndoLog,
+    message: string,
+    announce = false,
+): void {
+    if (undo.before.size === 0) {
+        return;
+    }
+    const restore = () => undoChanges(undo, true);
+    if (announce) {
+        toastWithUndo(message, restore);
+    } else {
+        recordUndo(restore, message);
+    }
+}
+
+export async function createTaskWithUndo(
+    input: CreateTaskInput,
+): Promise<Task> {
+    const undo = createUndoLog();
+    const task = await createTask(input, { undo });
+    rememberChange(undo, t('planner.taskAdded'));
+    return task;
+}
+
+export async function toggleDoneWithUndo(id: string): Promise<PlannerTask> {
+    const undo = createUndoLog();
+    const task = await toggleDone(id, { undo });
+    rememberChange(
+        undo,
+        t(task.done ? 'planner.taskCompleted' : 'planner.taskReopened'),
+    );
+    return task;
+}
+
+export function scheduleWithUndo(id: string, date: string, subtaskId?: string) {
+    const undo = createUndoLog();
+    return settle(
+        scheduleSomedayTask(id, date, subtaskId, { undo }).then((task) => {
+            rememberChange(
+                undo,
+                t('planner.addedToDay', { place: placementLabel({ date }) }),
+                true,
+            );
+            return task;
+        }),
+        t('planner.moveTaskFailed'),
+    );
+}
+
+export async function changeSubtasksWithUndo(
+    id: string,
+    update: (subtasks: Subtask[]) => Subtask[],
+    scope?: Scope,
+): Promise<PlannerTask> {
+    const undo = createUndoLog();
+    const task = await updateSubtasks(id, update, { scope, undo });
+    rememberChange(undo, t('planner.subtasksChanged'));
+    return task;
 }

@@ -99,6 +99,10 @@ final class TaskImport
                 $row[$field] = $task[$field] ?? null;
             }
 
+            if (isset($task['week_slot'])) {
+                $row['week_slot'] = $task['week_slot'];
+            }
+
             /** @var TaskRecord $row */
             $tasks[] = $row;
         }

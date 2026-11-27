@@ -1,3 +1,4 @@
+import { weekEntrySource } from '@/lib/db/week-slots';
 import {
     ArrowDownToLine,
     CalendarCheck,
@@ -65,6 +66,7 @@ export type TaskContextMenuActions = {
     onMoveToToday: () => void;
     /** Opens a date picker; picking a day moves the task there. */
     onPickDate: () => void;
+    onAddToDay?: () => void;
     /** Not offered for a task that is already in Someday. */
     onMoveToSomeday: () => void;
     onDuplicate: () => void;
@@ -215,6 +217,7 @@ function TaskMenuItems({
     onColorChange,
     onMoveToToday,
     onPickDate,
+    onAddToDay,
     onMoveToSomeday,
     onDuplicate,
     onDelete,
@@ -291,6 +294,9 @@ function TaskMenuItems({
                 <Shortcut>{null}</Shortcut>
                 <CalendarDays />
             </Item>
+            {onAddToDay && (
+                <Item onSelect={onAddToDay}>{t('planner.addToDay')}</Item>
+            )}
             {task.date !== null && (
                 <Item data-shortcut="task.someday" onSelect={onMoveToSomeday}>
                     {t('planner.someday')}
@@ -330,7 +336,11 @@ function TaskMenuItems({
                 data-shortcut="task.delete"
                 onSelect={onDelete}
             >
-                {t('common.delete')}
+                {t(
+                    weekEntrySource(task.id)
+                        ? 'planner.removeFromDay'
+                        : 'common.delete',
+                )}
                 {hint('task.delete')}
                 <Trash2 />
             </Item>
@@ -405,9 +415,7 @@ export function TaskContextMenu({ task, children, ...actions }: Props) {
 /**
  * The row's quiet "more" button (⋮) at its end, opening the task menu's items
  * as a dropdown: the way to reach them on a touch screen, where a long press
- * drags the task instead. Shown below `lg` and on any device with a touch
- * screen (a touch laptop too); hidden on desktops with only a mouse or
- * trackpad, whose users right click.
+ * drags the task instead. Also visible on desktop.
  *
  * Pressing it must not pick the task up: it stops the press from reaching
  * the row's drag listeners.
@@ -433,7 +441,7 @@ export function TaskMenuButton({
                     onTouchStart={(event) => event.stopPropagation()}
                     onMouseDown={(event) => event.stopPropagation()}
                     className={cn(
-                        'mt-1 shrink-0 rounded-full text-muted-foreground hover:bg-transparent lg:pointer-fine:not-any-pointer-coarse:hidden',
+                        'mt-1 shrink-0 rounded-full text-muted-foreground hover:bg-transparent',
                         className,
                     )}
                 >

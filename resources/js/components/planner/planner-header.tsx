@@ -5,7 +5,7 @@ import {
     Search,
     Undo2,
 } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { AccountButton } from '@/components/planner/account-button';
 import { HintedLabel } from '@/components/planner/shortcut-hint';
 import { ViewBar } from '@/components/planner/view-bar';
@@ -31,7 +31,7 @@ import {
     formatWeekNumber,
 } from '@/lib/planner/format';
 import { parseDateKey, weekDateKeys } from '@/lib/db/dates';
-import { undoLastDelete, useDeleteHistory } from '@/lib/planner/undo';
+import { undoLatest, useLatestUndo } from '@/lib/planner/undo';
 import { isoWeekNumber, weekThursday } from '@/lib/planner/week';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -66,10 +66,10 @@ export function PlannerHeader({
     const todayHint = (
         <HintedLabel label={t('planner.currentWeek')} action="week.today" all />
     );
-    const deletes = useDeleteHistory();
-    const undoLabel = deletes.latestTitle
-        ? `Undo delete: ${deletes.latestTitle}`
-        : 'Undo delete';
+    const latestUndo = useLatestUndo();
+    const undoLabel = latestUndo?.label
+        ? t('planner.undoAction', { action: latestUndo.label })
+        : t('planner.undo');
 
     // The week arrows only change the Week view (F39).
     const view = usePlannerView();
@@ -77,6 +77,8 @@ export function PlannerHeader({
     const weekShown = view === 'week';
     const days = weekDateKeys(weekStart);
     const jumpDestination = useRef<string | null>(null);
+    const jumpTouch = useRef<{ x: number; y: number } | null>(null);
+    const [jumpOpen, setJumpOpen] = useState(false);
     const range = dateFormat({ day: 'numeric', month: 'short' }).formatRange(
         weekStart,
         parseDateKey(days[6]),
@@ -166,11 +168,47 @@ export function PlannerHeader({
                                 <span className="truncate text-base">
                                     {range}
                                 </span>
-                                <DropdownMenu>
+                                <DropdownMenu
+                                    open={jumpOpen}
+                                    onOpenChange={setJumpOpen}
+                                >
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             variant="ghost"
                                             aria-label={`${range}. ${t('planner.jumpToDay')}`}
+                                            onPointerDown={(event) => {
+                                                // Let a touch swipe begin here without opening the menu.
+                                                if (
+                                                    event.pointerType ===
+                                                    'touch'
+                                                ) {
+                                                    event.preventDefault();
+                                                    jumpTouch.current = {
+                                                        x: event.clientX,
+                                                        y: event.clientY,
+                                                    };
+                                                }
+                                            }}
+                                            onPointerUp={(event) => {
+                                                const start = jumpTouch.current;
+                                                jumpTouch.current = null;
+                                                if (
+                                                    event.pointerType ===
+                                                        'touch' &&
+                                                    start &&
+                                                    Math.hypot(
+                                                        event.clientX - start.x,
+                                                        event.clientY - start.y,
+                                                    ) < 10
+                                                ) {
+                                                    setJumpOpen(
+                                                        (open) => !open,
+                                                    );
+                                                }
+                                            }}
+                                            onPointerCancel={() => {
+                                                jumpTouch.current = null;
+                                            }}
                                             className="h-auto min-w-0 gap-1 px-0 text-base font-bold"
                                         >
                                             <ChevronDown />
@@ -231,6 +269,29 @@ export function PlannerHeader({
                                 </TooltipContent>
                             </Tooltip>
                         ))}
+                    {weekShown && (
+                        <nav
+                            aria-label={t('planner.weekNav')}
+                            className="ms-2 hidden items-center gap-2 lg:flex"
+                        >
+                            <Button
+                                variant="outline"
+                                className="h-11 rounded-full px-4"
+                                onClick={onPreviousWeek}
+                            >
+                                <ChevronLeft className="size-5 rtl:rotate-180" />
+                                {t('planner.previousWeek')}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="h-11 rounded-full px-4"
+                                onClick={onNextWeek}
+                            >
+                                {t('planner.nextWeek')}
+                                <ChevronRight className="size-5 rtl:rotate-180" />
+                            </Button>
+                        </nav>
+                    )}
                 </div>
                 <nav
                     aria-label={t('planner.weekNav')}
@@ -245,19 +306,19 @@ export function PlannerHeader({
                                     variant="ghost"
                                     size="icon-lg"
                                     className="size-10 rounded-full"
-                                    onClick={() => void undoLastDelete()}
-                                    disabled={deletes.count === 0}
+                                    onClick={undoLatest}
+                                    disabled={!latestUndo}
                                     aria-label={undoLabel}
-                                    data-test="undo-delete"
+                                    data-test="undo-task-action"
                                 >
                                     <Undo2 className="size-5 rtl:-scale-x-100" />
                                 </Button>
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                            {deletes.count === 0
-                                ? 'Nothing to undo'
-                                : undoLabel}
+                            {latestUndo
+                                ? undoLabel
+                                : t('planner.nothingToUndo')}
                         </TooltipContent>
                     </Tooltip>
                     <Tooltip>
@@ -289,6 +350,7 @@ export function PlannerHeader({
                                 size="icon-lg"
                                 className={cn(
                                     navButton,
+                                    'lg:hidden',
                                     !weekShown && 'max-lg:hidden',
                                 )}
                                 onClick={onPreviousWeek}
@@ -312,6 +374,7 @@ export function PlannerHeader({
                                 size="icon-lg"
                                 className={cn(
                                     navButton,
+                                    'lg:hidden',
                                     !weekShown && 'max-lg:hidden',
                                 )}
                                 onClick={onNextWeek}

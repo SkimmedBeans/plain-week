@@ -15,6 +15,7 @@ import {
     compareTaskOrder,
 } from './position';
 import type { Task } from './types';
+import { weekEntry, weekEntrySource } from './week-slots';
 
 /**
  * Where a task lives: a day, or one of the Someday lists. `list` is the
@@ -163,12 +164,22 @@ export async function queryRangeItems(
     rangeStart: string,
     rangeEnd: string,
 ): Promise<PlannerTask[]> {
-    const [rows, series] = await Promise.all([
+    const [rows, series, someday] = await Promise.all([
         db.tasks
             .where('date')
             .between(rangeStart, rangeEnd, true, true)
             .toArray(),
         querySeriesInRange(rangeStart, rangeEnd),
+        db.tasks
+            .where('someday_column')
+            .aboveOrEqual(0)
+            .filter(
+                (task) =>
+                    task.date === null &&
+                    isLive(task) &&
+                    task.series_id === null,
+            )
+            .toArray(),
     ]);
     const items = new Map<string, PlannerTask>();
 
@@ -186,6 +197,20 @@ export async function queryRangeItems(
     );
 
     generated.flat().forEach((item) => items.set(item.id, item));
+
+    const inRange = (date: string) => date >= rangeStart && date <= rangeEnd;
+    for (const task of someday) {
+        if (task.week_slot && inRange(task.week_slot.date)) {
+            const entry = weekEntry(task, task.week_slot);
+            items.set(entry.id, entry);
+        }
+        for (const subtask of task.subtasks) {
+            if (subtask.week_slot && inRange(subtask.week_slot.date)) {
+                const entry = weekEntry(task, subtask.week_slot, subtask);
+                items.set(entry.id, entry);
+            }
+        }
+    }
 
     return [...items.values()];
 }
@@ -273,6 +298,27 @@ export async function querySeries(id: string): Promise<SeriesItem | null> {
  * screen keeps working after its first change.
  */
 export async function queryTask(id: string): Promise<PlannerTask | null> {
+    const source = weekEntrySource(id);
+    if (source) {
+        const task = await db.tasks.get(source.taskId);
+        if (
+            !task ||
+            !isLive(task) ||
+            task.date !== null ||
+            task.series_id !== null
+        ) {
+            return null;
+        }
+        const subtask = task.subtasks.find(
+            (entry) => entry.id === source.subtaskId,
+        );
+        const slot =
+            source.subtaskId === undefined
+                ? task.week_slot
+                : subtask?.week_slot;
+        return slot ? weekEntry(task, slot, subtask) : null;
+    }
+
     const occurrence = parseOccurrenceId(id);
 
     if (occurrence === null) {

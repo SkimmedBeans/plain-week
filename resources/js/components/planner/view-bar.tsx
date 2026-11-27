@@ -5,7 +5,7 @@ import { usePlannerView } from '@/hooks/use-carry-over-setting';
 import { t } from '@/lib/i18n';
 import { isPlannerView, plannerView } from '@/lib/planner/device-settings';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
-import { undoLastDelete, useDeleteHistory } from '@/lib/planner/undo';
+import { undoLatest, useLatestUndo } from '@/lib/planner/undo';
 
 /**
  * The view switch (F30, F38): Week (the days and Someday), Lists (the named
@@ -16,7 +16,7 @@ import { undoLastDelete, useDeleteHistory } from '@/lib/planner/undo';
  */
 export function ViewBar() {
     const view = usePlannerView();
-    const deletes = useDeleteHistory();
+    const latestUndo = useLatestUndo();
 
     return (
         <div className="flex items-center gap-1.5 px-4 pb-3 lg:px-0 lg:pb-0">
@@ -46,12 +46,12 @@ export function ViewBar() {
                 variant="ghost"
                 size="icon"
                 className="shrink-0 rounded-full lg:hidden"
-                onClick={() => void undoLastDelete()}
-                disabled={deletes.count === 0}
+                onClick={undoLatest}
+                disabled={!latestUndo}
                 aria-label={
-                    deletes.latestTitle
-                        ? `Undo delete: ${deletes.latestTitle}`
-                        : 'Undo delete'
+                    latestUndo?.label
+                        ? t('planner.undoAction', { action: latestUndo.label })
+                        : t('planner.undo')
                 }
             >
                 <Undo2 className="size-5 rtl:-scale-x-100" />

@@ -45,7 +45,10 @@ export type TaskLabel = {
  */
 export const SOMEDAY_COLUMNS = [0, 1, 2] as const;
 
+export type WeekSlot = { date: string; position: string };
+
 export type Subtask = {
+    week_slot?: WeekSlot | null;
     id: string;
     text: string;
     done: boolean;
@@ -72,6 +75,7 @@ export type Recurrence =
  * Keys are snake_case in Dexie and on the wire.
  */
 export type Task = {
+    week_slot?: WeekSlot | null;
     id: string;
     text: string;
     /** 'YYYY-MM-DD', or null for Someday. */

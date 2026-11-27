@@ -47,6 +47,7 @@ import {
     deleteWithUndo,
     duplicateWithToast,
     moveWithUndo,
+    scheduleWithUndo,
     setTaskColor,
     todayMove,
 } from '@/lib/planner/task-actions';
@@ -75,6 +76,7 @@ type Props = {
      */
     onOpen: (taskId: string) => void;
     onToggleDone: (taskId: string) => void;
+    listCardSwipes?: boolean;
     className?: string;
 };
 
@@ -387,6 +389,7 @@ export function TaskRow({
     stripe = false,
     onOpen,
     onToggleDone,
+    listCardSwipes = false,
     className,
 }: Props) {
     const openRef = useCursorFocus<HTMLButtonElement>(isCursor);
@@ -484,6 +487,8 @@ export function TaskRow({
         }
     };
 
+    const [addingToDay, setAddingToDay] = useState(false);
+    const pickerDate = addingToDay ? task.week_slot?.date : task.date;
     const actions: TaskContextMenuActions = {
         onOpenCard: () => onOpen(task.id),
         onCopyText: () =>
@@ -501,7 +506,15 @@ export function TaskRow({
                 void moveWithUndo(task.id, move);
             }
         },
+        onAddToDay:
+            task.kind === 'task' && task.date === null
+                ? () => {
+                      setAddingToDay(true);
+                      window.setTimeout(() => setPickDateOpen(true), 0);
+                  }
+                : undefined,
         onPickDate: () => {
+            setAddingToDay(false);
             // The context menu's dismissal click would otherwise be read as an
             // outside click by the popover's dismiss layer, closing it
             // instantly. Open on the next tick so that click has settled first.
@@ -549,6 +562,7 @@ export function TaskRow({
             <div
                 ref={setNodeRef}
                 data-task-id={task.id}
+                data-week-swipe-block={task.done || listCardSwipes || undefined}
                 data-stripe={stripe || undefined}
                 data-cursor={isCursor || undefined}
                 {...listeners}
@@ -568,7 +582,7 @@ export function TaskRow({
                     swallowSwipeClick.current = false;
                     const target = event.target as Element;
                     deleteSwipe.current =
-                        task.done &&
+                        (task.done || listCardSwipes) &&
                         touchPressed.current &&
                         event.isPrimary &&
                         target.closest('[data-task-open]') &&
@@ -579,11 +593,12 @@ export function TaskRow({
                                   x: event.clientX,
                                   y: event.clientY,
                                   startedAt: event.timeStamp,
-                                  direction:
-                                      getComputedStyle(event.currentTarget)
-                                          .direction === 'rtl'
-                                          ? 1
-                                          : -1,
+                                  direction: listCardSwipes
+                                      ? 1
+                                      : getComputedStyle(event.currentTarget)
+                                              .direction === 'rtl'
+                                        ? 1
+                                        : -1,
                                   engaged: false,
                               }
                             : null;
@@ -604,7 +619,10 @@ export function TaskRow({
                         return;
                     }
 
-                    const x = (event.clientX - swipe.x) * swipe.direction;
+                    const delta = event.clientX - swipe.x;
+                    const x = listCardSwipes
+                        ? Math.abs(delta)
+                        : delta * swipe.direction;
                     const y = Math.abs(event.clientY - swipe.y);
                     if (!swipe.engaged) {
                         if (Math.hypot(x, y) <= TOUCH_DRAG_TOLERANCE_PX) {
@@ -623,7 +641,7 @@ export function TaskRow({
 
                     const row = swipeSurface.current;
                     if (row) {
-                        row.style.translate = `${Math.max(0, x) * swipe.direction}px`;
+                        row.style.translate = `${listCardSwipes ? delta : Math.max(0, x) * swipe.direction}px`;
                     }
                 }}
                 onPointerUp={(event) => {
@@ -637,16 +655,24 @@ export function TaskRow({
                         return;
                     }
 
-                    const x = (event.clientX - swipe.x) * swipe.direction;
+                    const delta = event.clientX - swipe.x;
+                    const x = listCardSwipes
+                        ? Math.abs(delta)
+                        : delta * swipe.direction;
                     const y = Math.abs(event.clientY - swipe.y);
                     swallowSwipeClick.current = true;
-                    void settleSwipe(
-                        swipe,
-                        task.done &&
-                            !isDragging &&
-                            x >= DELETE_SWIPE_DISTANCE_PX &&
-                            x > 2 * y,
-                    );
+                    const triggered =
+                        !isDragging &&
+                        x >= DELETE_SWIPE_DISTANCE_PX &&
+                        x > 2 * y;
+                    if (listCardSwipes && triggered && delta < 0) {
+                        void settleSwipe(swipe, false);
+                        if (!task.done) {
+                            onToggleDone(task.id);
+                        }
+                    } else {
+                        void settleSwipe(swipe, triggered);
+                    }
                 }}
                 onPointerCancel={() => {
                     touchPressed.current = false;
@@ -726,7 +752,7 @@ export function TaskRow({
                             // (`CURSOR_ROW_CLASS`), not as a ring on the button.
                             className={cn(
                                 'h-auto min-w-0 flex-1 items-start justify-start gap-0 self-stretch rounded-none border-0 px-0 py-2 text-start text-base font-normal whitespace-normal text-inherit hover:bg-transparent hover:text-inherit focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 lg:text-sm dark:hover:bg-transparent',
-                                task.done && 'touch-pan-y touch-pinch-zoom',
+                                'touch-pan-y touch-pinch-zoom',
                             )}
                         >
                             <span ref={textRef} className="contents">
@@ -819,18 +845,28 @@ export function TaskRow({
                             mode="single"
                             weekStartsOn={1}
                             selected={
-                                task.date ? parseDateKey(task.date) : undefined
+                                pickerDate
+                                    ? parseDateKey(pickerDate)
+                                    : undefined
                             }
                             defaultMonth={
                                 pickDateMonth ??
-                                (task.date
-                                    ? parseDateKey(task.date)
+                                (pickerDate
+                                    ? parseDateKey(pickerDate)
                                     : new Date())
                             }
                             onMonthChange={setPickDateMonth}
                             onSelect={(date) => {
                                 setPickDateOpen(false);
-                                if (date && toDateKey(date) !== task.date) {
+                                if (date && addingToDay) {
+                                    void scheduleWithUndo(
+                                        task.id,
+                                        toDateKey(date),
+                                    );
+                                } else if (
+                                    date &&
+                                    toDateKey(date) !== task.date
+                                ) {
                                     void moveWithUndo(task.id, {
                                         date: toDateKey(date),
                                     });

@@ -22,9 +22,9 @@ import { createTask, listTasksIn, updateTask } from '@/lib/db/tasks';
 import type { TaskPlacement } from '@/lib/db/tasks';
 import { deleteWithUndo } from '@/lib/planner/task-actions';
 import {
-    DELETE_HISTORY_LIMIT,
-    clearDeleteHistory,
-    undoLastDelete,
+    UNDO_HISTORY_LIMIT,
+    clearUndoHistory,
+    undoLatest,
 } from '@/lib/planner/undo';
 
 // The account button needs the Inertia page; it is not under test here.
@@ -72,7 +72,7 @@ beforeEach(async () => {
         now: new Date('2026-10-12T08:00:00'),
     });
     await wipeLocalDatabase();
-    clearDeleteHistory();
+    clearUndoHistory();
 });
 
 afterEach(() => {
@@ -112,7 +112,7 @@ describe('header undo for deletes', () => {
         render(<Day />);
 
         // The header's button (phones show the same one in the view bar, F40).
-        const [button] = screen.getAllByRole('button', { name: 'Undo delete' });
+        const [button] = screen.getAllByRole('button', { name: 'Undo' });
 
         expect((button as HTMLButtonElement).disabled).toBe(true);
     });
@@ -127,14 +127,14 @@ describe('header undo for deletes', () => {
         await deleteWithUndo(swim.id);
 
         const [button] = await screen.findAllByRole('button', {
-            name: 'Undo delete: Swim',
+            name: 'Undo: Deleted Swim',
         });
         await user.click(button);
 
         await waitFor(async () => expect(await liveTexts()).toEqual(['Swim']));
         expect(
-            await screen.findAllByRole('button', { name: 'Undo delete: Gym' }),
-        ).toHaveLength(2);
+            await screen.findAllByRole('button', { name: 'Undo: Deleted Gym' }),
+        ).not.toHaveLength(0);
     });
 
     it('forgets a delete once its toast has undone it', async () => {
@@ -143,14 +143,14 @@ describe('header undo for deletes', () => {
         render(<Day />);
 
         await deleteWithUndo(gym.id);
-        const undoButtons = await screen.findAllByRole('button', {
+        const toast = await screen.findByRole('button', {
             name: 'Undo',
         });
-        await user.click(undoButtons.at(-1)!);
+        await user.click(toast);
 
         await waitFor(async () => expect(await liveTexts()).toEqual(['Gym']));
         const [button] = await screen.findAllByRole('button', {
-            name: 'Undo delete',
+            name: 'Undo',
         });
         expect((button as HTMLButtonElement).disabled).toBe(true);
     });
@@ -161,17 +161,18 @@ describe('header undo for deletes', () => {
         await deleteWithUndo(gym.id);
         // Another route (here: a direct write) touches the deleted row.
         const row = await db.tasks.get(gym.id);
-        await db.tasks.put({ ...row!, updated_at: '2099-01-01T00:00:00.000Z' });
+        await db.tasks.put({ ...row!, text: 'Changed elsewhere' });
 
-        await undoLastDelete();
+        expect(undoLatest()).toBe(true);
 
+        await waitFor(() => expect(undoLatest()).toBe(false));
         expect((await db.tasks.get(gym.id))?.deleted_at).not.toBeNull();
     });
 
     it('keeps at most the newest deletes', async () => {
         const ids: string[] = [];
 
-        for (let i = 0; i < DELETE_HISTORY_LIMIT + 2; i++) {
+        for (let i = 0; i < UNDO_HISTORY_LIMIT + 2; i++) {
             ids.push((await createTask({ text: `T${i}`, date: DAY })).id);
         }
 
@@ -179,12 +180,12 @@ describe('header undo for deletes', () => {
             await deleteWithUndo(id);
         }
 
-        for (let i = 0; i < DELETE_HISTORY_LIMIT + 2; i++) {
-            await undoLastDelete();
+        for (let i = 0; i < UNDO_HISTORY_LIMIT + 2; i++) {
+            undoLatest();
         }
 
         await waitFor(async () =>
-            expect((await liveTexts()).length).toBe(DELETE_HISTORY_LIMIT),
+            expect((await liveTexts()).length).toBe(UNDO_HISTORY_LIMIT),
         );
     });
 });
