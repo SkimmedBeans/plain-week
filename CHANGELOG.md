@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.36] - 2026-11-27
+
+### Changed
+
+- Notes share the wider desktop columns, spacing, and lightly tinted outlines used by Lists.
+
 ## [0.4.35] - 2026-11-27
 
 ### Changed
@@ -920,7 +926,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.35...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.36...HEAD
+[0.4.36]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.35...v0.4.36
 [0.4.35]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.34...v0.4.35
 [0.4.34]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.33...v0.4.34
 [0.4.33]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.32...v0.4.33
