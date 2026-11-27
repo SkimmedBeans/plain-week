@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 
 type Props = {
     paper?: boolean;
+    showAddPrompt?: boolean;
     /** The day or the Someday list this list shows. */
     placement: TaskPlacement;
     /** The named list's name, when `placement` is in one. */
@@ -71,6 +72,7 @@ export function DropIndicator() {
  */
 export function TaskList({
     paper = false,
+    showAddPrompt = paper,
     placement,
     name,
     tasks,
@@ -257,7 +259,7 @@ export function TaskList({
                                 <NewTaskRow
                                     ref={newTaskInput}
                                     label={newTaskLabel}
-                                    showPrompt={paper}
+                                    showPrompt={showAddPrompt}
                                     isCursor={cursorOnNewRow}
                                     onSubmit={handleSubmit}
                                     onCancel={handleCancel}
@@ -299,7 +301,7 @@ export function TaskList({
                     <NewTaskRow
                         ref={newTaskInput}
                         label={newTaskLabel}
-                        showPrompt={paper}
+                        showPrompt={showAddPrompt}
                         isCursor={cursorOnNewRow}
                         onSubmit={handleSubmit}
                         onCancel={handleCancel}
@@ -320,7 +322,7 @@ export function TaskList({
                     <NewTaskRow
                         ref={newTaskInput}
                         label={newTaskLabel}
-                        showPrompt={paper}
+                        showPrompt={showAddPrompt}
                         isCursor={cursorOnNewRow}
                         onSubmit={handleSubmit}
                         onCancel={handleCancel}

@@ -106,6 +106,7 @@ export function DayColumn({
                 </Button>
             </h2>
             <TaskList
+                showAddPrompt
                 placement={{ date }}
                 tasks={tasks}
                 newTaskLabel={newTaskLabel}

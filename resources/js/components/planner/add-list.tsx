@@ -22,7 +22,13 @@ type Kind = 'list' | 'note';
  * creates the view's kind, a task list on Lists, an empty note (F24) on
  * Notes.
  */
-export function AddList({ kind }: { kind: Kind }) {
+export function AddList({
+    kind,
+    onCreateNote,
+}: {
+    kind: Kind;
+    onCreateNote?: (id: string) => void;
+}) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const isNote = kind === 'note';
@@ -40,6 +46,9 @@ export function AddList({ kind }: { kind: Kind }) {
                 }
                 setName('');
                 setOpen(false);
+                if (isNote) {
+                    onCreateNote?.(list.id);
+                }
             })
             .catch(() => toast.error(t('planner.addListFailed')));
     };
@@ -55,7 +64,11 @@ export function AddList({ kind }: { kind: Kind }) {
                 className="shrink-0 self-start rounded-full"
             >
                 <Plus />
-                {t('planner.addList')}
+                {t(
+                    isNote
+                        ? 'planner.addNoteTitle'
+                        : 'planner.addListOnlyTitle',
+                )}
             </Button>
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>

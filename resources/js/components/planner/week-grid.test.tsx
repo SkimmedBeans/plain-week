@@ -346,7 +346,7 @@ describe('WeekGrid', () => {
         await screen.findByRole('dialog');
     });
 
-    it('shows one note per row below lg, expanded in place (F55)', async () => {
+    it('opens a compact phone note in a card (F57)', async () => {
         const first = await createList('Ideas');
         await convertListToNote(first.id);
         const second = await createList('Travel');
@@ -373,31 +373,49 @@ describe('WeekGrid', () => {
         expect(screen.queryAllByRole('textbox')).toHaveLength(0);
         expect(document.querySelector('[data-collapsed-lists]')).toBeNull();
 
-        // Pressing a heading expands its note in place; the other stays
-        // closed, and the choice is remembered per device.
-        await user.click(screen.getByRole('button', { name: 'Ideas' }));
-        await screen.findByRole('textbox', { name: 'Note: Ideas' });
-        expect(screen.getAllByRole('textbox')).toHaveLength(1);
-        expect(localStorage.getItem('plain-week.notes-expanded')).toBe(
-            JSON.stringify([first.id]),
+        expect(screen.queryByRole('button', { name: 'Expand all' })).toBeNull();
+        const row = screen.getByRole('button', { name: 'Ideas' });
+        await user.click(row);
+        const card = await screen.findByRole('dialog');
+        expect(card.querySelector('textarea')).not.toBeNull();
+        expect(
+            screen.getAllByRole('textbox', { name: 'Note: Ideas' }),
+        ).toHaveLength(1);
+
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        expect(
+            screen.queryByRole('textbox', { name: 'Note: Ideas' }),
+        ).toBeNull();
+        expect(document.activeElement).toBe(row);
+        setViewportWidth(1024);
+    });
+
+    it('focuses the note editor after creating a note on a phone', async () => {
+        localStorage.setItem('plain-week.view', 'notes');
+        setViewportWidth(412);
+        const user = userEvent.setup();
+        render(
+            <ScopePromptProvider>
+                <WeekGrid
+                    weekStart={new Date(2026, 9, 12)}
+                    today="2026-10-15"
+                    onOpenTask={() => {}}
+                />
+            </ScopePromptProvider>,
         );
 
-        // Pressing it again collapses it back to its heading.
-        await user.click(screen.getByRole('button', { name: 'Ideas' }));
-        await waitFor(() =>
-            expect(screen.queryAllByRole('textbox')).toHaveLength(0),
+        await user.click(screen.getByRole('button', { name: 'New note' }));
+        await user.type(
+            await screen.findByRole('textbox', { name: 'Note name' }),
+            'Ideas',
         );
-        expect(localStorage.getItem('plain-week.notes-expanded')).toBeNull();
+        await user.click(screen.getByRole('button', { name: 'Create' }));
 
-        // The F45 bar expands and collapses every note row.
-        await user.click(screen.getByRole('button', { name: 'Expand all' }));
-        await waitFor(() =>
-            expect(screen.getAllByRole('textbox')).toHaveLength(2),
-        );
-        await user.click(screen.getByRole('button', { name: 'Collapse all' }));
-        await waitFor(() =>
-            expect(screen.queryAllByRole('textbox')).toHaveLength(0),
-        );
+        const note = await screen.findByRole('textbox', {
+            name: 'Note: Ideas',
+        });
+        await waitFor(() => expect(document.activeElement).toBe(note));
         setViewportWidth(1024);
     });
 });

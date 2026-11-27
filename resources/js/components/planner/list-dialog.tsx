@@ -1,5 +1,5 @@
 import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
-import { ClipboardCopy, ImagePlus, Trash2 } from 'lucide-react';
+import { ClipboardCopy, Ellipsis, ImagePlus, Trash2 } from 'lucide-react';
 import {
     Fragment,
     useEffect,
@@ -35,12 +35,24 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { useStripedRows } from '@/hooks/use-carry-over-setting';
 import { useSomedayLists } from '@/hooks/use-tasks';
 import { stripeColor } from '@/lib/planner/device-settings';
 import { toDateKey } from '@/lib/db/dates';
-import { deleteList, renameList, LIST_NAME_MAX } from '@/lib/db/lists';
+import {
+    deleteList,
+    renameList,
+    setListArchived,
+    LIST_NAME_MAX,
+} from '@/lib/db/lists';
 import { createTask, toggleDone, type TaskPlacement } from '@/lib/db/tasks';
 import type { PlannerTask } from '@/lib/recurrence/expand';
 import { t } from '@/lib/i18n';
@@ -56,6 +68,7 @@ import { ListNote } from '@/components/planner/list-note';
 import { requestAddPicture } from '@/lib/notes/picture-requests';
 import { copyListTasks, copyWithToast } from '@/lib/planner/clipboard';
 import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
+import { toastWithUndo } from '@/lib/planner/undo';
 import { cn } from '@/lib/utils';
 
 /**
@@ -84,6 +97,8 @@ export function listCardKey(identity: ListCardIdentity): string {
 type Props = {
     /** The list to show; null keeps the card closed. */
     identity: ListCardIdentity | null;
+    focusNoteOnOpen?: boolean;
+    showNoteMenu?: boolean;
     /** Monday of the shown week: the card's drop resolution uses it. */
     weekStart: Date;
     /** The list's placement: a day, or a Someday list (column 0 / named). */
@@ -120,6 +135,8 @@ export function ListDialog(props: Props) {
 
 function ListDialogSession({
     identity,
+    focusNoteOnOpen,
+    showNoteMenu,
     weekStart,
     placement,
     tasks,
@@ -169,7 +186,13 @@ function ListDialogSession({
 
         void deleteList(list.id).then((deleted) => {
             if (deleted === null) {
-                toast.error(t('planner.listDeleteFailed'));
+                toast.error(
+                    t(
+                        typeof list.note === 'string'
+                            ? 'planner.noteDeleteFailed'
+                            : 'planner.listDeleteFailed',
+                    ),
+                );
             }
             // A successful delete closes the card through the effect above.
         });
@@ -200,7 +223,13 @@ function ListDialogSession({
                 // keyboard opens on touch devices.
                 onOpenAutoFocus={(event) => {
                     event.preventDefault();
-                    contentRef.current?.focus();
+                    const content = contentRef.current;
+                    const note = focusNoteOnOpen
+                        ? content?.querySelector<HTMLTextAreaElement>(
+                              '[data-list-note]',
+                          )
+                        : null;
+                    (note ?? content)?.focus();
                 }}
                 // The delete confirm is portalled outside this content: a
                 // click on it must not close the card.
@@ -283,45 +312,147 @@ function ListDialogSession({
                                     TASK_COLOR_STYLES[color].pill,
                                 )}
                             />
-                            {typeof list?.note === 'string' && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={t('planner.addPicture')}
-                                    onClick={() => requestAddPicture(list.id)}
-                                    className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
-                                >
-                                    <ImagePlus className="size-5" />
-                                </Button>
+                            {showNoteMenu && typeof list?.note === 'string' ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label={t(
+                                                'planner.noteOptions',
+                                                { name: list.name },
+                                            )}
+                                            className="mt-0.5 shrink-0 rounded-full"
+                                        >
+                                            <Ellipsis />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onSelect={() =>
+                                                requestAddPicture(list.id)
+                                            }
+                                        >
+                                            {t('planner.addPicture')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onSelect={() =>
+                                                void copyWithToast(
+                                                    list.note ?? '',
+                                                    t('planner.noteCopied'),
+                                                )
+                                            }
+                                        >
+                                            {t('planner.copyNoteText')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        {!list.archived && (
+                                            <DropdownMenuItem
+                                                onSelect={() => {
+                                                    void setListArchived(
+                                                        list.id,
+                                                        true,
+                                                    )
+                                                        .then((archived) => {
+                                                            if (
+                                                                archived ===
+                                                                null
+                                                            ) {
+                                                                toast.error(
+                                                                    t(
+                                                                        'planner.noteArchiveFailed',
+                                                                    ),
+                                                                );
+                                                                return;
+                                                            }
+                                                            toastWithUndo(
+                                                                t(
+                                                                    'planner.noteArchived',
+                                                                    {
+                                                                        name: list.name,
+                                                                    },
+                                                                ),
+                                                                () =>
+                                                                    void setListArchived(
+                                                                        list.id,
+                                                                        false,
+                                                                    ),
+                                                            );
+                                                            onClose();
+                                                        })
+                                                        .catch(() =>
+                                                            toast.error(
+                                                                t(
+                                                                    'planner.noteArchiveFailed',
+                                                                ),
+                                                            ),
+                                                        );
+                                                }}
+                                            >
+                                                {t('planner.archiveNote')}
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem
+                                            onSelect={() => setDeleteOpen(true)}
+                                        >
+                                            {t('planner.deleteNote')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <>
+                                    {typeof list?.note === 'string' && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label={t('planner.addPicture')}
+                                            onClick={() =>
+                                                requestAddPicture(list.id)
+                                            }
+                                            className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
+                                        >
+                                            <ImagePlus className="size-5" />
+                                        </Button>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label={t(
+                                            typeof list?.note === 'string'
+                                                ? 'planner.copyNoteText'
+                                                : 'planner.copyAllTasks',
+                                        )}
+                                        onClick={() =>
+                                            void (typeof list?.note === 'string'
+                                                ? copyWithToast(
+                                                      list.note,
+                                                      t('planner.noteCopied'),
+                                                  )
+                                                : copyListTasks(tasks ?? []))
+                                        }
+                                        className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
+                                    >
+                                        <ClipboardCopy className="size-5" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label={t(
+                                            typeof list?.note === 'string'
+                                                ? 'planner.deleteNote'
+                                                : 'common.delete',
+                                        )}
+                                        onClick={() => setDeleteOpen(true)}
+                                        className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
+                                    >
+                                        <Trash2 className="size-5" />
+                                    </Button>
+                                </>
                             )}
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label={t('planner.copyAllTasks')}
-                                onClick={() =>
-                                    void (typeof list?.note === 'string'
-                                        ? copyWithToast(
-                                              list.note,
-                                              t('planner.noteCopied'),
-                                          )
-                                        : copyListTasks(tasks ?? []))
-                                }
-                                className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
-                            >
-                                <ClipboardCopy className="size-5" />
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label={t('common.delete')}
-                                onClick={() => setDeleteOpen(true)}
-                                className="mt-0.5 shrink-0 rounded-full hover:bg-transparent"
-                            >
-                                <Trash2 className="size-5" />
-                            </Button>
                         </div>
                     </>
                 ) : (
@@ -363,7 +494,11 @@ function ListDialogSession({
                                 })}
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                                {t('planner.deleteListDescription')}
+                                {t(
+                                    typeof list.note === 'string'
+                                        ? 'planner.deleteNoteDescription'
+                                        : 'planner.deleteListDescription',
+                                )}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
