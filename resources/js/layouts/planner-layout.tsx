@@ -5,7 +5,6 @@ import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import { KeyboardCursorProvider } from '@/components/planner/keyboard-cursor';
 import { ListDialog } from '@/components/planner/list-dialog';
 import { SearchDialog } from '@/components/planner/search-dialog';
-import { MobileWeekNavigation } from '@/components/planner/mobile-week-navigation';
 import { PlannerDnd } from '@/components/planner/planner-dnd';
 import { PlannerHeader } from '@/components/planner/planner-header';
 import { ScopePromptProvider } from '@/components/planner/scope-prompt';
@@ -13,6 +12,7 @@ import { ShortcutsDialog } from '@/components/planner/shortcuts-dialog';
 import { TaskDialog } from '@/components/planner/task-dialog/task-dialog';
 import { WeekGrid } from '@/components/planner/week-grid';
 import { SyncProvider } from '@/components/sync-provider';
+import { Button } from '@/components/ui/button';
 import { useCarryOver } from '@/hooks/use-carry-over';
 import { usePlannerView } from '@/hooks/use-carry-over-setting';
 import { useGuestOnboarding } from '@/hooks/use-guest-onboarding';
@@ -109,6 +109,7 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                                 onNextWeek={navigation.nextWeek}
                                 onToday={navigation.goToToday}
                                 onGoToWeekOf={navigation.goToWeekOf}
+                                swipeHandlers={weekSwipe.handlers}
                             />
                             <main
                                 ref={weekSwipe.surface}
@@ -117,6 +118,7 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                                 className={cn(
                                     'flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6',
                                     weekShown &&
+                                        !navigation.isCurrentWeek &&
                                         'max-lg:pb-[calc(6rem+env(safe-area-inset-bottom))]',
                                 )}
                             >
@@ -132,11 +134,15 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                                     />
                                 </PlannerDnd>
                             </main>
-                            {weekShown && (
-                                <MobileWeekNavigation
-                                    navigation={navigation}
-                                    swipeHandlers={weekSwipe.handlers}
-                                />
+                            {weekShown && !navigation.isCurrentWeek && (
+                                <Button
+                                    type="button"
+                                    onClick={navigation.goToToday}
+                                    className="fixed end-[calc(1rem+env(safe-area-inset-right))] bottom-[calc(1rem+env(safe-area-inset-bottom))] z-30 h-11 touch-manipulation rounded-full px-5 shadow-lg lg:hidden rtl:end-[calc(1rem+env(safe-area-inset-left))]"
+                                    data-test="mobile-today-button"
+                                >
+                                    {t('planner.today')}
+                                </Button>
                             )}
                         </div>
                         <TaskDialog
