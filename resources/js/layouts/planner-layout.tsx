@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import { KeyboardCursorProvider } from '@/components/planner/keyboard-cursor';
@@ -13,10 +13,12 @@ import { WeekGrid } from '@/components/planner/week-grid';
 import { SyncProvider } from '@/components/sync-provider';
 import { useCarryOver } from '@/hooks/use-carry-over';
 import { useGuestOnboarding } from '@/hooks/use-guest-onboarding';
+import { useIsBelowLg } from '@/hooks/use-mobile';
 import { clearTaskParam, useTaskLink } from '@/hooks/use-task-link';
 import { useToday } from '@/hooks/use-today';
 import { useWeekNavigation } from '@/hooks/use-week-navigation';
 import { parseDateKey } from '@/lib/db/dates';
+import { searchDialogStore } from '@/lib/planner/search-dialog';
 import { edit as settings } from '@/routes/profile';
 
 /**
@@ -30,9 +32,15 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
     const today = useToday();
     const navigation = useWeekNavigation(today);
     const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+    const returnToSearch = useRef(false);
+    const belowLg = useIsBelowLg();
     const closeTask = useCallback(() => {
         setOpenTaskId(null);
         clearTaskParam();
+        if (returnToSearch.current) {
+            returnToSearch.current = false;
+            searchDialogStore.open();
+        }
     }, []);
 
     const signedIn = Boolean(usePage().props.auth.user);
@@ -77,7 +85,11 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                             onNextWeek={navigation.nextWeek}
                             onToday={navigation.goToToday}
                         />
-                        <main className="flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6">
+                        <main
+                            tabIndex={-1}
+                            data-planner-content
+                            className="flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6"
+                        >
                             <PlannerDnd
                                 weekStart={navigation.weekStart}
                                 onPreviousWeek={navigation.previousWeek}
@@ -93,7 +105,12 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                     </div>
                     <TaskDialog taskId={openTaskId} onClose={closeTask} />
                     <ShortcutsDialog canOpenSettings={signedIn} />
-                    <SearchDialog onOpenTask={setOpenTaskId} />
+                    <SearchDialog
+                        onOpenTask={(id) => {
+                            returnToSearch.current = belowLg;
+                            setOpenTaskId(id);
+                        }}
+                    />
                     <InstallAppDialog />
                     {children}
                 </KeyboardCursorProvider>

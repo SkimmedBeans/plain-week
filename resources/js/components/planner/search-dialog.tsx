@@ -1,5 +1,5 @@
 import { Repeat, Search } from 'lucide-react';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Dialog } from '@/components/back-closable-dialog';
 import { focusCursorRow } from '@/components/planner/keyboard-cursor';
 import {
@@ -8,6 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 import { searchTasks } from '@/lib/planner/search';
@@ -27,6 +28,10 @@ export function SearchDialog({
 }: {
     onOpenTask: (taskId: string) => void;
 }) {
+    const belowLg = useIsBelowLg();
+    const lastSearch = useRef<{ query: string; scrollTop: number } | null>(
+        null,
+    );
     const isOpen = useSyncExternalStore(
         searchDialogStore.subscribe,
         searchDialogStore.isOpen,
@@ -36,11 +41,20 @@ export function SearchDialog({
     return (
         <Dialog
             open={isOpen}
-            onOpenChange={(value) => !value && searchDialogStore.close()}
+            onOpenChange={(value) => {
+                if (!value) {
+                    lastSearch.current = null;
+                    searchDialogStore.close();
+                }
+            }}
         >
             {isOpen && (
                 <SearchContent
-                    onOpenTask={(id) => {
+                    initialSearch={lastSearch.current}
+                    onOpenTask={(id, query, scrollTop) => {
+                        lastSearch.current = belowLg
+                            ? { query, scrollTop }
+                            : null;
                         searchDialogStore.close();
                         onOpenTask(id);
                     }}
@@ -51,12 +65,26 @@ export function SearchDialog({
 }
 
 function SearchContent({
+    initialSearch,
     onOpenTask,
 }: {
-    onOpenTask: (taskId: string) => void;
+    initialSearch: { query: string; scrollTop: number } | null;
+    onOpenTask: (taskId: string, query: string, scrollTop: number) => void;
 }) {
-    const [query, setQuery] = useState('');
+    const [query, setQuery] = useState(initialSearch?.query ?? '');
     const [results, setResults] = useState<SearchResult[]>([]);
+    const resultList = useRef<HTMLUListElement>(null);
+    const restoreScroll = useRef(initialSearch?.scrollTop ?? 0);
+
+    useEffect(() => {
+        if (results.length > 0 && resultList.current) {
+            resultList.current.scrollTop = restoreScroll.current;
+            restoreScroll.current = 0;
+        }
+    }, [results]);
+
+    const openResult = (id: string) =>
+        onOpenTask(id, query, resultList.current?.scrollTop ?? 0);
 
     useEffect(() => {
         let current = true;
@@ -80,7 +108,7 @@ function SearchContent({
                     event.preventDefault();
                 }
             }}
-            className="top-4 max-h-[calc(100dvh-2rem)] translate-y-0 gap-3 overflow-y-auto p-4 sm:top-16 sm:max-w-lg"
+            className="top-4 flex max-h-[calc(100dvh-2rem)] translate-y-0 flex-col gap-3 p-4 sm:top-16 sm:max-w-lg"
         >
             <DialogTitle className="sr-only">{t('planner.search')}</DialogTitle>
             <DialogDescription className="sr-only">
@@ -98,7 +126,7 @@ function SearchContent({
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' && results.length > 0) {
                             event.preventDefault();
-                            onOpenTask(results[0].openId);
+                            openResult(results[0].openId);
                         }
                     }}
                     className="ps-9"
@@ -106,8 +134,9 @@ function SearchContent({
             </div>
             {query.trim() !== '' && (
                 <ul
+                    ref={resultList}
                     aria-label={t('planner.searchResults')}
-                    className="flex flex-col"
+                    className="min-h-0 overflow-y-auto"
                 >
                     {results.length === 0 ? (
                         <li className="px-2 py-3 text-sm text-muted-foreground">
@@ -120,7 +149,7 @@ function SearchContent({
                                     type="button"
                                     variant="ghost"
                                     data-search-result
-                                    onClick={() => onOpenTask(result.openId)}
+                                    onClick={() => openResult(result.openId)}
                                     className={cn(
                                         'h-auto w-full justify-between gap-3 rounded-md px-2 py-2 text-start font-normal whitespace-normal',
                                         result.done &&

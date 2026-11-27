@@ -1,5 +1,5 @@
 import { AlertDialog, Dialog } from '@/components/back-closable-dialog';
-import { ClipboardCopy, Ellipsis, ImagePlus, Trash2 } from 'lucide-react';
+import { ClipboardCopy, Ellipsis, ImagePlus, Trash2, X } from 'lucide-react';
 import {
     Fragment,
     useEffect,
@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { useStripedRows } from '@/hooks/use-carry-over-setting';
+import { useBackToClose } from '@/hooks/use-back-to-close';
 import { useSomedayLists } from '@/hooks/use-tasks';
 import { stripeColor } from '@/lib/planner/device-settings';
 import { toDateKey } from '@/lib/db/dates';
@@ -155,6 +156,8 @@ function ListDialogSession({
     const open = !isNamed || (known && list !== undefined);
     const contentRef = useRef<HTMLDivElement>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [noteMenuOpen, setNoteMenuOpen] = useState(false);
+    useBackToClose(noteMenuOpen, () => setNoteMenuOpen(false));
     const stripes = useStripedRows();
 
     // Deleted here or on another device (through sync): nothing left to show.
@@ -249,9 +252,14 @@ function ListDialogSession({
                         )}"]`,
                     );
 
-                    if (header) {
+                    const target =
+                        header ??
+                        document.querySelector<HTMLElement>(
+                            '[data-planner-content]',
+                        );
+                    if (target) {
                         event.preventDefault();
-                        header.focus();
+                        target.focus({ preventScroll: true });
                     }
                 }}
                 data-stripes={stripes || undefined}
@@ -274,7 +282,7 @@ function ListDialogSession({
                             typing never waits on the database round trip, and a
                             remote rename made while the card is open shows next
                             time it opens. */}
-                        <div className="flex items-start gap-2 border-b border-foreground/30 pb-1">
+                        <div className="flex items-start gap-2 border-b border-foreground/30 pb-1 max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:bg-secondary">
                             <Input
                                 defaultValue={name}
                                 maxLength={LIST_NAME_MAX}
@@ -313,7 +321,10 @@ function ListDialogSession({
                                 )}
                             />
                             {showNoteMenu && typeof list?.note === 'string' ? (
-                                <DropdownMenu>
+                                <DropdownMenu
+                                    open={noteMenuOpen}
+                                    onOpenChange={setNoteMenuOpen}
+                                >
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             type="button"
@@ -453,10 +464,20 @@ function ListDialogSession({
                                     </Button>
                                 </>
                             )}
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t('common.close')}
+                                onClick={onClose}
+                                className="lg:hidden"
+                            >
+                                <X />
+                            </Button>
                         </div>
                     </>
                 ) : (
-                    <h2 className="flex items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg font-bold tracking-tight lg:text-xl">
+                    <h2 className="flex items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg font-bold tracking-tight max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:bg-secondary lg:text-xl">
                         <span className="min-w-0 truncate">{dayTitle}</span>
                         <Button
                             type="button"
@@ -467,6 +488,16 @@ function ListDialogSession({
                             className="shrink-0 rounded-full hover:bg-transparent"
                         >
                             <ClipboardCopy className="size-5" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={t('common.close')}
+                            onClick={onClose}
+                            className="lg:hidden"
+                        >
+                            <X />
                         </Button>
                     </h2>
                 )}

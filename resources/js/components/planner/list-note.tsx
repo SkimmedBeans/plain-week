@@ -35,18 +35,41 @@ export function ListNote({
 }) {
     const field = useRef<HTMLTextAreaElement>(null);
     const timer = useRef<number | undefined>(undefined);
+    const draft = useRef<{ text: string } | null>(null);
+    const writing = useRef<{ text: string } | null>(null);
+    const [saveFailed, setSaveFailed] = useState(false);
     const note = list.note ?? '';
 
     const save = () => {
         window.clearTimeout(timer.current);
         timer.current = undefined;
-        const value = field.current?.value;
-
-        if (value !== undefined && value !== note) {
-            void setListNote(list.id, value).catch(() =>
-                toast.error(t('planner.noteSaveFailed')),
-            );
+        const pending = draft.current;
+        if (pending === null || writing.current === pending) {
+            return;
         }
+
+        writing.current = pending;
+        void setListNote(list.id, pending.text)
+            .then((updated) => {
+                if (updated === null) {
+                    throw new Error('Note is unavailable');
+                }
+                if (draft.current === pending) {
+                    draft.current = null;
+                    setSaveFailed(false);
+                }
+            })
+            .catch(() => {
+                if (draft.current === pending) {
+                    setSaveFailed(true);
+                    toast.error(t('planner.noteSaveFailed'));
+                }
+            })
+            .finally(() => {
+                if (writing.current === pending) {
+                    writing.current = null;
+                }
+            });
     };
 
     // Saves what is typed when the note goes away mid-pause.
@@ -54,14 +77,18 @@ export function ListNote({
     useEffect(() => {
         saveRef.current = save;
     });
-    useEffect(
-        () => () => {
-            if (timer.current !== undefined) {
+    useEffect(() => {
+        const saveWhenHidden = () => {
+            if (document.visibilityState === 'hidden') {
                 saveRef.current();
             }
-        },
-        [],
-    );
+        };
+        document.addEventListener('visibilitychange', saveWhenHidden);
+        return () => {
+            document.removeEventListener('visibilitychange', saveWhenHidden);
+            saveRef.current();
+        };
+    }, []);
 
     // A remote change, while not editing.
     useEffect(() => {
@@ -69,7 +96,7 @@ export function ListNote({
         if (
             element &&
             document.activeElement !== element &&
-            timer.current === undefined &&
+            draft.current === null &&
             element.value !== note
         ) {
             element.value = note;
@@ -95,13 +122,27 @@ export function ListNote({
                 maxLength={NOTE_MAX}
                 aria-label={t('planner.noteLabel', { name: list.name })}
                 placeholder={t('planner.notePlaceholder')}
-                onChange={() => {
+                onChange={(event) => {
+                    draft.current = { text: event.target.value };
                     window.clearTimeout(timer.current);
                     timer.current = window.setTimeout(save, SAVE_DELAY_MS);
                 }}
                 onBlur={save}
                 className="min-h-40 shrink-0 resize-none rounded-none border-0 bg-transparent px-1.5 py-2 leading-6 shadow-none focus-visible:ring-0 lg:text-sm dark:bg-transparent"
             />
+            {saveFailed && (
+                <div className="flex items-center gap-2 text-sm">
+                    <span role="status">{t('planner.noteSaveFailed')}</span>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={save}
+                    >
+                        {t('planner.retryNoteSave')}
+                    </Button>
+                </div>
+            )}
             <NotePictures list={list} />
         </div>
     );
