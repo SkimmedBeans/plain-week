@@ -419,10 +419,10 @@ Row behaviour:
 - On phones, Week, Lists and Notes each remember their scroll position while the planner is mounted.
   Task and list cards keep their controls visible while scrolling. Closing a task opened from search
   restores the query and result position.
-- The phone Week heading shows the date range and has a menu for jumping to any day or Someday.
-  The bottom week control provides Previous and Next arrows and an animated swipe area across its
-  date range. Swipes on task rows stay separate from week navigation. Move tasks pauses swipes
-  and shows task drag handles.
+- On phones, the sticky week navigation combines equal-size arrows with a date range.
+  Swipe the range to change weeks or tap it to open nearby weeks and days. Away from the current
+  week, Today floats at the bottom end of the viewport. Task swipes keep their own area and
+  Move tasks pauses swipes while showing drag handles.
 - Planner search includes task content, list names and note text from local storage. A result opens
   the matching card. Lists and Notes each link to their archive and use the same restore dialog.
 - A list that scrolls inside its desktop cell gets a 2rem `mask-image` fade at the bottom while more is below and at the

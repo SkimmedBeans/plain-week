@@ -1,13 +1,14 @@
 import {
     CalendarDays,
-    ChevronDown,
     ChevronLeft,
     ChevronRight,
     Search,
     Undo2,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import type { HTMLAttributes } from 'react';
 import { AccountButton } from '@/components/planner/account-button';
+import { MobileWeekNavigation } from '@/components/planner/mobile-week-navigation';
 import { HintedLabel } from '@/components/planner/shortcut-hint';
 import { ViewBar } from '@/components/planner/view-bar';
 import { usePlannerView } from '@/hooks/use-carry-over-setting';
@@ -18,12 +19,6 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
 import {
     Tooltip,
@@ -32,7 +27,6 @@ import {
 } from '@/components/ui/tooltip';
 import {
     dateFormat,
-    formatLongDate,
     formatMonthTitle,
     formatWeekNumber,
 } from '@/lib/planner/format';
@@ -49,10 +43,11 @@ type Props = {
     onNextWeek: () => void;
     onToday: () => void;
     onGoToWeekOf: (date: Date) => void;
+    swipeHandlers?: HTMLAttributes<HTMLDivElement>;
 };
 
 /**
- * "October 2026 W42" (plus a "Today" pill when another week is shown) with
+ * "October 2026 W42" with
  * the account button and week navigation. The title turns the planner accent
  * when another week is shown; clicking it returns to today.
  */
@@ -63,6 +58,7 @@ export function PlannerHeader({
     onNextWeek,
     onToday,
     onGoToWeekOf,
+    swipeHandlers,
 }: Props) {
     // ISO weeks belong to the month and year of their Thursday.
     const thursday = weekThursday(weekStart);
@@ -80,41 +76,17 @@ export function PlannerHeader({
     const view = usePlannerView();
     const weekShown = view === 'week';
     const days = weekDateKeys(weekStart);
-    const jumpDestination = useRef<string | null>(null);
-    const jumpTouch = useRef<{ x: number; y: number } | null>(null);
-    const [jumpOpen, setJumpOpen] = useState(false);
     const [weekPickerOpen, setWeekPickerOpen] = useState(false);
     const range = dateFormat({ day: 'numeric', month: 'short' }).formatRange(
         weekStart,
         parseDateKey(days[6]),
     );
-    const jumpTo = (destination: string) => {
-        const target = document.querySelector<HTMLElement>(
-            `[data-planner-jump="${CSS.escape(destination)}"]`,
-        );
-        if (target) {
-            target.focus({ preventScroll: true });
-            target.scrollIntoView({ block: 'start' });
-        }
-    };
-    const todayButton = (
-        <Button
-            variant="outline"
-            size="sm"
-            onClick={onToday}
-            className="touch-manipulation rounded-full border-planner-accent px-3 font-semibold text-planner-accent hover:bg-planner-accent/10 hover:text-planner-accent max-lg:active:not-aria-[haspopup]:translate-y-0 max-sm:h-7 max-sm:px-2.5 max-sm:text-xs lg:hidden dark:bg-transparent dark:hover:bg-planner-accent/15"
-            data-test="today-button"
-        >
-            {t('planner.today')}
-        </Button>
-    );
-
     return (
         // On phones the header sticks to the top with the view switch as its
         // second row (F38); on desktop the switch sits above the grid.
         <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm lg:static lg:backdrop-blur-none">
             <div className="flex items-center justify-between gap-3 px-4 py-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-6 lg:pt-5 lg:pb-0">
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2.5 max-lg:flex-1">
                     <h1 className="flex min-w-0 items-baseline gap-2.5 text-3xl leading-tight font-bold tracking-tighter max-lg:hidden lg:text-4xl">
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -148,8 +120,6 @@ export function PlannerHeader({
                                 </TooltipContent>
                             )}
                         </Tooltip>
-                        {/* Phones have no room for both the week number and the
-                        Today pill, so the pill takes its place there. */}
                         <span
                             className={cn(
                                 'shrink-0 text-muted-foreground/50',
@@ -164,101 +134,25 @@ export function PlannerHeader({
                             </abbr>
                         </span>
                     </h1>
-                    <h1 className="flex min-w-0 touch-pan-y items-center gap-1 text-xl font-bold tracking-tight lg:hidden">
+                    <div className="flex min-w-0 flex-1 lg:hidden">
                         {weekShown ? (
-                            <>
-                                <span className="truncate text-base">
-                                    {range}
-                                </span>
-                                <DropdownMenu
-                                    open={jumpOpen}
-                                    onOpenChange={setJumpOpen}
-                                >
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            aria-label={`${range}. ${t('planner.jumpToDay')}`}
-                                            onPointerDown={(event) => {
-                                                // Open the day list after a touch tap finishes.
-                                                if (
-                                                    event.pointerType ===
-                                                    'touch'
-                                                ) {
-                                                    event.preventDefault();
-                                                    jumpTouch.current = {
-                                                        x: event.clientX,
-                                                        y: event.clientY,
-                                                    };
-                                                }
-                                            }}
-                                            onPointerUp={(event) => {
-                                                const start = jumpTouch.current;
-                                                jumpTouch.current = null;
-                                                if (
-                                                    event.pointerType ===
-                                                        'touch' &&
-                                                    start &&
-                                                    Math.hypot(
-                                                        event.clientX - start.x,
-                                                        event.clientY - start.y,
-                                                    ) < 10
-                                                ) {
-                                                    setJumpOpen(
-                                                        (open) => !open,
-                                                    );
-                                                }
-                                            }}
-                                            onPointerCancel={() => {
-                                                jumpTouch.current = null;
-                                            }}
-                                            className="h-auto min-w-0 gap-1 px-0 text-base font-bold"
-                                        >
-                                            <ChevronDown />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                        align="start"
-                                        onCloseAutoFocus={(event) => {
-                                            const destination =
-                                                jumpDestination.current;
-                                            jumpDestination.current = null;
-                                            if (destination !== null) {
-                                                event.preventDefault();
-                                                jumpTo(destination);
-                                            }
-                                        }}
-                                    >
-                                        {days.map((day) => (
-                                            <DropdownMenuItem
-                                                key={day}
-                                                onSelect={() => {
-                                                    jumpDestination.current =
-                                                        day;
-                                                }}
-                                            >
-                                                {formatLongDate(day)}
-                                            </DropdownMenuItem>
-                                        ))}
-                                        <DropdownMenuItem
-                                            onSelect={() => {
-                                                jumpDestination.current =
-                                                    'someday';
-                                            }}
-                                        >
-                                            {t('planner.someday')}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </>
+                            <MobileWeekNavigation
+                                weekStart={weekStart}
+                                onPreviousWeek={onPreviousWeek}
+                                onNextWeek={onNextWeek}
+                                onGoToWeekOf={onGoToWeekOf}
+                                swipeHandlers={swipeHandlers}
+                            />
                         ) : (
-                            t(
-                                view === 'notes'
-                                    ? 'planner.viewNotes'
-                                    : 'planner.viewLists',
-                            )
+                            <h1 className="truncate text-xl font-bold tracking-tight">
+                                {t(
+                                    view === 'notes'
+                                        ? 'planner.viewNotes'
+                                        : 'planner.viewLists',
+                                )}
+                            </h1>
                         )}
-                    </h1>
-                    {!isCurrentWeek && weekShown && todayButton}
+                    </div>
                 </div>
                 <div className="hidden lg:block">
                     {weekShown && (

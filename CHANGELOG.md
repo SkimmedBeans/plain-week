@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.51] - 2026-11-27
+
+- Move the phone week swipe control into the header and tap its dates to jump to a nearby week or day.
+- Float Today in the bottom corner while another week is shown.
+
 ## [0.4.50] - 2026-11-27
 
 - Put phone week arrows and the week swipe area in a bottom navigation control.
@@ -1065,7 +1070,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.50...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.51...HEAD
+[0.4.51]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.50...v0.4.51
 [0.4.50]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.49...v0.4.50
 [0.4.49]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.48...v0.4.49
 [0.4.48]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.47...v0.4.48
