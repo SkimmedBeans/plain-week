@@ -140,7 +140,7 @@ describe('TaskContextMenu', () => {
         expect(
             screen.getAllByRole('menuitem').map((item) => item.textContent),
         ).toEqual([
-            'Add sub-tasks',
+            'Task details',
             'Copy text',
             // Today and Pick a date have no key.
             'Today',
@@ -385,7 +385,7 @@ describe('TaskMenuButton', () => {
         expect(
             screen.getAllByRole('menuitem').map((item) => item.textContent),
         ).toEqual([
-            'Add sub-tasks',
+            'Task details',
             'Copy text',
             'Today',
             'Pick a date',
@@ -396,12 +396,12 @@ describe('TaskMenuButton', () => {
         expect(onOpenTask).not.toHaveBeenCalled();
     });
 
-    it('opens the task card from Add sub-tasks', async () => {
+    it('opens the task card from Task details', async () => {
         const { task, user, onOpenTask } = await setup();
 
         await openMoreMenu(user);
         await user.click(
-            screen.getByRole('menuitem', { name: 'Add sub-tasks' }),
+            screen.getByRole('menuitem', { name: 'Task details' }),
         );
 
         expect(onOpenTask).toHaveBeenCalledWith(task.id);

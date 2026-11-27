@@ -90,8 +90,10 @@ function CollapsedListChip({
 
     return (
         <li
+            data-planner-jump={list.column === 0 ? 'someday' : undefined}
+            tabIndex={list.column === 0 ? -1 : undefined}
             className={cn(
-                'flex items-center rounded-full border border-border max-lg:w-full',
+                'flex items-center rounded-full border border-border max-lg:w-full max-lg:scroll-mt-32',
                 TASK_COLOR_STYLES[color].pill,
                 color !== 'none' && 'border-transparent',
             )}

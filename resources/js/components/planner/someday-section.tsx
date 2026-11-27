@@ -288,9 +288,11 @@ export function SomedaySection({
             ref={isNamed ? setColumnRef : undefined}
             aria-labelledby={titleId}
             data-someday-list
+            data-planner-jump={list.column === 0 ? 'someday' : undefined}
+            tabIndex={list.column === 0 ? -1 : undefined}
             style={{ '--stripe': stripeColor(color) } as CSSProperties}
             className={cn(
-                'relative flex min-h-0 min-w-0 flex-col',
+                'relative flex min-h-0 min-w-0 flex-col max-lg:scroll-mt-32',
                 paper &&
                     'rounded-lg border border-border bg-[color-mix(in_oklab,var(--stripe)_40%,var(--background))] p-3 lg:p-4',
                 activeListId === list.id && 'opacity-60',

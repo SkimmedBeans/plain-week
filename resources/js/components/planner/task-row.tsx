@@ -70,7 +70,7 @@ type Props = {
     stripe?: boolean;
     /**
      * Opens the task card: a double tap or double click on the text, Enter
-     * or Space on it, or "Add sub-tasks" in its menu. A single tap or click
+     * or Space on it, or "Task details" in its menu. A single tap or click
      * edits the text in place instead (F19).
      */
     onOpen: (taskId: string) => void;

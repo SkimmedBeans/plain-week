@@ -1,16 +1,36 @@
-import { ChevronLeft, ChevronRight, Search, Undo2 } from 'lucide-react';
+import {
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Search,
+    Undo2,
+} from 'lucide-react';
+import { useRef } from 'react';
 import { AccountButton } from '@/components/planner/account-button';
 import { HintedLabel } from '@/components/planner/shortcut-hint';
 import { ViewBar } from '@/components/planner/view-bar';
 import { usePlannerView } from '@/hooks/use-carry-over-setting';
+import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { formatMonthTitle, formatWeekNumber } from '@/lib/planner/format';
+import {
+    dateFormat,
+    formatLongDate,
+    formatMonthTitle,
+    formatWeekNumber,
+} from '@/lib/planner/format';
+import { parseDateKey, weekDateKeys } from '@/lib/db/dates';
 import { undoLastDelete, useDeleteHistory } from '@/lib/planner/undo';
 import { isoWeekNumber, weekThursday } from '@/lib/planner/week';
 import { t } from '@/lib/i18n';
@@ -25,7 +45,7 @@ type Props = {
 };
 
 const navButton =
-    'size-10 rounded-full bg-foreground text-background hover:bg-foreground/80';
+    'size-10 touch-manipulation rounded-full bg-foreground text-background hover:bg-foreground/80';
 
 /**
  * "October 2026 W42" (plus a "Today" pill when another week is shown) with
@@ -52,7 +72,35 @@ export function PlannerHeader({
         : 'Undo delete';
 
     // The week arrows only change the Week view (F39).
-    const weekShown = usePlannerView() === 'week';
+    const view = usePlannerView();
+    const belowLg = useIsBelowLg();
+    const weekShown = view === 'week';
+    const days = weekDateKeys(weekStart);
+    const jumpDestination = useRef<string | null>(null);
+    const range = dateFormat({ day: 'numeric', month: 'short' }).formatRange(
+        weekStart,
+        parseDateKey(days[6]),
+    );
+    const jumpTo = (destination: string) => {
+        const target = document.querySelector<HTMLElement>(
+            `[data-planner-jump="${CSS.escape(destination)}"]`,
+        );
+        if (target) {
+            target.focus({ preventScroll: true });
+            target.scrollIntoView({ block: 'start' });
+        }
+    };
+    const todayButton = (
+        <Button
+            variant="outline"
+            size="sm"
+            onClick={onToday}
+            className="touch-manipulation rounded-full border-planner-accent px-3 font-semibold text-planner-accent hover:bg-planner-accent/10 hover:text-planner-accent max-lg:active:not-aria-[haspopup]:translate-y-0 max-sm:h-7 max-sm:px-2.5 max-sm:text-xs dark:bg-transparent dark:hover:bg-planner-accent/15"
+            data-test="today-button"
+        >
+            {t('planner.today')}
+        </Button>
+    );
 
     return (
         // On phones the header sticks to the top with the view switch as its
@@ -60,7 +108,7 @@ export function PlannerHeader({
         <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm lg:static lg:backdrop-blur-none">
             <div className="flex items-center justify-between gap-3 px-4 py-3 lg:px-6 lg:pt-5 lg:pb-0">
                 <div className="flex min-w-0 items-center gap-2.5">
-                    <h1 className="flex min-w-0 items-baseline gap-2.5 text-3xl leading-tight font-bold tracking-tighter lg:text-4xl">
+                    <h1 className="flex min-w-0 items-baseline gap-2.5 text-3xl leading-tight font-bold tracking-tighter max-lg:hidden lg:text-4xl">
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
@@ -109,24 +157,80 @@ export function PlannerHeader({
                             </abbr>
                         </span>
                     </h1>
-                    {!isCurrentWeek && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={onToday}
-                                    className="rounded-full border-planner-accent px-3 font-semibold text-planner-accent hover:bg-planner-accent/10 hover:text-planner-accent max-sm:h-7 max-sm:px-2.5 max-sm:text-xs dark:bg-transparent dark:hover:bg-planner-accent/15"
-                                    data-test="today-button"
-                                >
-                                    {t('planner.today')}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                {todayHint}
-                            </TooltipContent>
-                        </Tooltip>
-                    )}
+                    <h1
+                        data-week-swipe-heading={weekShown ? '' : undefined}
+                        className="flex min-w-0 touch-pan-y items-center gap-1 text-xl font-bold tracking-tight lg:hidden"
+                    >
+                        {weekShown ? (
+                            <>
+                                <span className="truncate text-base">
+                                    {range}
+                                </span>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            aria-label={`${range}. ${t('planner.jumpToDay')}`}
+                                            className="h-auto min-w-0 gap-1 px-0 text-base font-bold"
+                                        >
+                                            <ChevronDown />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        align="start"
+                                        onCloseAutoFocus={(event) => {
+                                            const destination =
+                                                jumpDestination.current;
+                                            jumpDestination.current = null;
+                                            if (destination !== null) {
+                                                event.preventDefault();
+                                                jumpTo(destination);
+                                            }
+                                        }}
+                                    >
+                                        {days.map((day) => (
+                                            <DropdownMenuItem
+                                                key={day}
+                                                onSelect={() => {
+                                                    jumpDestination.current =
+                                                        day;
+                                                }}
+                                            >
+                                                {formatLongDate(day)}
+                                            </DropdownMenuItem>
+                                        ))}
+                                        <DropdownMenuItem
+                                            onSelect={() => {
+                                                jumpDestination.current =
+                                                    'someday';
+                                            }}
+                                        >
+                                            {t('planner.someday')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </>
+                        ) : (
+                            t(
+                                view === 'notes'
+                                    ? 'planner.viewNotes'
+                                    : 'planner.viewLists',
+                            )
+                        )}
+                    </h1>
+                    {!isCurrentWeek &&
+                        (belowLg ? (
+                            weekShown && todayButton
+                        ) : (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    {todayButton}
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                    {todayHint}
+                                </TooltipContent>
+                            </Tooltip>
+                        ))}
                 </div>
                 <nav
                     aria-label={t('planner.weekNav')}
@@ -176,12 +280,17 @@ export function PlannerHeader({
                             />
                         </TooltipContent>
                     </Tooltip>
-                    <AccountButton />
+                    <div className="max-lg:order-last">
+                        <AccountButton />
+                    </div>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
                                 size="icon-lg"
-                                className={navButton}
+                                className={cn(
+                                    navButton,
+                                    !weekShown && 'max-lg:hidden',
+                                )}
                                 onClick={onPreviousWeek}
                                 disabled={!weekShown}
                                 aria-label={t('planner.previousWeek')}
@@ -201,7 +310,10 @@ export function PlannerHeader({
                         <TooltipTrigger asChild>
                             <Button
                                 size="icon-lg"
-                                className={navButton}
+                                className={cn(
+                                    navButton,
+                                    !weekShown && 'max-lg:hidden',
+                                )}
                                 onClick={onNextWeek}
                                 disabled={!weekShown}
                                 aria-label={t('planner.nextWeek')}

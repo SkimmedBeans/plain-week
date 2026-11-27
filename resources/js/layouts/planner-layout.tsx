@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { PointerEvent, ReactNode } from 'react';
 import { InstallAppDialog } from '@/components/install-app/install-app-card';
 import { KeyboardCursorProvider } from '@/components/planner/keyboard-cursor';
 import { SearchDialog } from '@/components/planner/search-dialog';
@@ -12,6 +12,7 @@ import { TaskDialog } from '@/components/planner/task-dialog/task-dialog';
 import { WeekGrid } from '@/components/planner/week-grid';
 import { SyncProvider } from '@/components/sync-provider';
 import { useCarryOver } from '@/hooks/use-carry-over';
+import { usePlannerView } from '@/hooks/use-carry-over-setting';
 import { useGuestOnboarding } from '@/hooks/use-guest-onboarding';
 import { useIsBelowLg } from '@/hooks/use-mobile';
 import { clearTaskParam, useTaskLink } from '@/hooks/use-task-link';
@@ -34,6 +35,55 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
     const [openTaskId, setOpenTaskId] = useState<string | null>(null);
     const returnToSearch = useRef(false);
     const belowLg = useIsBelowLg();
+    const weekShown = usePlannerView() === 'week';
+    const weekSwipe = useRef<{ id: number; x: number; y: number } | null>(null);
+    const startWeekSwipe = (event: PointerEvent) => {
+        weekSwipe.current = null;
+        if (
+            !belowLg ||
+            !weekShown ||
+            event.pointerType !== 'touch' ||
+            !event.isPrimary
+        ) {
+            return;
+        }
+        const { clientX: x, clientY: y, target } = event;
+        if (
+            !(target instanceof Element) ||
+            x < 24 ||
+            x > window.innerWidth - 24 ||
+            !target.closest(
+                '[data-week-swipe-heading], [data-planner-content]',
+            ) ||
+            target.closest(
+                'button, input, textarea, a, select, [contenteditable], [data-task-id], [role="dialog"], [role="menu"]',
+            )
+        ) {
+            return;
+        }
+        weekSwipe.current = { id: event.pointerId, x, y };
+    };
+    const finishWeekSwipe = (event: PointerEvent) => {
+        const start = weekSwipe.current;
+        weekSwipe.current = null;
+        if (start === null || event.pointerId !== start.id) {
+            return;
+        }
+        const horizontal = event.clientX - start.x;
+        const vertical = Math.abs(event.clientY - start.y);
+        if (
+            Math.abs(horizontal) < 64 ||
+            Math.abs(horizontal) < vertical * 1.5
+        ) {
+            return;
+        }
+        const rtl = getComputedStyle(event.currentTarget).direction === 'rtl';
+        if (horizontal < 0 !== rtl) {
+            navigation.nextWeek();
+        } else {
+            navigation.previousWeek();
+        }
+    };
     const closeTask = useCallback(() => {
         setOpenTaskId(null);
         clearTaskParam();
@@ -77,7 +127,14 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                 >
                     {/* On desktop the page is exactly the window: the header, then the
                         week filling the rest. */}
-                    <div className="flex min-h-screen flex-col bg-background text-foreground lg:h-dvh">
+                    <div
+                        className="flex min-h-screen flex-col bg-background text-foreground lg:h-dvh"
+                        onPointerDownCapture={startWeekSwipe}
+                        onPointerUpCapture={finishWeekSwipe}
+                        onPointerCancelCapture={() => {
+                            weekSwipe.current = null;
+                        }}
+                    >
                         <PlannerHeader
                             weekStart={navigation.weekStart}
                             isCurrentWeek={navigation.isCurrentWeek}
@@ -89,6 +146,11 @@ export default function PlannerLayout({ children }: { children: ReactNode }) {
                             tabIndex={-1}
                             data-planner-content
                             className="flex flex-col px-4 pt-6 pb-12 lg:min-h-0 lg:flex-1 lg:px-6 lg:pt-8 lg:pb-6"
+                            style={
+                                belowLg && weekShown
+                                    ? { touchAction: 'pan-y pinch-zoom' }
+                                    : undefined
+                            }
                         >
                             <PlannerDnd
                                 weekStart={navigation.weekStart}

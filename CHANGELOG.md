@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.41] - 2026-11-27
+
+### Added
+
+- **Phone Week navigation (F68, F69).** The header shows the date range and a day picker
+  that jumps to any day or Someday. Swipe horizontally on the date heading or blank week
+  space to move between weeks.
+
+### Changed
+
+- **Planner menus and view switch (F60, F61).** Task details appears first in task menus, and
+  move actions stay together. The selected view is clearer, and the phone header names the
+  Lists or Notes view in place of Week controls.
+
 ## [0.4.40] - 2026-11-27
 
 ### Changed
@@ -969,7 +983,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.40...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.41...HEAD
+[0.4.41]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.40...v0.4.41
 [0.4.40]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.39...v0.4.40
 [0.4.39]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.38...v0.4.39
 [0.4.38]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.37...v0.4.38

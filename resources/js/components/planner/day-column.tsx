@@ -57,6 +57,8 @@ export function DayColumn({
 
     return (
         <section
+            data-planner-jump={date}
+            tabIndex={-1}
             aria-label={t('planner.dayLabel', { weekday, day: dayLabel })}
             style={
                 {
@@ -66,7 +68,7 @@ export function DayColumn({
             }
             aria-current={isToday ? 'date' : undefined}
             className={cn(
-                'flex min-h-0 min-w-0 flex-col',
+                'flex min-h-0 min-w-0 flex-col max-lg:scroll-mt-32',
                 // A soft tint that bleeds 10px past the start, end and top
                 // (and the bottom of the desktop cell), padded back so the
                 // header and rows stay in place. The scroll margin (128px) keeps
