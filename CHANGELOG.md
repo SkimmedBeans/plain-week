@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.42] - 2026-11-27
+
+### Added
+
+- **Planner search and archives (F63, F64).** Offline search finds note text and list names alongside
+  tasks, including archived items. Lists and Notes each have a shortcut to their archive.
+- List and note conversions offer a link to the destination view and Undo.
+
 ## [0.4.41] - 2026-11-27
 
 ### Added
@@ -983,7 +991,8 @@ between devices.
   app, so an instance without mail works.
 - **Documentation** for contributors and coding agents in `docs/` and `AGENTS.md`.
 
-[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.41...HEAD
+[Unreleased]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.42...HEAD
+[0.4.42]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.41...v0.4.42
 [0.4.41]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.40...v0.4.41
 [0.4.40]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.39...v0.4.40
 [0.4.39]: https://github.com/SkimmedBeans/plain-week/compare/v0.4.38...v0.4.39

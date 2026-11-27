@@ -11,22 +11,19 @@ import { Input } from '@/components/ui/input';
 import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
-import { searchTasks } from '@/lib/planner/search';
-import type { SearchResult } from '@/lib/planner/search';
+import { searchPlanner } from '@/lib/planner/search';
+import type { PlannerSearchResult } from '@/lib/planner/search';
 import { searchDialogStore } from '@/lib/planner/search-dialog';
 import { TASK_COLOR_STYLES } from '@/lib/planner/task-colors';
 import { cn } from '@/lib/utils';
 
 /**
- * Search across all tasks (F33): `/` or the header's search button. It reads
- * only the local database, so it works offline; every keystroke searches the
- * days, Someday and every named list (collapsed or archived too), and a result
- * opens its task card.
+ * Local search across tasks, lists and notes, including archived items.
  */
 export function SearchDialog({
-    onOpenTask,
+    onOpenResult,
 }: {
-    onOpenTask: (taskId: string) => void;
+    onOpenResult: (result: PlannerSearchResult) => void;
 }) {
     const belowLg = useIsBelowLg();
     const lastSearch = useRef<{ query: string; scrollTop: number } | null>(
@@ -51,12 +48,12 @@ export function SearchDialog({
             {isOpen && (
                 <SearchContent
                     initialSearch={lastSearch.current}
-                    onOpenTask={(id, query, scrollTop) => {
+                    onOpenResult={(result, query, scrollTop) => {
                         lastSearch.current = belowLg
                             ? { query, scrollTop }
                             : null;
                         searchDialogStore.close();
-                        onOpenTask(id);
+                        onOpenResult(result);
                     }}
                 />
             )}
@@ -66,13 +63,17 @@ export function SearchDialog({
 
 function SearchContent({
     initialSearch,
-    onOpenTask,
+    onOpenResult,
 }: {
     initialSearch: { query: string; scrollTop: number } | null;
-    onOpenTask: (taskId: string, query: string, scrollTop: number) => void;
+    onOpenResult: (
+        result: PlannerSearchResult,
+        query: string,
+        scrollTop: number,
+    ) => void;
 }) {
     const [query, setQuery] = useState(initialSearch?.query ?? '');
-    const [results, setResults] = useState<SearchResult[]>([]);
+    const [results, setResults] = useState<PlannerSearchResult[]>([]);
     const resultList = useRef<HTMLUListElement>(null);
     const restoreScroll = useRef(initialSearch?.scrollTop ?? 0);
 
@@ -83,13 +84,13 @@ function SearchContent({
         }
     }, [results]);
 
-    const openResult = (id: string) =>
-        onOpenTask(id, query, resultList.current?.scrollTop ?? 0);
+    const openResult = (result: PlannerSearchResult) =>
+        onOpenResult(result, query, resultList.current?.scrollTop ?? 0);
 
     useEffect(() => {
         let current = true;
 
-        void searchTasks(query).then((found) => {
+        void searchPlanner(query).then((found) => {
             if (current) {
                 setResults(found);
             }
@@ -126,7 +127,7 @@ function SearchContent({
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' && results.length > 0) {
                             event.preventDefault();
-                            openResult(results[0].openId);
+                            openResult(results[0]);
                         }
                     }}
                     className="ps-9"
@@ -144,36 +145,56 @@ function SearchContent({
                         </li>
                     ) : (
                         results.map((result) => (
-                            <li key={result.openId}>
+                            <li key={`${result.kind}:${result.openId}`}>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     data-search-result
-                                    onClick={() => openResult(result.openId)}
+                                    onClick={() => openResult(result)}
                                     className={cn(
                                         'h-auto w-full justify-between gap-3 rounded-md px-2 py-2 text-start font-normal whitespace-normal',
-                                        result.done &&
+                                        result.kind === 'task' &&
+                                            result.done &&
                                             'text-muted-foreground line-through',
                                     )}
                                 >
-                                    <span className="flex min-w-0 items-center gap-1.5">
-                                        {result.repeats && (
-                                            <Repeat className="size-3 shrink-0 opacity-70" />
-                                        )}
-                                        <span
-                                            className={cn(
-                                                'min-w-0 truncate',
-                                                TASK_COLOR_STYLES[result.color]
-                                                    .pill,
-                                                TASK_COLOR_STYLES[result.color]
-                                                    .pill &&
-                                                    'rounded-full px-2',
-                                            )}
-                                        >
-                                            {result.text}
+                                    <span className="flex min-w-0 flex-col">
+                                        <span className="flex min-w-0 items-center gap-1.5">
+                                            {result.kind === 'task' &&
+                                                result.repeats && (
+                                                    <Repeat className="size-3 shrink-0 opacity-70" />
+                                                )}
+                                            <span
+                                                className={cn(
+                                                    'min-w-0 truncate',
+                                                    TASK_COLOR_STYLES[
+                                                        result.color
+                                                    ].pill,
+                                                    TASK_COLOR_STYLES[
+                                                        result.color
+                                                    ].pill &&
+                                                        'rounded-full px-2',
+                                                )}
+                                            >
+                                                {result.text}
+                                            </span>
                                         </span>
+                                        {result.kind !== 'task' &&
+                                            result.snippet && (
+                                                <span className="truncate text-xs text-muted-foreground">
+                                                    {result.snippet}
+                                                </span>
+                                            )}
                                     </span>
-                                    <span className="shrink-0 text-xs text-muted-foreground no-underline">
+                                    <span className="max-w-[40%] shrink-0 truncate text-end text-xs text-muted-foreground no-underline">
+                                        {t(
+                                            result.kind === 'task'
+                                                ? 'planner.searchTypeTask'
+                                                : result.kind === 'note'
+                                                  ? 'planner.searchTypeNote'
+                                                  : 'planner.searchTypeList',
+                                        )}
+                                        {' · '}
                                         {result.where}
                                     </span>
                                 </Button>

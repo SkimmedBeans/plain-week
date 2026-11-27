@@ -22,6 +22,7 @@ type Props = {
     onOpenChange: (open: boolean) => void;
     weekStart: Date;
     today: string;
+    kind?: 'list' | 'note';
     onOpenTask: (taskId: string) => void;
 };
 
@@ -35,17 +36,34 @@ export function ArchivedListsDialog({
     onOpenChange,
     weekStart,
     today,
+    kind,
     onOpenTask,
 }: Props) {
-    const lists = useSomedayLists()?.filter((list) => list.archived) ?? [];
+    const lists =
+        useSomedayLists()?.filter(
+            (list) =>
+                list.archived &&
+                (kind === undefined ||
+                    (typeof list.note === 'string') === (kind === 'note')),
+        ) ?? [];
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>{t('planner.archivedLists')}</DialogTitle>
+                    <DialogTitle>
+                        {t(
+                            kind === 'note'
+                                ? 'planner.archivedNotes'
+                                : 'planner.archivedLists',
+                        )}
+                    </DialogTitle>
                     <DialogDescription>
-                        {t('planner.archivedListsDescription')}
+                        {t(
+                            kind === 'note'
+                                ? 'planner.archivedNotesDescription'
+                                : 'planner.archivedListsDescription',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <ul className="flex flex-col" data-archived-lists>
@@ -62,6 +80,11 @@ export function ArchivedListsDialog({
                         />
                     ))}
                 </ul>
+                {lists.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                        {t('planner.noArchives')}
+                    </p>
+                )}
             </DialogContent>
         </Dialog>
     );
@@ -82,14 +105,35 @@ function ArchivedListRow({
     const open = tasks?.filter((task) => !task.done).length ?? 0;
     const [cardOpen, setCardOpen] = useState(false);
     const color = list.color ?? 'none';
+    const isNote = typeof list.note === 'string';
 
     const restore = () =>
         void setListArchived(list.id, false).then(
             (updated) =>
                 updated === null
-                    ? toast.error(t('planner.listArchiveFailed'))
-                    : toast(t('planner.listRestored', { name: list.name })),
-            () => toast.error(t('planner.listArchiveFailed')),
+                    ? toast.error(
+                          t(
+                              isNote
+                                  ? 'planner.noteArchiveFailed'
+                                  : 'planner.listArchiveFailed',
+                          ),
+                      )
+                    : toast(
+                          t(
+                              isNote
+                                  ? 'planner.noteRestored'
+                                  : 'planner.listRestored',
+                              { name: list.name },
+                          ),
+                      ),
+            () =>
+                toast.error(
+                    t(
+                        isNote
+                            ? 'planner.noteArchiveFailed'
+                            : 'planner.listArchiveFailed',
+                    ),
+                ),
         );
 
     return (
@@ -98,7 +142,10 @@ function ArchivedListRow({
                 type="button"
                 variant="ghost"
                 data-list-card-target={`named:${list.id}`}
-                aria-label={t('planner.openListLabel', { name: list.name })}
+                aria-label={t(
+                    isNote ? 'planner.openNoteLabel' : 'planner.openListLabel',
+                    { name: list.name },
+                )}
                 onClick={() => setCardOpen(true)}
                 className="h-auto min-w-0 justify-start gap-2 px-1 py-1.5 font-semibold"
             >
@@ -111,15 +158,22 @@ function ArchivedListRow({
                 >
                     {list.name}
                 </span>
-                <span className="font-normal text-muted-foreground tabular-nums">
-                    {open}
-                </span>
+                {!isNote && (
+                    <span className="font-normal text-muted-foreground tabular-nums">
+                        {open}
+                    </span>
+                )}
             </Button>
             <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                aria-label={t('planner.restoreListLabel', { name: list.name })}
+                aria-label={t(
+                    isNote
+                        ? 'planner.restoreNoteLabel'
+                        : 'planner.restoreListLabel',
+                    { name: list.name },
+                )}
                 onClick={restore}
             >
                 <ArchiveRestore />

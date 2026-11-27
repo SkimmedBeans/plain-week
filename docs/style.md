@@ -413,6 +413,8 @@ Row behaviour:
 - The phone Week heading shows the date range and has a menu for jumping to any day or Someday.
   A horizontal swipe on the heading or blank planner space changes the week. Task rows, editable
   controls, and the screen edges are outside the swipe area so their gestures keep working.
+- Planner search includes task content, list names and note text from local storage. A result opens
+  the matching card. Lists and Notes each link to their archive and use the same restore dialog.
 - A list that scrolls inside its desktop cell gets a 2rem `mask-image` fade at the bottom while more is below and at the
   top once scrolled (`data-overflow-top` / `data-overflow-bottom`, F28). A mask only paints, so taps and drops reach the
   rows under it.
