@@ -587,7 +587,7 @@ export function SomedaySection({
             )}
             {isNote && fullList !== undefined ? (
                 compactNoteRow ? null : (
-                    <ListNote list={fullList} />
+                    <ListNote list={fullList} measureWidth />
                 )
             ) : (
                 <TaskList

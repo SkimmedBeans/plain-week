@@ -29,9 +29,11 @@ const SAVE_DELAY_MS = 400;
 export function ListNote({
     list,
     className,
+    measureWidth = false,
 }: {
     list: SomedayList;
     className?: string;
+    measureWidth?: boolean;
 }) {
     const field = useRef<HTMLTextAreaElement>(null);
     const timer = useRef<number | undefined>(undefined);
@@ -115,21 +117,34 @@ export function ListNote({
                 className,
             )}
         >
-            <Textarea
-                ref={field}
-                data-list-note
-                defaultValue={note}
-                maxLength={NOTE_MAX}
-                aria-label={t('planner.noteLabel', { name: list.name })}
-                placeholder={t('planner.notePlaceholder')}
-                onChange={(event) => {
-                    draft.current = { text: event.target.value };
-                    window.clearTimeout(timer.current);
-                    timer.current = window.setTimeout(save, SAVE_DELAY_MS);
-                }}
-                onBlur={save}
-                className="min-h-40 shrink-0 resize-none rounded-none border-0 bg-transparent px-1.5 py-2 leading-6 shadow-none focus-visible:ring-0 lg:text-sm dark:bg-transparent"
-            />
+            <div className={measureWidth ? 'grid min-w-0' : 'contents'}>
+                {measureWidth && (
+                    // The hidden text shares the editor's grid cell, so the
+                    // card's intrinsic width follows the note's longest line.
+                    <span
+                        data-note-width
+                        aria-hidden="true"
+                        className="invisible col-start-1 row-start-1 hidden h-0 overflow-hidden px-1.5 text-sm whitespace-pre"
+                    >
+                        {note}
+                    </span>
+                )}
+                <Textarea
+                    ref={field}
+                    data-list-note
+                    defaultValue={note}
+                    maxLength={NOTE_MAX}
+                    aria-label={t('planner.noteLabel', { name: list.name })}
+                    placeholder={t('planner.notePlaceholder')}
+                    onChange={(event) => {
+                        draft.current = { text: event.target.value };
+                        window.clearTimeout(timer.current);
+                        timer.current = window.setTimeout(save, SAVE_DELAY_MS);
+                    }}
+                    onBlur={save}
+                    className="col-start-1 row-start-1 min-h-40 min-w-0 shrink-0 resize-none rounded-none border-0 bg-transparent px-1.5 py-2 leading-6 shadow-none focus-visible:ring-0 lg:text-sm dark:bg-transparent"
+                />
+            </div>
             {saveFailed && (
                 <div className="flex items-center gap-2 text-sm">
                     <span role="status">{t('planner.noteSaveFailed')}</span>
