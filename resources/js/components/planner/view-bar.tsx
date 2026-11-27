@@ -1,4 +1,5 @@
 import { Search, Undo2 } from 'lucide-react';
+import { MobileTaskMoveButton } from '@/components/planner/mobile-task-move-button';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { usePlannerView } from '@/hooks/use-carry-over-setting';
@@ -42,6 +43,7 @@ export function ViewBar() {
                     {t('planner.viewNotes')}
                 </ToggleGroupItem>
             </ToggleGroup>
+            {view !== 'notes' && <MobileTaskMoveButton />}
             <Button
                 variant="ghost"
                 size="icon"

@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import { toast } from 'sonner';
 import { CompletedHeading } from '@/components/planner/completed-heading';
+import { MobileTaskMoveButton } from '@/components/planner/mobile-task-move-button';
 import { NewTaskRow } from '@/components/planner/new-task-row';
 import {
     ListCardDnd,
@@ -472,6 +473,9 @@ function ListDialogSession({
                                     </Button>
                                 </>
                             )}
+                            {typeof list?.note !== 'string' && (
+                                <MobileTaskMoveButton compact />
+                            )}
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -485,7 +489,10 @@ function ListDialogSession({
                     </>
                 ) : (
                     <h2 className="flex items-center justify-between gap-2 border-b-2 border-foreground pb-3 text-lg font-bold tracking-tight max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:bg-secondary lg:text-xl">
-                        <span className="min-w-0 truncate">{dayTitle}</span>
+                        <span className="me-auto min-w-0 truncate">
+                            {dayTitle}
+                        </span>
+                        <MobileTaskMoveButton compact />
                         <Button
                             type="button"
                             variant="ghost"
@@ -638,10 +645,12 @@ function ListCardTaskList({
             .catch(() => toast.error(t('planner.saveFailed', { text: input })));
     };
 
-    const handleToggleDone = (taskId: string) => {
-        toggleDoneWithUndo(taskId).catch(() =>
-            toast.error(t('planner.updateTaskFailed')),
-        );
+    const handleToggleDone = async (taskId: string) => {
+        try {
+            await toggleDoneWithUndo(taskId);
+        } catch {
+            toast.error(t('planner.updateTaskFailed'));
+        }
     };
 
     return (
@@ -688,7 +697,6 @@ function ListCardTaskList({
                             name={name}
                             onOpen={onOpenTask}
                             onToggleDone={handleToggleDone}
-                            listCardSwipes
                         />
                         {indicatorBefore === null &&
                             index === taskCount - 1 && <DropIndicator />}

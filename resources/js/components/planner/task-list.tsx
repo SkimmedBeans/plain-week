@@ -206,10 +206,12 @@ export function TaskList({
     // Esc leaves the list and puts the keyboard cursor on its new-task row.
     const handleCancel = () => returnToList(listKey);
 
-    const handleToggleDone = (taskId: string) => {
-        toggleDoneWithUndo(taskId).catch(() =>
-            toast.error(t('planner.updateTaskFailed')),
-        );
+    const handleToggleDone = async (taskId: string) => {
+        try {
+            await toggleDoneWithUndo(taskId);
+        } catch {
+            toast.error(t('planner.updateTaskFailed'));
+        }
     };
 
     return (
